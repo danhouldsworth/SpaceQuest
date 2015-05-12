@@ -3,77 +3,69 @@
 
 	var canvas = document.getElementById('myCanvas'); var context = canvas.getContext('2d'),
 
-		particle	= [],
-		magnet		= [],
-		attachment	= [],
-		wall		= new particle_type(),			// simulate wall as a infinitely large particle
-
-		interaction	= new interaction_type(),		// interaction object is useful to have seperation x,y,vx,vy,mass etc
+		particles	= [],
+		magnets		= [],
+		attachments	= [],
 
 		gravity			= -0.001,
 		friction_p		= 1,
 		friction_b		= 10,
 		restitution_p	= 1,
 		restitution_b	= 1,
-		boundary_flag_x	= -1,
-		boundary_flag_y	= -1,
+		boundary_flag	= -1,
 		distance_force	= 0,
-		speedCap		= 50;
+		speedCap		= 50,
 
-	var timerAnimate = setInterval(animate, 30),
+		timerAnimate = setInterval(animate, 30),
 		timerIterate = setInterval(iterate, 1);
 
 	function iterate(){
 
 		// -- 1. Iterate through the Particles. Resolving the Particle-to-Particle interactions
-		for (var i = 0; i < particle.length; i++){
+		for (var i = 0; i < particles.length; i++){
 
-			interaction.clear();
-
-			for (var j = i + 1; j < particle.length; j++){
-				interaction.resolve(particle[i], particle[j]);
-				particle[i].collide(particle[j], restitution_p, friction_p);
-				particle[i].attract(particle[j]);
+			for (var j = i + 1; j < particles.length; j++){
+				interaction.resolve(particles[i], particles[j]);
+				particles[i].collide(particles[j], restitution_p, friction_p);
+				particles[i].attract(particles[j]);
 			}
 
-			particle[i].boundary_test();
-			particle[i].stabilise();
-			particle[i].update();
+			particles[i].boundary();
+			particles[i].stabilise();
+			particles[i].update();
 		}
 		// --
 
 		// -- 2. Iterate throught the Magnets.
 		// -- Resolving the Magnet-to-Particle, Magnet-to-Magnet & Magnet-to-Attachement interactions
-		for (var i = 0; i < magnet.length; i++){
-
-			interaction.clear();
+		for (var i = 0; i < magnets.length; i++){
 
 			// -- Magnets Phyiscal collision barrier to particles
-			for (var j = 0; j < particle.length; j++){
-				interaction.resolve(magnet[i], particle[j]);
-				magnet[i].collide(particle[j], restitution_p, friction_p);
+			for (var j = 0; j < particles.length; j++){
+				interaction.resolve(magnets[i], particles[j]);
+				magnets[i].collide(particles[j], restitution_p, friction_p);
 			}
 			// --
 
 			// -- Magnets attracted in order
-			if (i != magnet.length - 1){
-				interaction.resolve(magnet[i], magnet[i + 1]);
-				magnet[i].stick(magnet[i + 1]);
+			if (i != magnets.length - 1){
+				interaction.resolve(magnets[i], magnets[i + 1]);
+				magnets[i].stick(magnets[i + 1]);
 			}
 			// --
 
-			// -- If this magnet is named by an attachment then stick
-			for (var j = 0; j < attachment.length; j++){
-				if (i == attachment[j].magnet_number){
-					interaction.resolve(magnet[i], attachment[j]);
-					magnet[i].stick(attachment[j]);
+			// -- Attachments are ghost objects that attract a specific magnet #
+			for (var j = 0; j < attachments.length; j++){
+				if (i == attachments[j].magnet_number){
+					interaction.resolve(magnets[i], attachments[j]);
+					magnets[i].stick(attachments[j]);
 				}
 			}
 			// --
 
-			magnet[i].boundary_test();
-			magnet[i].stabilise();
-			magnet[i].update( -0.01 * magnet[i].mass() ); // Dampen the magnets with drag
+			magnets[i].boundary();
+			magnets[i].stabilise();
+			magnets[i].update( -0.01 * magnets[i].mass() ); // Dampen the magnets with drag
 		}
 	}
 
@@ -85,104 +77,28 @@
 		}
 
 		canvas.width = canvas.width;
-		draw_all_of(particle, 0);
-		draw_all_of(magnet, 100);
-		draw_all_of(attachment, 200);
+		draw_all_of(particles, 0);
+		draw_all_of(magnets, 100);
+		draw_all_of(attachments, 200);
 	}
 
-	function modulus(x, y) {
-		return Math.sqrt(x * x + y * y);
+	// -- Basic Primitive Object has Mass and Collide methods ***TO BE CHANGED WITH TRIANGLES***
+	function Primitive(x, y, vx, vy, size, angle, spin){
+		this.x		= x || 0;
+		this.y		= y || 0;
+		this.vx		= vx || 0;
+		this.vy		= vy || 0;
+		this.size	= size  || 0;
+		this.angle	= angle || 0;
+		this.spin	= spin  || 0;
 	}
 
-	function particle_type(x, y, vx, vy, size){
-		this.x		= x;
-		this.y		= y;
-		this.vx		= vx;
-		this.vy		= vy;
-		this.size	= size;
-		this.angle	= 0;
-		this.spin	= 0;
-
-		this.speed = function (){
-			return modulus(this.vx, this.vy);
-		}
-		this.mass = function (){
-			return (4/3) * Math.PI * this.size * this.size * this.size;
-		}
+	Primitive.prototype.mass = function (){
+		var mass = (4/3) * Math.PI * this.size * this.size * this.size;
+		return mass;
 	}
 
-	particle_type.prototype.update = function(drag){
-
-		// -- Modify speed due to gravity (& other field forces)
-		this.vy 	+= gravity;
-		// --
-
-		// -- Modify speed due to drag
-		if (drag){
-			if (this.vx > 0){
-				this.vx += Math.max(drag*this.vx*this.speed() / this.mass(), -this.vx);
-			}
-			else {
-				this.vx += Math.min(drag*this.vx*this.speed() / this.mass(), -this.vx);
-			}
-			if (this.vy > 0){
-				this.vy += Math.max(drag*this.vy*this.speed() / this.mass(), -this.vy);
-			}
-			else {
-				this.vy += Math.min(drag*this.vy*this.speed() / this.mass(), -this.vy);
-			}
-		}
-		// --
-
-		// -- Update position based on speed
-		this.x 		+= this.vx;
-		this.y 		+= this.vy;
-		this.angle 	+= this.spin;
-		// --
-
-		// -- Normalise angle to 0<theta<2PI
-		while (this.angle > Math.PI*2) {
-			this.angle -= Math.PI*2;
-		}
-		// --
-	}
-
-	particle_type.prototype.clear = function() {
-		this.x			= 0;
-		this.y			= 0;
-		this.vx			= 0;
-		this.vy			= 0;
-		this.size		= 0;
-		this.angle		= 0;
-		this.spin		= 0;
-		this.seperation	= 0;
-	}
-
-	particle_type.prototype.draw = function(shade){
-
-		function draw_ball(x, y, size, r, g, b){
-			var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
-			context.beginPath();
-			context.arc(x,y,size, 0, 2 * Math.PI, false);
-			context.fillStyle = colourstring;
-			context.fill();
-		}
-
-		draw_ball(
-			this.x,
-			canvas.height - this.y,
-			this.size,
-			Math.round(this.speed() * 30) + shade, shade, shade
-		);
-		draw_ball(
-			this.x + Math.cos(this.angle) * this.size / 2,
-			canvas.height - (this.y + Math.sin(this.angle) * this.size / 2),
-			this.size / 5,
-			255, 255, 255
-		);
-	}
-
-	particle_type.prototype.collide = function(that, e, f){
+	Primitive.prototype.collide = function(that, e, f){
 		// Particle1 = this, Particle2 = that
 		if (interaction.seperation <= interaction.size){
 			// theta = angle from x-axis to line P1P2 (anticlockwise)
@@ -248,9 +164,18 @@
 			}
 		}
 	}
+	// --
 
-	particle_type.prototype.attract = function(that) {
+	// -- Particle is a BALL ONLY and a subset of Primitive. It can attract from a distance.
+	function Particle(x, y, vx, vy, size, angle, spin){
+		this.base = Primitive;
+		this.base(x, y, vx, vy, size, angle, spin);
+	}
+	Particle.prototype = new Primitive;
 
+	Particle.prototype.attract = function(that) {
+
+		// F = Gm1m2/r^2
 		var force = distance_force * interaction.mass / (interaction.seperation * interaction.seperation);
 
 		this.vx +=  force * interaction.vector.x / this.mass();
@@ -261,8 +186,135 @@
 		that.spin += 0;
 	}
 
-	particle_type.prototype.stick = function(that) {
+	Particle.prototype.speed = function (){
+		var speed = modulus(this.vx, this.vy);
+		return speed;
+	}
 
+	Particle.prototype.draw = function(shade){
+
+		function draw_ball(x, y, size, r, g, b){
+			var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
+			context.beginPath();
+			context.arc(x,y,size, 0, 2 * Math.PI, false);
+			context.fillStyle = colourstring;
+			context.fill();
+		}
+
+		draw_ball(
+			this.x,
+			canvas.height - this.y,
+			this.size,
+			Math.round(this.speed() * 30) + shade, shade, shade
+		);
+		draw_ball(
+			this.x + Math.cos(this.angle) * this.size / 2,
+			canvas.height - (this.y + Math.sin(this.angle) * this.size / 2),
+			this.size / 5,
+			255, 255, 255
+		);
+	}
+
+	Particle.prototype.update = function(drag){
+
+		// -- Modify speed due to gravity (& other field forces)
+		this.vy 	+= gravity;
+		// --
+
+		// -- Modify speed due to drag
+		if (drag){
+			if (this.vx > 0){
+				this.vx += Math.max(drag*this.vx*this.speed() / this.mass(), -this.vx);
+			}
+			else {
+				this.vx += Math.min(drag*this.vx*this.speed() / this.mass(), -this.vx);
+			}
+			if (this.vy > 0){
+				this.vy += Math.max(drag*this.vy*this.speed() / this.mass(), -this.vy);
+			}
+			else {
+				this.vy += Math.min(drag*this.vy*this.speed() / this.mass(), -this.vy);
+			}
+		}
+		// --
+
+		// -- Update position based on speed
+		this.x 		+= this.vx;
+		this.y 		+= this.vy;
+		this.angle 	+= this.spin;
+		// --
+
+		// -- Normalise angle to 0<theta<2PI
+		while (this.angle > Math.PI*2) {
+			this.angle -= Math.PI*2;
+		}
+		// --
+	}
+
+	Particle.prototype.stabilise = function() {
+		while (this.speed() > speedCap){
+			this.vx *= 0.9;
+			this.vy *= 0.9;
+		}
+	}
+
+	Particle.prototype.boundary = function() {
+		if (boundary_flag == -1){
+			if (this.x < this.size){
+				wall.clear();
+				wall.y 		= this.y
+				wall.x 		= -wall.size;
+				interaction.resolve(wall, this);
+				wall.collide(this, restitution_b, friction_b);
+			}
+			if (this.x > (canvas.width - this.size)){
+				wall.clear();
+				wall.y 		= this.y
+				wall.x 		= canvas.width + wall.size;
+				interaction.resolve(wall, this);
+				wall.collide(this, restitution_b, friction_b);
+			}
+			if (this.y < this.size){
+				wall.clear();
+				wall.x = this.x
+				wall.y = -wall.size;
+				interaction.resolve(wall, this);
+				wall.collide(this, restitution_b, friction_b);
+			}
+			if (this.y > (canvas.height - this.size)){
+				wall.clear();
+				wall.x 		= this.x
+				wall.y 		= canvas.height + wall.size;
+				interaction.resolve(wall, this);
+				wall.collide(this, restitution_b, friction_b);
+			}
+
+		} else if (boundary_flag == 1){
+			while (this.x < this.size){
+				this.x += canvas.width;
+			}
+			while (this.x > canvas.width){
+				this.x -= canvas.width;
+			}
+			while (this.y < this.size){
+				this.y += canvas.height;
+			}
+			while (this.y > canvas.height){
+				this.y -= canvas.height;
+			}
+		}
+	}
+	// --
+
+	// -- Magnet is a subset of Particle. And can stick() [stronger / different attraction]
+	function Magnet(x, y, size){
+		this.base = Particle;
+		this.base(x, y, 0, 0, size);
+	}
+	Magnet.prototype = new Particle;
+	Magnet.prototype.stick = function(that) {
+
+		// F = m1m2*r/(m1+m2)
 		var force = interaction.mass * (interaction.seperation - interaction.size) / (this.mass() + that.mass());
 
 		this.vx +=  force * interaction.vector.x / this.mass();
@@ -272,77 +324,24 @@
 		this.spin += 0;
 		that.spin += 0;
 	}
+	// --
 
-	particle_type.prototype.stabilise = function() {
-		while (this.speed() > speedCap){
-			this.vx *= 0.9;
-			this.vy *= 0.9;
-		}
+	// -- Attachment is a fixed Ghost of a magnet. Targets only ONE magnet.
+	function Attachement(x, y, magnet_number){
+		this.size = 10;
+		this.base = Magnet;
+		this.base(x, y, this.size);
+		this.magnet_number = magnet_number;
 	}
+	Attachement.prototype = new Magnet;
+	// --
 
-	particle_type.prototype.boundary_test = function() {
-		if (boundary_flag_x == -1){
-			if (this.x < this.size){
-				wall.clear();
-				wall.size 	= 200;
-				wall.y 		= this.y
-				wall.x 		= -wall.size;
-				interaction.resolve(wall, this);
-				wall.collide(this, restitution_b, friction_b);
-			}
-			if (this.x > (canvas.width - this.size)){
-				wall.clear();
-				wall.size 	= 200;
-				wall.y 		= this.y
-				wall.x 		= canvas.width + wall.size;
-				interaction.resolve(wall, this);
-				wall.collide(this, restitution_b, friction_b);
-			}
-		} else if (boundary_flag_x == 1){
-			while (this.x < this.size){
-				this.x += canvas.width;
-			}
-			while (this.x > canvas.width){
-				this.x -= canvas.width;
-			}
-		}
-
-		if (boundary_flag_y == -1){
-			if (this.y < this.size){
-				wall.clear();
-				wall.size = 200;
-				wall.x = this.x
-				wall.y = -wall.size;
-				interaction.resolve(wall, this);
-				wall.collide(this, restitution_b, friction_b);
-			}
-			if (this.y > (canvas.height - this.size)){
-				wall.clear();
-				wall.size 	= 200;
-				wall.x 		= this.x
-				wall.y 		= canvas.height + wall.size;
-				interaction.resolve(wall, this);
-				wall.collide(this, restitution_b, friction_b);
-			}
-		} else if (boundary_flag_y == 1){
-			while (this.y < this.size){
-				this.y += canvas.height;
-			}
-			while (this.y > canvas.height){
-				this.y -= canvas.height;
-			}
-		}
+	// -- Interaction is used to resolve to objects, and refered to by collide, stick, attract
+	function Interaction(){
+		Primitive.call(this);
 	}
-
-	function interaction_type(){
-		particle_type.call(this);
-	}
-
-	interaction_type.prototype.clear = function(){
-		particle_type.prototype.clear.call(this);
-	}
-
-	interaction_type.prototype.resolve = function(P1, P2){
+	Interaction.prototype = new Primitive;
+	Interaction.prototype.resolve = function(P1, P2){
 		this.size 	= P1.size + P2.size; 		// Interaction distance at point of contact
 		this.x 		= P2.x - P1.x; 				// Contact vector
 		this.y 		= P2.y - P1.y;
@@ -351,34 +350,54 @@
 		this.vy 	= P2.vy - P1.vy;
 		this.mass 	= P1.mass() * P2.mass();	// Interaction mass
 
- 		//!!NOTE!! : Stability truncation applied before calculating force vector : HARD CODED!!
-		this.seperation = Math.max(modulus(this.x, this.y), this.size / 4);
-		// --
+		this.seperation = Math.max(modulus(this.x, this.y), this.size / 100);
 
 		this.vector = {
 			x : this.x / this.seperation,
 			y : this.y / this.seperation
 		}
 	}
+	var interaction = new Interaction; // interaction object is useful to have seperation x,y,vx,vy,mass etc
+	// --
+
+	// -- Wall is a size = 200 Primitive, that only collides.
+	function Wall(){
+		Primitive.call(this);
+		this.size = 200;
+	}
+	Wall.prototype = new Primitive;
+	Wall.prototype.clear = function() {
+		this.x			= 0;
+		this.y			= 0;
+		this.vx			= 0;
+		this.vy			= 0;
+		this.angle		= 0;
+		this.spin		= 0;
+	}
+	var	wall = new Wall;			// simulate wall as a infinitely large particle
+	// --
 
 	// Rubber hammock
 	function rubberExample(){
 
-		// Should push Magnets and Attachments NOT particles
+		var w = canvas.width,
+			h = canvas.height;
 
-		for (i = 0; i < canvas.width * 0.75; i += 2 * 2){
-			magnet.push(new particle_type(i, canvas.height * (1 - i / canvas.width), 0, 0, 2));
+		for (i = 0; i < w * 0.75; i += 2 * 2){
+			magnets.push(new Magnet(i, h * (1 - i / w), 2));
 		}
 
-		attachment.push(new particle_type(0, canvas.height, 0, 0, 5));
-		attachment.push(new particle_type(canvas.width * 0.75, canvas.height * 0.25, 0, 0, 5));
-		attachment[0].magnet_number = 0;
-		attachment[1].magnet_number = magnet.length - 1;
+		attachments.push(new Attachement(0, 		h, 			magnet_number=0)	);
+		attachments.push(new Attachement(w * 0.75, 	h * 0.25, 	magnets.length - 1)	);
+		attachments.push(new Attachement(w * 0.5, 	h * 0.5, 	60)					);
 
-		particle.push(new particle_type(canvas.width * 0.5, 40, 0.4, -0.5, 20));
-		particle.push(new particle_type(canvas.width - 50, 10, 0.5, 0, 10));
-		particle[particle.length - 2].spin = -0.1;
-		particle[particle.length - 1].spin = -0.5;
+		particles.push(new Particle(w * 0.5, 40, 0.4, -0.5, 20, 0, spin=-0.1));
+		particles.push(new Particle(w - 50, 10, 0.5, 0, 10, 0, spin=-0.5));
 	}
+
+	function modulus(x, y) {
+		return Math.sqrt(x * x + y * y);
+	}
+
 
 </script></head><body></body></html>
