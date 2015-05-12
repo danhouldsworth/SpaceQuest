@@ -253,30 +253,24 @@
 
 		var force = distance_force * interaction.mass / (interaction.seperation * interaction.seperation);
 
-		interaction.vector = {
-			x : force * interaction.x / interaction.seperation,
-			y : force * interaction.y / interaction.seperation
-		}
-
-		this.vx +=  interaction.vector.x / this.mass();
-		this.vy +=  interaction.vector.y / this.mass();
-		that.vx += -interaction.vector.x / that.mass();
-		that.vy += -interaction.vector.y / that.mass();
+		this.vx +=  force * interaction.vector.x / this.mass();
+		this.vy +=  force * interaction.vector.y / this.mass();
+		that.vx += -force * interaction.vector.x / that.mass();
+		that.vy += -force * interaction.vector.y / that.mass();
+		this.spin += 0;
+		that.spin += 0;
 	}
 
 	particle_type.prototype.stick = function(that) {
 
 		var force = interaction.mass * (interaction.seperation - interaction.size) / (this.mass() + that.mass());
 
-		interaction.vector = {
-			x : force * interaction.x / interaction.seperation,
-			y : force * interaction.y / interaction.seperation
-		}
-
-		this.vx +=  interaction.vector.x / this.mass();
-		this.vy +=  interaction.vector.y / this.mass();
-		that.vx += -interaction.vector.x / that.mass();
-		that.vy += -interaction.vector.y / that.mass();
+		this.vx +=  force * interaction.vector.x / this.mass();
+		this.vy +=  force * interaction.vector.y / this.mass();
+		that.vx += -force * interaction.vector.x / that.mass();
+		that.vy += -force * interaction.vector.y / that.mass();
+		this.spin += 0;
+		that.spin += 0;
 	}
 
 	particle_type.prototype.stabilise = function() {
@@ -360,6 +354,11 @@
  		//!!NOTE!! : Stability truncation applied before calculating force vector : HARD CODED!!
 		this.seperation = Math.max(modulus(this.x, this.y), this.size / 4);
 		// --
+
+		this.vector = {
+			x : this.x / this.seperation,
+			y : this.y / this.seperation
+		}
 	}
 
 	// Rubber hammock
