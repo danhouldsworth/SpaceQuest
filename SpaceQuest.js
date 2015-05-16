@@ -8,8 +8,8 @@ indent : false,
 onevar : false
 */
 
-var canvas = document.createElement('canvas'),
-    context = canvas.getContext('2d'),
+var gameArea = document.createElement('canvas'),
+    ctx = gameArea.getContext('2d'),
 
     particles       = [],
     elasticons      = [],
@@ -26,11 +26,16 @@ var canvas = document.createElement('canvas'),
     timerAnimate = setInterval(animate, 35);
     // timerIterate = setInterval(iterate, 5);
 
-canvas.width = window.innerWidth - 20;
-canvas.height = window.innerHeight - 20;
-canvas.setAttribute('style', 'border:1px dotted');
-window.document.body.appendChild(canvas);
-
+gameArea.width = 800;
+gameArea.height = 600;
+window.document.body.appendChild(gameArea);
+var keyState = {};
+window.addEventListener('keydown', function(e){
+    keyState[e.keyCode] = true;
+});
+window.addEventListener('keyup', function(e){
+    keyState[e.keyCode] = false;
+});
 function display(){
     console.log("Iterations : " + iterations + " , Frames : " + frames);
     iterations = 0;
@@ -50,6 +55,9 @@ function iterate(){
             particles[i].collide(particles[j]);
             // particles[i].attract(particles[j]);
         }
+
+        particles[i].collide(ship);
+        particles[i].collide(baddy);
 
         particles[i].boundary();
         particles[i].stabilise();
@@ -83,10 +91,31 @@ function iterate(){
         }
         // --
 
+        elasticons[i].collide(ship);
+        elasticons[i].collide(baddy);
+
         elasticons[i].boundary(); // Likewise we could remove this on the basis that they will always be dragged back into frame
         elasticons[i].stabilise(); // Specific stabilisation could be quicker than drag?
         elasticons[i].update( -0.05 * elasticons[i].mass ); // Dampen the elasticons with drag
     }
+
+    ship.collide(baddy);
+    ship.boundary();
+    ship.update();
+    baddy.boundary();
+    baddy.update();
+
+}
+function gameDisplay(text){
+    ctx.font = "100px Verdana";
+// Create gradient
+    var gradient = ctx.createLinearGradient(0, 0, gameArea.width, 0);
+    gradient.addColorStop("0", "magenta");
+    gradient.addColorStop("0.5", "blue");
+    gradient.addColorStop("1.0", "red");
+    // Fill with gradient
+    ctx.fillStyle = gradient;
+    ctx.fillText(text, 100, gameArea.height / 2);
 }
 
 function animate(){
@@ -103,10 +132,22 @@ function animate(){
         }
     }
 
-    canvas.width = canvas.width;
+    gameArea.width = gameArea.width;
     draw_all_of(particles, 0);
     draw_all_of(elasticons, 100);
     draw_all_of(attachments, 200);
+    ship.draw();
+    baddy.draw();
+    ship.applyCommand();
+    baddy.chase();
+
+    if (ship.size <= 2){
+        clearInterval(timerAnimate);
+        gameDisplay("You LOSE!!");
+    } else if (baddy.size <=2){
+        clearInterval(timerAnimate);
+        gameDisplay("You WIN!!");
+    }
 }
 
 // -- Basic Primitive Object has Mass and Collide methods ***TO BE CHANGED WITH TRIANGLES***
@@ -121,7 +162,8 @@ function Primitive(x, y, vx, vy, size, angle, spin){
 }
 
 Primitive.prototype.calcMass = function (){
-    this.mass = (4/3) * Math.PI * this.size * this.size * this.size;
+    // this.mass = (4/3) * Math.PI * this.size * this.size * this.size;
+    this.mass = 4 * this.size * this.size * this.size;
     return this.mass;
 };
 
@@ -187,7 +229,7 @@ Primitive.prototype.collide = function(that){
             that.spin   = v_spin2;
         }
 
-        if (interaction.seperation < 0.9 * interaction.size){ // Try and save some cycles
+        if (interaction.seperation < 0.99 * interaction.size){ // Try and save some cycles
             // !!! NOTE : This compressability parameter is HARD CODED !!
             var anti_squeeze = 0.5 * (interaction.size - interaction.seperation);
             var delta2 = anti_squeeze / (1 + that.mass / this.mass);
@@ -197,6 +239,30 @@ Primitive.prototype.collide = function(that){
             that.x +=  delta2 * cos_theta;
             that.y +=  delta2 * sin_theta;
         }
+        var massSuck = 0.1;
+        if (this.name == 'baddy' && that.name == 'ship' && this.size > 1 && that.size > 1){
+            this.size += massSuck;
+            that.size -= massSuck;
+        }
+        if (that.name == 'baddy' && this.name == 'ship' && this.size > 1 && that.size > 1){
+            that.size += massSuck;
+            this.size -= massSuck;
+        }
+        if (this.name == 'baddy' && that.name == 'bullet' && this.size > 1 && that.size > 1){
+            this.size -= massSuck;
+        }
+        if (that.name == 'baddy' && this.name == 'bullet' && this.size > 1 && that.size > 1){
+            that.size -= massSuck;
+        }
+        if (this.name == 'ship' && that.name == 'particle' && this.size > 1 && that.size > 1){
+            this.size += that.size * massSuck * massSuck;
+            that.size -= that.size * massSuck * massSuck;
+        }
+        if (that.name == 'ship' && this.name == 'particle' && this.size > 1 && that.size > 1){
+            that.size += this.size * massSuck * massSuck;
+            this.size -= this.size * massSuck * massSuck;
+        }
+
     }
 };
 // --
@@ -208,6 +274,7 @@ function Particle(x, y, vx, vy, size, spin){
     this.mass = (4/3) * Math.PI * this.size * this.size * this.size;
     this.restitution = 1;
     this.friction = 1;
+    this.name = 'particle';
 }
 Particle.prototype = new Primitive();
 
@@ -231,15 +298,7 @@ Particle.prototype.speed = function (){
 
 Particle.prototype.draw = function(shade){
 
-    var h = canvas.height;
-
-    function draw_ball(x, y, size, r, g, b){
-        var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
-        context.beginPath();
-        context.arc(x,y,size, 0, 2 * Math.PI, false);
-        context.fillStyle = colourstring;
-        context.fill();
-    }
+    var h = gameArea.height;
 
     draw_ball(
         this.x,
@@ -247,7 +306,7 @@ Particle.prototype.draw = function(shade){
         this.size,
         Math.round(this.speed() * 30) + shade, shade, shade        // Redden with speed
     );
-    draw_ball(
+    if (this.size > 3) draw_ball(
         this.x + Math.cos(this.angle) * this.size / 2,
         h - (this.y + Math.sin(this.angle) * this.size / 2),
         this.size / 5,
@@ -279,9 +338,9 @@ Particle.prototype.update = function(drag){
     // --
 
     // -- Update position based on speed
-    this.x      += this.vx;
-    this.y      += this.vy;
-    this.angle  += this.spin;
+    this.x      = this.x + this.vx;
+    this.y      = this.y + this.vy;
+    this.angle  = this.angle + this.spin;
     // --
 
     // -- Normalise angle to 0<theta<2PI
@@ -299,8 +358,8 @@ Particle.prototype.stabilise = function() {
 };
 
 Particle.prototype.boundary = function() {
-    var w = canvas.width,
-        h = canvas.height;
+    var w = gameArea.width,
+        h = gameArea.height;
 
     if (boundary_flag == -1){
         if (this.x < this.size){
@@ -345,6 +404,111 @@ Particle.prototype.boundary = function() {
 };
 // --
 
+function Bullet(x, y, vx, vy, size){
+    this.base = Particle;
+    this.base(x, y, vx, vy, size, 0);
+    this.mass = (4/3) * Math.PI * this.size * this.size * this.size;
+    this.restitution = 0;
+    this.friction = 100;
+    this.name = 'bullet';
+}
+Bullet.prototype = new Particle();
+Bullet.prototype.draw = function(){
+    var h = gameArea.height;
+
+    draw_ball(
+        this.x,
+        h - this.y,
+        this.size,
+        0, 0, 255
+    );
+}
+
+function Ship(x,y){
+    this.base = Particle;
+    this.base(x, y, 0, 0, 30);
+    this.restitution = 0;
+    this.friction = 20;
+    this.angle = Math.PI;
+    this.name = 'ship';
+}
+Ship.prototype = new Particle();
+Ship.prototype.draw = function(){
+    var h = gameArea.height;
+
+    draw_ball(
+        this.x,
+        h - this.y,
+        this.size,
+        0, 255, 0
+    );
+
+    draw_ball(
+        this.x + Math.cos(this.angle) * this.size / 2,
+        h - (this.y + Math.sin(this.angle) * this.size / 2),
+        this.size / 3,
+        255, 0, 0
+    );
+}
+Ship.prototype.applyCommand = function(){
+    // This restricts input to the iteration frame rate
+    var deltaThrust = 0.25;
+    var deltaSpin  = 0.0025;
+    var bulletSpeed = 3;
+    if (keyState[37]) this.spin += deltaSpin;
+    if (keyState[39]) this.spin -= deltaSpin;
+    if (keyState[38]){
+        this.vx -= deltaThrust * Math.cos(this.angle);
+        this.vy -= deltaThrust * Math.sin(this.angle);
+    }
+    if (keyState[32]){
+        particles.push(new Bullet(
+            ship.x - 1.1* ship.size * Math.cos(ship.angle) + Math.random() - 0.5,
+            ship.y - 1.1* ship.size * Math.sin(ship.angle) + Math.random() - 0.5,
+            -bulletSpeed * Math.cos(ship.angle + Math.random()/100),
+            -bulletSpeed * Math.sin(ship.angle + Math.random()/100),
+            ship.size / 10 - 1
+        ));
+    }
+    if (keyState[40]){
+        ship.vx = ship.vy = ship.spin = 0;
+    }
+}
+var ship = new Ship(gameArea.width * 0.1, gameArea.height / 2);
+
+function Baddy(x,y){
+    this.base = Ship;
+    this.base(x,y);
+    this.size = 15;
+    this.name = 'baddy';
+}
+Baddy.prototype = new Ship();
+Baddy.prototype.draw = function(){
+    var h = gameArea.height;
+
+    draw_ball(
+        this.x,
+        h - this.y,
+        this.size,
+        255, 128, 0
+    );
+
+    draw_ball(
+        this.x + Math.cos(this.angle) * this.size / 2,
+        h - (this.y + Math.sin(this.angle) * this.size / 2),
+        this.size / 4,
+        0, 255, 100
+    );
+}
+Baddy.prototype.chase = function(){
+    var deltaThrust = 0.05;
+    if (this.x < ship.x) {this.vx += deltaThrust;}
+    else {this.vx -= deltaThrust;}
+    if (this.y < ship.y) {this.vy += deltaThrust;}
+    else {this.vy -= deltaThrust;}
+}
+var baddy = new Baddy(gameArea.width * 0.9, gameArea.height / 2);
+
 // -- Elasticon is a subset of Particle. And can stretch() [stronger / different attraction]
 function Elasticon(x, y, size){
     this.base = Particle;
@@ -377,15 +541,7 @@ Elasticon.prototype.stretch = function(that) {
 };
 Elasticon.prototype.draw = function(shade){
 
-    var h = canvas.height;
-
-    function draw_ball(x, y, size, r, g, b){
-        var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
-        context.beginPath();
-        context.arc(x,y,size, 0, 2 * Math.PI, false);
-        context.fillStyle = colourstring;
-        context.fill();
-    }
+    var h = gameArea.height;
 
     draw_ball(
         this.x,
@@ -409,15 +565,7 @@ function Attachement(x, y, magnet_number, attachment_number){
 Attachement.prototype = new Elasticon();
 Attachement.prototype.draw = function(shade){
 
-    var h = canvas.height;
-
-    function draw_ball(x, y, size, r, g, b){
-        var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
-        context.beginPath();
-        context.arc(x,y,size, 0, 2 * Math.PI, false);
-        context.fillStyle = colourstring;
-        context.fill();
-    }
+    var h = gameArea.height;
 
     draw_ball(
         this.x,
@@ -485,28 +633,35 @@ Wall.prototype.clear = function() {
 var wall = new Wall();            // simulate wall as a infinitely large particle
 // --
 
-// -- Examples
-function rubberExample(){
+// -- Levels!
+function level4(){
 
-    var w = canvas.width,
-        h = canvas.height;
+    var w = gameArea.width,
+        h = gameArea.height;
 
-    for (var i = 0; i < w * 0.75; i += 2 * 3){
-        elasticons.push(new Elasticon(i, h * (1 - i / w), 3));
+    for (var i = w*0.1; i < w * 0.9; i += 2 * 4){
+        elasticons.push(new Elasticon(i, h * 0.8, 4));
     }
 
-    attachments.push(new Attachement(0,         h,          0,                      0));
-    attachments.push(new Attachement(w * 0.75,  h * 0.25,   elasticons.length - 1,  1));
+    attachments.push(new Attachement(w * 0.1,  h * 0.8,                       0,  0));
+    attachments.push(new Attachement(w * 0.9,  h * 0.8,   elasticons.length - 1,  1));
     // attachments.push(new Attachement(w * 0.5,    h * 0.5,    60)                 );
 
-    particles.push(new Particle(    w * 0.5,    40, 0.4,    -1,     20, -0.1));
-    particles.push(new Particle(    w - 50,     10, 0.5,    0,      10, -0.5));
+    particles.push(new Particle(    w * 0.15,    h*0.9, 0,    0,      10, 0.01));
+    particles.push(new Particle(    w * 0.2,    h*0.9, 0,    0,      20, 0.02));
+    particles.push(new Particle(    w * 0.3,    h*0.9, 0,    0,      30, 0.03));
+    particles.push(new Particle(    w * 0.4,    h*0.9, 0,    0,      40, 0.04));
+    particles.push(new Particle(    w * 0.5,    h*0.9, 0,    0,      50, 0.05));
+    particles.push(new Particle(    w * 0.6,    h*0.9, 0,    0,      40, 0.06));
+    particles.push(new Particle(    w * 0.7,    h*0.9, 0,    0,      30, 0.07));
+    particles.push(new Particle(    w * 0.8,    h*0.9, 0,    0,      20, 0.08));
+    particles.push(new Particle(    w * 0.85,    h*0.9, 0,    0,      10, 0.09));
 }
 
-function hammerExample(){
+function level3(){
 
-    var w = canvas.width,
-        h = canvas.height;
+    var w = gameArea.width,
+        h = gameArea.height;
 
     for (var i = 0; i < w / 3; i += 4){
         for (var j = 0; j < h * 0.2 ; j += 4){
@@ -516,25 +671,36 @@ function hammerExample(){
         }
         if (particles.length > 800) break;
     }
-    particles.push(new Particle( w * 0.35, h / 2, 0.5, 0, 50, 0));
-    particles[particles.length - 1].friction = 0.5;
-    particles[particles.length - 1].restitution = 0;
+    // particles.push(new Particle( w * 0.35, h / 2, 0.5, 0, 50, 0));
+    // particles[particles.length - 1].friction = 0.5;
+    // particles[particles.length - 1].restitution = 0;
 }
 
-function anotherExample(){
-    var w = canvas.width,
-        h = canvas.height;
+function level1(){
+    var w = gameArea.width,
+        h = gameArea.height;
 
-    gravity *= 10;
+    particles.push(new Particle( w * 0.3, 1+ h / 2, 0,  0, 10, 0));
+    particles.push(new Particle( w * 0.4, -1+ h / 2, 0,  0, 20, 0));
+    particles.push(new Particle( w * 0.5, 1+ h / 2, 0,  0, 30, 0));
+    particles.push(new Particle( w * 0.6, -1+ h / 2, 0,  0, 40, 0));
+    particles.push(new Particle( w * 0.7, 1+ h / 2, 0,  0, 50, 0));
+    // particles.push(new Particle( w * 0.2, h / 2, 0.5, 1, 20, 0.02));
+    // particles.push(new Particle( w * 0.4, h / 3, 0.5, 0, 30, 0.03));
+    // particles.push(new Particle( w * 0.6, h / 4, 0.5, 0, 40, 0.04));
+    // particles.push(new Particle( w * 0.7, h / 5, 0.5, 0, 50, 0.05));
+    // particles.push(new Particle( w * 0.9, h / 5, 0.5, 0, 50, 0.05));
+    // particles.push(new Particle( w * 0.1, h / 5, 0.5, 0, 50, 0.05));
+    // particles.push(new Particle( w * 0.2, h / 5, 0.5, 0, 50, 0.05));
+}
 
-    particles.push(new Particle( w * 0.1, h / 2, -1,  1, 10, 0.01));
-    particles.push(new Particle( w * 0.2, h / 2, 0.5, 1, 20, 0.02));
-    particles.push(new Particle( w * 0.4, h / 3, 0.5, 0, 30, 0.03));
-    particles.push(new Particle( w * 0.6, h / 4, 0.5, 0, 40, 0.04));
-    particles.push(new Particle( w * 0.7, h / 5, 0.5, 0, 50, 0.05));
-    particles.push(new Particle( w * 0.9, h / 5, 0.5, 0, 50, 0.05));
-    particles.push(new Particle( w * 0.1, h / 5, 0.5, 0, 50, 0.05));
-    particles.push(new Particle( w * 0.2, h / 5, 0.5, 0, 50, 0.05));
+function level5(){
+    var w = gameArea.width,
+        h = gameArea.height;
+
+    particles.push(new Particle( 25 + w * 0.4, -15 + h / 2,      0,  0, 30, 0));
+    particles.push(new Particle( 20 + w * 0.4, -20 + h * 0.75,   0,  0, 40, 0));
+    particles.push(new Particle( 15 + w * 0.1, -25 + h * 0.75,   0,  0, 50, 0));
 }
 
 function modulus(x, y) {
@@ -549,6 +715,17 @@ function friction(P1, P2){
     return (P1.friction + P2.friction) / 2;
 }
 
-// rubberExample();
-hammerExample();
-// anotherExample();
+function draw_ball(x, y, size, r, g, b){
+    var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
+    ctx.beginPath();
+    ctx.arc(x,y,size, 0, 2 * Math.PI, false);
+    ctx.fillStyle = colourstring;
+    ctx.fill();
+}
+
+
+// gravity = 0;  level1();
+// gravity = +0.01;  level1();
+// gravity = 0;      level3();
+gravity = -0.005; level4();
+// gravity = 0;  level5();
