@@ -57,7 +57,9 @@ function iterate(){
         }
 
         particles[i].collide(ship);
-        particles[i].collide(baddy);
+        particles[i].collide(baddy1);
+        particles[i].collide(baddy2);
+        particles[i].collide(baddy3);
 
         particles[i].boundary();
         particles[i].stabilise();
@@ -92,18 +94,26 @@ function iterate(){
         // --
 
         elasticons[i].collide(ship);
-        elasticons[i].collide(baddy);
+        elasticons[i].collide(baddy1);
+        elasticons[i].collide(baddy2);
+        elasticons[i].collide(baddy3);
 
         elasticons[i].boundary(); // Likewise we could remove this on the basis that they will always be dragged back into frame
         elasticons[i].stabilise(); // Specific stabilisation could be quicker than drag?
         elasticons[i].update( -0.05 * elasticons[i].mass ); // Dampen the elasticons with drag
     }
 
-    ship.collide(baddy);
+    ship.collide(baddy1);
+    ship.collide(baddy2);
+    ship.collide(baddy3);
     ship.boundary();
     ship.update();
-    baddy.boundary();
-    baddy.update();
+    baddy1.boundary();
+    baddy1.update();
+    baddy2.boundary();
+    baddy2.update();
+    baddy3.boundary();
+    baddy3.update();
 
 }
 function gameDisplay(text){
@@ -137,14 +147,18 @@ function animate(){
     draw_all_of(elasticons, 100);
     draw_all_of(attachments, 200);
     ship.draw();
-    baddy.draw();
+    baddy1.draw();
+    baddy2.draw();
+    baddy3.draw();
     ship.applyCommand();
-    baddy.chase();
+    baddy1.chase();
+    baddy2.chase();
+    baddy3.chase();
 
     if (ship.size <= 2){
         clearInterval(timerAnimate);
         gameDisplay("You LOSE!!");
-    } else if (baddy.size <=2){
+    } else if (baddy1.size <=2 && baddy2.size <=2 && baddy3.size <=2){
         clearInterval(timerAnimate);
         gameDisplay("You WIN!!");
     }
@@ -467,7 +481,7 @@ Ship.prototype.applyCommand = function(){
             ship.y - 1.1* ship.size * Math.sin(ship.angle) + Math.random() - 0.5,
             -bulletSpeed * Math.cos(ship.angle + Math.random()/100),
             -bulletSpeed * Math.sin(ship.angle + Math.random()/100),
-            ship.size / 10 - 1
+            Math.max(ship.size / 10 - 1,2)
         ));
     }
     if (keyState[40]){
@@ -507,7 +521,9 @@ Baddy.prototype.chase = function(){
     if (this.y < ship.y) {this.vy += deltaThrust;}
     else {this.vy -= deltaThrust;}
 }
-var baddy = new Baddy(gameArea.width * 0.9, gameArea.height / 2);
+var baddy1 = new Baddy(gameArea.width * 0.9, gameArea.height / 2);
+var baddy2 = new Baddy(gameArea.width * 0.95, gameArea.height / 2);
+var baddy3 = new Baddy(gameArea.width * 0.95, 20 + gameArea.height / 2);
 
 // -- Elasticon is a subset of Particle. And can stretch() [stronger / different attraction]
 function Elasticon(x, y, size){
@@ -634,10 +650,15 @@ var wall = new Wall();            // simulate wall as a infinitely large particl
 // --
 
 // -- Levels!
-function level4(){
+function level3(){
 
     var w = gameArea.width,
         h = gameArea.height;
+
+    resetGame();
+
+    gravity         = -0.005;
+    boundary_flag   = -1;
 
     for (var i = w*0.1; i < w * 0.9; i += 2 * 4){
         elasticons.push(new Elasticon(i, h * 0.8, 4));
@@ -658,10 +679,16 @@ function level4(){
     particles.push(new Particle(    w * 0.85,    h*0.9, 0,    0,      10, 0.09));
 }
 
-function level3(){
+function level2(){
 
     var w = gameArea.width,
         h = gameArea.height;
+
+    resetGame();
+
+    gravity         = 0;
+    boundary_flag   = -1;
+
 
     for (var i = 0; i < w / 3; i += 4){
         for (var j = 0; j < h * 0.2 ; j += 4){
@@ -680,6 +707,11 @@ function level1(){
     var w = gameArea.width,
         h = gameArea.height;
 
+    resetGame();
+
+    gravity         = 0;
+    boundary_flag   = -1;
+
     particles.push(new Particle( w * 0.3, 1+ h / 2, 0,  0, 10, 0));
     particles.push(new Particle( w * 0.4, -1+ h / 2, 0,  0, 20, 0));
     particles.push(new Particle( w * 0.5, 1+ h / 2, 0,  0, 30, 0));
@@ -694,7 +726,10 @@ function level1(){
     // particles.push(new Particle( w * 0.2, h / 5, 0.5, 0, 50, 0.05));
 }
 
-function level5(){
+function level4(){
+    resetGame();
+    gravity = 0;
+
     var w = gameArea.width,
         h = gameArea.height;
 
@@ -715,6 +750,16 @@ function friction(P1, P2){
     return (P1.friction + P2.friction) / 2;
 }
 
+function resetGame(){
+    particles       = [];
+    elasticons      = [];
+    attachments     = [];
+    ship = new Ship(gameArea.width * 0.1, gameArea.height / 2);
+    baddy1 = new Baddy(gameArea.width * 0.9, gameArea.height / 2);
+    baddy2 = new Baddy(gameArea.width * 0.95, gameArea.height / 2);
+    baddy3 = new Baddy(gameArea.width * 0.95, 20 + gameArea.height / 2);
+}
+
 function draw_ball(x, y, size, r, g, b){
     var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
     ctx.beginPath();
@@ -723,9 +768,4 @@ function draw_ball(x, y, size, r, g, b){
     ctx.fill();
 }
 
-
-// gravity = 0;  level1();
-// gravity = +0.01;  level1();
-// gravity = 0;      level3();
-gravity = -0.005; level4();
-// gravity = 0;  level5();
+level1();

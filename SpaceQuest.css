@@ -37,6 +37,10 @@ h4{
     top: 675px;
     left: 350px;
 }
+button{
+    border :none;
+    /*background:none;*/
+}
 @font-face {
   font-family: 'Roboto';
   /*font-style: normal;
