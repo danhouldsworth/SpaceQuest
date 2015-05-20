@@ -26,6 +26,11 @@ var gameArea = document.createElement('canvas'),
     timerAnimate = setInterval(animate, 35);
     // timerIterate = setInterval(iterate, 5);
 
+var asteroid = new Image();
+asteroid.src = "Asteroid.png";
+var spaceShip = new Image();
+spaceShip.src = "SpaceShip.png";
+
 gameArea.width = 800;
 gameArea.height = 600;
 window.document.body.appendChild(gameArea);
@@ -314,18 +319,20 @@ Particle.prototype.draw = function(shade){
 
     var h = gameArea.height;
 
-    draw_ball(
-        this.x,
-        h - this.y,
-        this.size,
-        Math.round(this.speed() * 30) + shade, shade, shade        // Redden with speed
-    );
-    if (this.size > 3) draw_ball(
-        this.x + Math.cos(this.angle) * this.size / 2,
-        h - (this.y + Math.sin(this.angle) * this.size / 2),
-        this.size / 5,
-        255, 255, 255
-    );
+    ctx.drawImage(asteroid, this.x - this.size, h - (this.y + this.size), 2 * this.size, 2 * this.size);
+
+    // draw_ball(
+    //     this.x,
+    //     h - this.y,
+    //     this.size,
+    //     Math.round(this.speed() * 30) + shade, shade, shade        // Redden with speed
+    // );
+    // if (this.size > 3) draw_ball(
+    //     this.x + Math.cos(this.angle) * this.size / 2,
+    //     h - (this.y + Math.sin(this.angle) * this.size / 2),
+    //     this.size / 5,
+    //     255, 255, 255
+    // );
 };
 
 Particle.prototype.update = function(drag){
@@ -449,20 +456,20 @@ function Ship(x,y){
 Ship.prototype = new Particle();
 Ship.prototype.draw = function(){
     var h = gameArea.height;
+    ctx.drawImage(spaceShip, this.x - this.size, h - (this.y + this.size), 2 * this.size, 2 * this.size);
+    // draw_ball(
+    //     this.x,
+    //     h - this.y,
+    //     this.size,
+    //     0, 255, 0
+    // );
 
-    draw_ball(
-        this.x,
-        h - this.y,
-        this.size,
-        0, 255, 0
-    );
-
-    draw_ball(
-        this.x + Math.cos(this.angle) * this.size / 2,
-        h - (this.y + Math.sin(this.angle) * this.size / 2),
-        this.size / 3,
-        255, 0, 0
-    );
+    // draw_ball(
+    //     this.x + Math.cos(this.angle) * this.size / 2,
+    //     h - (this.y + Math.sin(this.angle) * this.size / 2),
+    //     this.size / 3,
+    //     255, 0, 0
+    // );
 }
 Ship.prototype.applyCommand = function(){
     // This restricts input to the iteration frame rate
