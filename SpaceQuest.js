@@ -1,37 +1,34 @@
-/* jshint
-browser : true,
-
-quotmark : false,
-white : false,
-indent : false,
-
-onevar : false
+/*
+!! SPACE QUEST !! A game by Finn & Daddy
 */
 
-var gameArea = document.createElement('canvas'),
-    ctx = gameArea.getContext('2d'),
+/* jshint
+browser : true, quotmark : false, white : false, indent : false, onevar : false
+*/
+
+var asteroid    = new Image(); asteroid.src  = "Asteroid.png";
+var spaceShip   = new Image(); spaceShip.src = "SpaceShip.png";
+var gameArea    = document.createElement('canvas'),
+    ctx         = gameArea.getContext('2d'),
 
     particles       = [],
     elasticons      = [],
     attachments     = [],
+    baddies         = [],
 
     gravity         = -0.001,
     boundary_flag   = -1,
     speedCap        = 5,
 
     iterations      = 0,
-    frames          = 0,
+    // frames          = 0,
 
     // timerRates   = setInterval(display, 1000),
     timerAnimate = setInterval(animate, 35);
-    // timerIterate = setInterval(iterate, 5);
+    // timerIterate = setInterval(iteratePhysics, 5);
 
-var asteroid = new Image();
-asteroid.src = "Asteroid.png";
-var spaceShip = new Image();
-spaceShip.src = "SpaceShip.png";
 
-gameArea.width = 800;
+gameArea.width  = 800;
 gameArea.height = 600;
 window.document.body.appendChild(gameArea);
 var keyState = {};
@@ -41,14 +38,13 @@ window.addEventListener('keydown', function(e){
 window.addEventListener('keyup', function(e){
     keyState[e.keyCode] = false;
 });
-function display(){
-    console.log("Iterations : " + iterations + " , Frames : " + frames);
-    iterations = 0;
-    frames = 0;
-}
+// function display(){
+//     console.log("Iterations : " + iterations + " , Frames : " + frames);
+//     iterations = 0;
+//     frames = 0;
+// }
 
-function iterate(){
-    iterations++;
+function iteratePhysics(){
 
     var i,j;
 
@@ -61,10 +57,12 @@ function iterate(){
             // particles[i].attract(particles[j]);
         }
 
+
         particles[i].collide(ship);
-        particles[i].collide(baddy1);
-        particles[i].collide(baddy2);
-        particles[i].collide(baddy3);
+
+        for (j = 0; j < baddies.length; j++){
+            particles[i].collide(baddies[j]);
+        }
 
         particles[i].boundary();
         particles[i].stabilise();
@@ -99,31 +97,38 @@ function iterate(){
         // --
 
         elasticons[i].collide(ship);
-        elasticons[i].collide(baddy1);
-        elasticons[i].collide(baddy2);
-        elasticons[i].collide(baddy3);
+        for (j = 0; j < baddies.length; j++){
+            elasticons[i].collide(baddies[j]);
+        }
 
         elasticons[i].boundary(); // Likewise we could remove this on the basis that they will always be dragged back into frame
         elasticons[i].stabilise(); // Specific stabilisation could be quicker than drag?
         elasticons[i].update( -0.05 * elasticons[i].mass ); // Dampen the elasticons with drag
     }
 
-    ship.collide(baddy1);
-    ship.collide(baddy2);
-    ship.collide(baddy3);
-    ship.boundary();
-    ship.update();
-    baddy1.boundary();
-    baddy1.update();
-    baddy2.boundary();
-    baddy2.update();
-    baddy3.boundary();
-    baddy3.update();
+    // -- Iterate through the baddies
+    for(i = 0; i < baddies.length; i++){
+        ship.collide(baddies[i]);
+        baddies[i].boundary();
+        baddies[i].stabilise();
+        baddies[i].update();
+        baddies[i].chase();
+    }
+    // --
 
+    // -- Constrain then update our ship
+    ship.boundary();
+    ship.stabilise();
+    ship.update();
+    ship.applyCommand();
+    // --
+
+    // iterations++;
 }
-function gameDisplay(text){
+
+function gameDisplayText(text){
     ctx.font = "100px Verdana";
-// Create gradient
+    // Create gradient
     var gradient = ctx.createLinearGradient(0, 0, gameArea.width, 0);
     gradient.addColorStop("0", "magenta");
     gradient.addColorStop("0.5", "blue");
@@ -134,12 +139,12 @@ function gameDisplay(text){
 }
 
 function animate(){
-    frames++;
-    iterate();
-    iterate();
-    iterate();
-    iterate();
-    iterate();
+    // frames++;
+    iteratePhysics();
+    iteratePhysics();
+    iteratePhysics();
+    iteratePhysics();
+    iteratePhysics();
 
     function draw_all_of(type, shade){
         for (var i = 0; i < type.length; i++){
@@ -148,24 +153,19 @@ function animate(){
     }
 
     gameArea.width = gameArea.width;
-    draw_all_of(particles, 0);
+    draw_all_of(particles);
     draw_all_of(elasticons, 100);
     draw_all_of(attachments, 200);
+    draw_all_of(baddies);
     ship.draw();
-    baddy1.draw();
-    baddy2.draw();
-    baddy3.draw();
-    ship.applyCommand();
-    baddy1.chase();
-    baddy2.chase();
-    baddy3.chase();
 
     if (ship.size <= 2){
         clearInterval(timerAnimate);
-        gameDisplay("You LOSE!!");
-    } else if (baddy1.size <=2 && baddy2.size <=2 && baddy3.size <=2){
+        gameDisplayText("You LOSE!!");
+    }
+    else if (baddies[0].size <= 2){ //&& baddy2.size <=2 && baddy3.size <=2){
         clearInterval(timerAnimate);
-        gameDisplay("You WIN!!");
+        gameDisplayText("You WIN!!");
     }
 }
 
@@ -182,8 +182,8 @@ function Primitive(x, y, vx, vy, size, angle, spin){
 
 Primitive.prototype.calcMass = function (){
     // this.mass = (4/3) * Math.PI * this.size * this.size * this.size;
-    this.mass = 4 * this.size * this.size * this.size;
-    return this.mass;
+    this.mass = 3 * this.size * this.size;
+    // return this.mass;
 };
 
 Primitive.prototype.collide = function(that){
@@ -258,28 +258,40 @@ Primitive.prototype.collide = function(that){
             that.x +=  delta2 * cos_theta;
             that.y +=  delta2 * sin_theta;
         }
-        var massSuck = 0.1;
-        if (this.name == 'baddy' && that.name == 'ship' && this.size > 1 && that.size > 1){
-            this.size += massSuck;
-            that.size -= massSuck;
+        var massSuck = 2;
+        if (this.name == 'baddy' && that.name == 'ship' && this.mass > 1 && that.mass > 1){
+            this.mass += massSuck;
+            that.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
         }
-        if (that.name == 'baddy' && this.name == 'ship' && this.size > 1 && that.size > 1){
-            that.size += massSuck;
-            this.size -= massSuck;
+        if (that.name == 'baddy' && this.name == 'ship' && this.mass > 1 && that.mass > 1){
+            that.mass += massSuck;
+            this.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
         }
-        if (this.name == 'baddy' && that.name == 'bullet' && this.size > 1 && that.size > 1){
-            this.size -= massSuck;
+        if (this.name == 'baddy' && that.name == 'bullet' && this.mass > 1 && that.mass > 1){
+            this.mass -= massSuck / 2;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
         }
-        if (that.name == 'baddy' && this.name == 'bullet' && this.size > 1 && that.size > 1){
-            that.size -= massSuck;
+        if (that.name == 'baddy' && this.name == 'bullet' && this.mass > 1 && that.mass > 1){
+            that.mass -= massSuck / 2;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
         }
-        if (this.name == 'ship' && that.name == 'particle' && this.size > 1 && that.size > 1){
-            this.size += that.size * massSuck * massSuck;
-            that.size -= that.size * massSuck * massSuck;
+        if (this.name == 'ship' && that.name == 'particle' && this.mass > 1 && that.mass > 1){
+            this.mass += massSuck;
+            that.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
         }
-        if (that.name == 'ship' && this.name == 'particle' && this.size > 1 && that.size > 1){
-            that.size += this.size * massSuck * massSuck;
-            this.size -= this.size * massSuck * massSuck;
+        if (that.name == 'ship' && this.name == 'particle' && this.mass > 1 && that.mass > 1){
+            that.mass += massSuck;
+            this.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
         }
 
     }
@@ -289,8 +301,8 @@ Primitive.prototype.collide = function(that){
 // -- Particle is a BALL ONLY and a subset of Primitive. It can attract from a distance.
 function Particle(x, y, vx, vy, size, spin){
     this.base = Primitive;
-    this.base(x, y, vx, vy, size, 0, spin);
-    this.mass = (4/3) * Math.PI * this.size * this.size * this.size;
+    this.base(x, y, vx, vy, size, Math.PI / 2, spin);
+    this.calcMass();
     this.restitution = 1;
     this.friction = 1;
     this.name = 'particle';
@@ -319,7 +331,11 @@ Particle.prototype.draw = function(shade){
 
     var h = gameArea.height;
 
-    ctx.drawImage(asteroid, this.x - this.size, h - (this.y + this.size), 2 * this.size, 2 * this.size);
+    ctx.translate(this.x, h-this.y);
+    ctx.rotate(-this.angle);
+    ctx.drawImage(asteroid, -this.size, -this.size, 2 * this.size, 2 * this.size);
+    ctx.rotate(this.angle);
+    ctx.translate(-this.x, -(h-this.y));
 
     // draw_ball(
     //     this.x,
@@ -428,7 +444,7 @@ Particle.prototype.boundary = function() {
 function Bullet(x, y, vx, vy, size){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
-    this.mass = (4/3) * Math.PI * this.size * this.size * this.size;
+    // this.calcMass(); // Surely calculated as part of Particle constructor?
     this.restitution = 0;
     this.friction = 100;
     this.name = 'bullet';
@@ -443,11 +459,11 @@ Bullet.prototype.draw = function(){
         this.size,
         0, 0, 255
     );
-}
+};
 
 function Ship(x,y){
     this.base = Particle;
-    this.base(x, y, 0, 0, 30);
+    this.base(x, y, 0, 0, 50, 0);
     this.restitution = 0;
     this.friction = 20;
     this.angle = Math.PI;
@@ -456,7 +472,12 @@ function Ship(x,y){
 Ship.prototype = new Particle();
 Ship.prototype.draw = function(){
     var h = gameArea.height;
-    ctx.drawImage(spaceShip, this.x - this.size, h - (this.y + this.size), 2 * this.size, 2 * this.size);
+    ctx.translate(this.x, h-this.y);
+    ctx.rotate(Math.PI - this.angle);
+    ctx.drawImage(spaceShip, -this.size, -this.size, 2 * this.size, 2 * this.size);
+    ctx.rotate(this.angle - Math.PI);
+    ctx.translate(-this.x, -(h-this.y));
+
     // draw_ball(
     //     this.x,
     //     h - this.y,
@@ -470,7 +491,7 @@ Ship.prototype.draw = function(){
     //     this.size / 3,
     //     255, 0, 0
     // );
-}
+};
 Ship.prototype.applyCommand = function(){
     // This restricts input to the iteration frame rate
     var deltaThrust = 0.25;
@@ -494,13 +515,15 @@ Ship.prototype.applyCommand = function(){
     if (keyState[40]){
         ship.vx = ship.vy = ship.spin = 0;
     }
-}
+};
 var ship = new Ship(gameArea.width * 0.1, gameArea.height / 2);
 
 function Baddy(x,y){
-    this.base = Ship;
-    this.base(x,y);
-    this.size = 15;
+    this.base = Particle;
+    this.base(x, y, 0, 0, 15, 0);
+    this.restitution = 0;
+    this.friction = 20;
+    this.angle = Math.PI;
     this.name = 'baddy';
 }
 Baddy.prototype = new Ship();
@@ -520,17 +543,17 @@ Baddy.prototype.draw = function(){
         this.size / 4,
         0, 255, 100
     );
-}
+};
 Baddy.prototype.chase = function(){
-    var deltaThrust = 0.05;
+    var deltaThrust = 0.01;
     if (this.x < ship.x) {this.vx += deltaThrust;}
     else {this.vx -= deltaThrust;}
     if (this.y < ship.y) {this.vy += deltaThrust;}
     else {this.vy -= deltaThrust;}
-}
-var baddy1 = new Baddy(gameArea.width * 0.9, gameArea.height / 2);
-var baddy2 = new Baddy(gameArea.width * 0.95, gameArea.height / 2);
-var baddy3 = new Baddy(gameArea.width * 0.95, 20 + gameArea.height / 2);
+};
+baddies.push(new Baddy(gameArea.width * 0.9, gameArea.height / 2));
+// var baddy2 = new Baddy(gameArea.width * 0.95, gameArea.height / 2);
+// var baddy3 = new Baddy(gameArea.width * 0.95, 20 + gameArea.height / 2);
 
 // -- Elasticon is a subset of Particle. And can stretch() [stronger / different attraction]
 function Elasticon(x, y, size){
@@ -539,6 +562,7 @@ function Elasticon(x, y, size){
     this.restitution = 0;
     this.friction = 20;
     this.attached = false;
+    this.name = 'elasticon';
 }
 Elasticon.prototype = new Particle();
 Elasticon.prototype.stretch = function(that) {
@@ -610,7 +634,7 @@ Interaction.prototype.near = function(P1, P2){
     this.y = P2.y - P1.y;
     this.size = P2.size + P1.size;  // Interaction distance at point of contact
     return ((Math.abs(this.x) < this.size) && (Math.abs(this.y) < this.size));
-}
+};
 Interaction.prototype.touching = function(P1, P2){
     this.seperationSqrd = this.x * this.x + this.y * this.y;
     this.sizeSqrd = this.size * this.size;
@@ -632,7 +656,7 @@ Interaction.prototype.resolve = function(P1, P2){
 };
 Interaction.prototype.clear = function(){
     this.resolved = false;
-}
+};
 var interaction = new Interaction(); // interaction object is useful to have seperation x,y,vx,vy,mass etc
 // --
 
@@ -657,6 +681,53 @@ var wall = new Wall();            // simulate wall as a infinitely large particl
 // --
 
 // -- Levels!
+function level1(){
+    var w = gameArea.width,
+        h = gameArea.height;
+
+    resetGame();
+
+    gravity         = 0;
+    boundary_flag   = -1;
+
+    particles.push(new Particle( w * 0.3, 1+ h / 2, 0,  0, 10, 0));
+    particles.push(new Particle( w * 0.4, -1+ h / 2, 0,  0, 20, 0));
+    particles.push(new Particle( w * 0.5, 1+ h / 2, 0,  0, 30, 0));
+    particles.push(new Particle( w * 0.6, -1+ h / 2, 0,  0, 40, 0));
+    particles.push(new Particle( w * 0.7, 1+ h / 2, 0,  0, 50, 0));
+    // particles.push(new Particle( w * 0.2, h / 2, 0.5, 1, 20, 0.02));
+    // particles.push(new Particle( w * 0.4, h / 3, 0.5, 0, 30, 0.03));
+    // particles.push(new Particle( w * 0.6, h / 4, 0.5, 0, 40, 0.04));
+    // particles.push(new Particle( w * 0.7, h / 5, 0.5, 0, 50, 0.05));
+    // particles.push(new Particle( w * 0.9, h / 5, 0.5, 0, 50, 0.05));
+    // particles.push(new Particle( w * 0.1, h / 5, 0.5, 0, 50, 0.05));
+    // particles.push(new Particle( w * 0.2, h / 5, 0.5, 0, 50, 0.05));
+}
+
+function level2(){
+
+    var w = gameArea.width,
+        h = gameArea.height;
+
+    resetGame();
+
+    gravity         = 0;
+    boundary_flag   = -1;
+
+
+    for (var i = 0; i < w / 3; i += 4){
+        for (var j = 0; j < h * 0.2 ; j += 4){
+            particles.push(new Particle( w/2 + i , j + h * 0.4, 0, 0, 2, 0));
+            particles[particles.length - 1].friction = 0.5;
+            particles[particles.length - 1].restitution = 0;
+        }
+        if (particles.length > 800) break;
+    }
+    // particles.push(new Particle( w * 0.35, h / 2, 0.5, 0, 50, 0));
+    // particles[particles.length - 1].friction = 0.5;
+    // particles[particles.length - 1].restitution = 0;
+}
+
 function level3(){
 
     var w = gameArea.width,
@@ -684,53 +755,6 @@ function level3(){
     particles.push(new Particle(    w * 0.7,    h*0.9, 0,    0,      30, 0.07));
     particles.push(new Particle(    w * 0.8,    h*0.9, 0,    0,      20, 0.08));
     particles.push(new Particle(    w * 0.85,    h*0.9, 0,    0,      10, 0.09));
-}
-
-function level2(){
-
-    var w = gameArea.width,
-        h = gameArea.height;
-
-    resetGame();
-
-    gravity         = 0;
-    boundary_flag   = -1;
-
-
-    for (var i = 0; i < w / 3; i += 4){
-        for (var j = 0; j < h * 0.2 ; j += 4){
-            particles.push(new Particle( w/2 + i , j + h * 0.4, 0, 0, 2, 0));
-            particles[particles.length - 1].friction = 0.5;
-            particles[particles.length - 1].restitution = 0;
-        }
-        if (particles.length > 800) break;
-    }
-    // particles.push(new Particle( w * 0.35, h / 2, 0.5, 0, 50, 0));
-    // particles[particles.length - 1].friction = 0.5;
-    // particles[particles.length - 1].restitution = 0;
-}
-
-function level1(){
-    var w = gameArea.width,
-        h = gameArea.height;
-
-    resetGame();
-
-    gravity         = 0;
-    boundary_flag   = -1;
-
-    particles.push(new Particle( w * 0.3, 1+ h / 2, 0,  0, 10, 0));
-    particles.push(new Particle( w * 0.4, -1+ h / 2, 0,  0, 20, 0));
-    particles.push(new Particle( w * 0.5, 1+ h / 2, 0,  0, 30, 0));
-    particles.push(new Particle( w * 0.6, -1+ h / 2, 0,  0, 40, 0));
-    particles.push(new Particle( w * 0.7, 1+ h / 2, 0,  0, 50, 0));
-    // particles.push(new Particle( w * 0.2, h / 2, 0.5, 1, 20, 0.02));
-    // particles.push(new Particle( w * 0.4, h / 3, 0.5, 0, 30, 0.03));
-    // particles.push(new Particle( w * 0.6, h / 4, 0.5, 0, 40, 0.04));
-    // particles.push(new Particle( w * 0.7, h / 5, 0.5, 0, 50, 0.05));
-    // particles.push(new Particle( w * 0.9, h / 5, 0.5, 0, 50, 0.05));
-    // particles.push(new Particle( w * 0.1, h / 5, 0.5, 0, 50, 0.05));
-    // particles.push(new Particle( w * 0.2, h / 5, 0.5, 0, 50, 0.05));
 }
 
 function level4(){
@@ -775,4 +799,4 @@ function draw_ball(x, y, size, r, g, b){
     ctx.fill();
 }
 
-level1();
+level3();
