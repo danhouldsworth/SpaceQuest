@@ -522,6 +522,14 @@ Ship.prototype.applyCommand = function(){
         ship.vx = ship.vy = ship.spin = 0;
     }
 };
+Ship.prototype.stabilise = function() {
+    // while (this.speed() > speedCap){
+        this.vx *= 0.9;
+        this.vy *= 0.9;
+        this.spin *= 0.9;
+    // }
+};
+
 var ship = new Ship(gameArea.width * 0.1, gameArea.height / 2);
 
 function Baddy(x,y){
@@ -532,7 +540,7 @@ function Baddy(x,y){
     this.angle = Math.PI;
     this.name = 'baddy';
 }
-Baddy.prototype = new Ship();
+Baddy.prototype = new Particle();
 Baddy.prototype.draw = function(){
     var h = gameArea.height;
 
