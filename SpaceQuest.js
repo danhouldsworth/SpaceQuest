@@ -146,9 +146,13 @@ function animate(){
     iteratePhysics();
     iteratePhysics();
 
-    function draw_all_of(type, shade){
-        for (var i = 0; i < type.length; i++){
-            type[i].draw(shade);
+    function draw_all_of(typeGroup, shade){
+        for (var i = 0; i < typeGroup.length; i++){
+            if (typeGroup[i].size >=2){
+                typeGroup[i].draw(shade);
+            } else {
+                typeGroup.splice(i--,1);
+            }
         }
     }
 
@@ -163,7 +167,7 @@ function animate(){
         clearInterval(timerAnimate);
         gameDisplayText("You LOSE!!");
     }
-    else if (baddies[0].size <= 2){ //&& baddy2.size <=2 && baddy3.size <=2){
+    else if (baddies.length < 1){
         clearInterval(timerAnimate);
         gameDisplayText("You WIN!!");
     }
@@ -273,11 +277,13 @@ Primitive.prototype.collide = function(that){
         }
         if (this.name == 'baddy' && that.name == 'bullet' && this.mass > 1 && that.mass > 1){
             this.mass -= massSuck / 2;
+            that.mass += massSuck / 2;
             this.size = Math.sqrt(this.mass / 3);
             that.size = Math.sqrt(that.mass / 3);
         }
         if (that.name == 'baddy' && this.name == 'bullet' && this.mass > 1 && that.mass > 1){
             that.mass -= massSuck / 2;
+            this.mass += massSuck / 2;
             this.size = Math.sqrt(this.mass / 3);
             that.size = Math.sqrt(that.mass / 3);
         }
@@ -552,6 +558,7 @@ Baddy.prototype.chase = function(){
     else {this.vy -= deltaThrust;}
 };
 baddies.push(new Baddy(gameArea.width * 0.9, gameArea.height / 2));
+baddies.push(new Baddy(gameArea.width * 0.95, gameArea.height / 2));
 // var baddy2 = new Baddy(gameArea.width * 0.95, gameArea.height / 2);
 // var baddy3 = new Baddy(gameArea.width * 0.95, 20 + gameArea.height / 2);
 
@@ -799,4 +806,4 @@ function draw_ball(x, y, size, r, g, b){
     ctx.fill();
 }
 
-level3();
+level1();
