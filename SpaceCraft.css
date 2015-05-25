@@ -5,9 +5,10 @@ canvas{
     /*width           : 800px;*/
     /*height          : 600px;*/
     border          : 2px solid;
+    background: gray;
 }
 body{
-    background-image: url('SpaceQuestBackground.jpg');
+    background-image: url('SpaceCraftBackground.jpg');
     background-size: 1200px 850px;
     background-repeat: no-repeat;
 }

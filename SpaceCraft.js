@@ -1,5 +1,5 @@
 /*
-!! SPACE QUEST !! A game by Finn & Daddy
+!! SPACE CRAFT !! A game by Finn & Daddy
 */
 
 /* jshint
@@ -19,6 +19,7 @@ var gameArea    = document.createElement('canvas'),
     gravity         = -0.001,
     boundary_flag   = -1,
     speedCap        = 5,
+    snapThreshhold  = 25,
 
     iterations      = 0,
     // frames          = 0,
@@ -108,6 +109,9 @@ function iteratePhysics(){
 
     // -- Iterate through the baddies
     for(i = 0; i < baddies.length; i++){
+        for(j = i + 1; j < baddies.length; j++){
+            baddies[i].collide(baddies[j]);
+        }
         ship.collide(baddies[i]);
         baddies[i].boundary();
         baddies[i].stabilise();
@@ -277,15 +281,27 @@ Primitive.prototype.collide = function(that){
         }
         if (this.name == 'baddy' && that.name == 'bullet' && this.mass > 1 && that.mass > 1){
             this.mass -= massSuck / 2;
-            that.mass += massSuck / 2;
+            that.mass -= massSuck / 2;
             this.size = Math.sqrt(this.mass / 3);
             that.size = Math.sqrt(that.mass / 3);
         }
         if (that.name == 'baddy' && this.name == 'bullet' && this.mass > 1 && that.mass > 1){
             that.mass -= massSuck / 2;
-            this.mass += massSuck / 2;
+            this.mass -= massSuck / 2;
             this.size = Math.sqrt(this.mass / 3);
             that.size = Math.sqrt(that.mass / 3);
+        }
+        if (this.name == 'wall' && that.name == 'bullet' && this.mass > 1 && that.mass > 1){
+            // this.mass -= massSuck;
+            that.mass -= massSuck;
+            // this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
+        }
+        if (that.name == 'wall' && this.name == 'bullet' && this.mass > 1 && that.mass > 1){
+            // that.mass -= massSuck;
+            this.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
+            // that.size = Math.sqrt(that.mass / 3);
         }
         if (this.name == 'ship' && that.name == 'particle' && this.mass > 1 && that.mass > 1){
             this.mass += massSuck;
@@ -500,8 +516,8 @@ Ship.prototype.draw = function(){
 };
 Ship.prototype.applyCommand = function(){
     // This restricts input to the iteration frame rate
-    var deltaThrust = 0.25;
-    var deltaSpin  = 0.0025;
+    var deltaThrust = 0.15;
+    var deltaSpin  = 0.0020;
     var bulletSpeed = 3;
     if (keyState[37]) this.spin += deltaSpin;
     if (keyState[39]) this.spin -= deltaSpin;
@@ -524,9 +540,9 @@ Ship.prototype.applyCommand = function(){
 };
 Ship.prototype.stabilise = function() {
     // while (this.speed() > speedCap){
-        this.vx *= 0.9;
-        this.vy *= 0.9;
-        this.spin *= 0.9;
+        this.vx     *= 0.98;
+        this.vy     *= 0.98;
+        this.spin   *= 0.95;
     // }
 };
 
@@ -565,8 +581,10 @@ Baddy.prototype.chase = function(){
     if (this.y < ship.y) {this.vy += deltaThrust;}
     else {this.vy -= deltaThrust;}
 };
-baddies.push(new Baddy(gameArea.width * 0.9, gameArea.height / 2));
+baddies.push(new Baddy(gameArea.width * 0.90, gameArea.height / 2));
 baddies.push(new Baddy(gameArea.width * 0.95, gameArea.height / 2));
+baddies.push(new Baddy(gameArea.width * 0.5,  gameArea.height * 0.9));
+baddies.push(new Baddy(gameArea.width * 0.5,  gameArea.height * 0.95));
 // var baddy2 = new Baddy(gameArea.width * 0.95, gameArea.height / 2);
 // var baddy3 = new Baddy(gameArea.width * 0.95, 20 + gameArea.height / 2);
 
@@ -586,6 +604,8 @@ Elasticon.prototype.stretch = function(that) {
         interaction.touching(this, that);
         interaction.resolve(this, that);
     }
+
+    if (interaction.seperation > snapThreshhold) return;
 
     interaction.massProduct = this.mass * that.mass;
     interaction.massSum     = this.mass + that.mass;
@@ -682,6 +702,7 @@ function Wall(){
     this.calcMass();
     this.restitution = 1;
     this.friction = 10;
+    this.name = 'wall';
 }
 Wall.prototype = new Primitive();
 Wall.prototype.clear = function() {
@@ -784,6 +805,37 @@ function level4(){
     particles.push(new Particle( 15 + w * 0.1, -25 + h * 0.75,   0,  0, 50, 0));
 }
 
+function level5(){
+
+    var w = gameArea.width,
+        h = gameArea.height;
+
+    resetGame();
+
+    gravity         = -0.005;
+    boundary_flag   = -1;
+
+    for (var i = 0; i < w * 0.4; i += 2 * 4){
+        elasticons.push(new Elasticon(i, h * 0.8 - i, 4));
+    }
+
+    attachments.push(new Attachement(w * 0.0,  h * 0.8,             0,                      0));
+    attachments.push(new Attachement(w * 0.4,  h * 0.8 - w * 0.4,   elasticons.length - 1,  1));
+
+    var startOfNewString = elasticons.length;
+
+    for (var i = w * 0.6; i < w * 1.0; i += 2 * 4){
+        elasticons.push(new Elasticon(i, h * 0.8 + i - w, 4));
+    }
+
+    attachments.push(new Attachement(w * 0.6,  h * 0.8 - w * 0.4,   startOfNewString,       2));
+    attachments.push(new Attachement(w * 1.0,  h * 0.8,             elasticons.length - 1,  3));
+
+    particles.push(new Particle(    w * 0.15,    h*0.9, 0,    0,      20, 0.01));
+    particles.push(new Particle(    w * 0.25,    h*0.9, 0,    0,      30, 0.01));
+    particles.push(new Particle(    w * 0.85,    h*0.9, 0,    0,      50, 0.01));
+}
+
 function modulus(x, y) {
     return Math.sqrt(x * x + y * y);
 }
@@ -814,4 +866,4 @@ function draw_ball(x, y, size, r, g, b){
     ctx.fill();
 }
 
-level1();
+level5();
