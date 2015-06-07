@@ -21,13 +21,13 @@ var gameArea    = document.createElement('canvas'),
     snapThreshhold  = 25,
 
     maxObjects      = 500,
-    currentObjects  = 0,
+    currentObjects  = 0;
 
-    spawnVirus = {
-        hit : false,
-        x:0,
-        y:0
-    };
+    // spawnVirus = {
+    //     hit : false,
+    //     x:0,
+    //     y:0
+    // };
 // --
 
 // -- Maths / Shortcuts

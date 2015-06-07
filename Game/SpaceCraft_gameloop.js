@@ -114,8 +114,8 @@ function animate(){
         gameDisplayText("You WIN!!");
     }
 
-    if (spawnVirus.hit){
-        particles.push(new Virus(spawnVirus.x, spawnVirus.y,0,0,4));
-        spawnVirus.hit = false;
-    }
+    // if (spawnVirus.hit){
+    //     particles.push(new Virus(spawnVirus.x, spawnVirus.y,0,0,4));
+    //     spawnVirus.hit = false;
+    // }
 }

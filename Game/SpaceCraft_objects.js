@@ -5,7 +5,8 @@ var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";
 var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
 var chaseBaddy  = new Image(); chaseBaddy.src= "../FinnsArtwork/ChaseBaddy_cutout.png";
 var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png";
-var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png";
+var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = Math.PI;
+// var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = 0;
 var spaceShip = [];
 spaceShip[1] = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
 spaceShip[2] = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
@@ -274,44 +275,74 @@ Particle.prototype.boundary = function() {
 };
 // --
 
-function Bullet(x, y, vx, vy, size){
+function Bullet(x, y, vx, vy, size, player){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
     // this.calcMass(); // Surely calculated as part of Particle constructor?
     this.restitution = 0;
     this.friction = 100;
     this.name = 'bullet';
+    this.player = player;
 }
 Bullet.prototype = new Particle();
 Bullet.prototype.draw = function(){
     var h = gameArea.height;
 
-    draw_ball(
-        this.x,
-        h - this.y,
-        this.size,
-        255, 0, 0
-    );
+    switch (this.player){
+        case 1:
+            draw_ball(
+                this.x,
+                h - this.y,
+                this.size,
+                255, 0, 0
+            );
+            break;
+        case 2:
+            draw_ball(
+                this.x,
+                h - this.y,
+                this.size,
+                255, 128, 0
+            );
+            break;
+        default:
+            break;
+    }
+
 };
 
-function Thrust(x, y, vx, vy, size){
+function Thrust(x, y, vx, vy, size, player){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
     // this.calcMass(); // Surely calculated as part of Particle constructor?
     this.restitution = 0;
     this.friction = 100;
     this.name = 'thrust';
+    this.player = player;
 }
 Thrust.prototype = new Particle();
 Thrust.prototype.draw = function(){
     var h = gameArea.height;
-
-    draw_ball(
-        this.x,
-        h - this.y,
-        this.size,
-        0, 0, 255
-    );
+    switch (this.player){
+        case 1:
+            draw_ball(
+                this.x,
+                h - this.y,
+                this.size,
+                0, 0, 255
+            );
+            break;
+        case 2:
+            draw_ball(
+                this.x,
+                h - this.y,
+                this.size,
+                0, 255, 0
+            );
+            break;
+        default:
+            break;
+    }
 };
 
 function Bomb(x, y, vx, vy, size){
@@ -358,7 +389,7 @@ Virus.prototype.draw = function(){
 
 function Ship(x,y){
     this.base = Particle;
-    this.base(x, y, 0, 0, 30, 0);
+    this.base(x, y, 0, 0, 40, 0);
     this.restitution = 0;
     this.friction = 0;
     this.angle = 0;
@@ -382,9 +413,17 @@ Ship.prototype.applyCommand = function(){
     var bulletSpeed = 3;
     var thrustSpeed = 1;
     var bombSpeed = 1;
-    if (keyState[37]) this.spin += deltaSpin;
-    if (keyState[39]) this.spin -= deltaSpin;
-    if (keyState[38]){ // THRUST
+    var playerKeys = {
+        left  : [null,37,113-32],   // Arrow      q
+        right : [null,39,119-32],   // Arrow      w
+        thrust: [null,38,101-32],   // Arrow      e
+        fire  : [null,32,115-32],   // space      s 115
+        bomb  : [null,66,0]      // b          n/a
+    };
+
+    if (keyState[playerKeys.left[this.player]]) this.spin += deltaSpin;
+    if (keyState[playerKeys.right[this.player]]) this.spin -= deltaSpin;
+    if (keyState[playerKeys.thrust[this.player]]){ // THRUST
         if (currentObjects < maxObjects) {
             this.vx += deltaThrust * Math.cos(this.angle);
             this.vy += deltaThrust * Math.sin(this.angle);
@@ -393,25 +432,27 @@ Ship.prototype.applyCommand = function(){
                 this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
                 -thrustSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
                 -thrustSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
-                Math.max(this.size / 10 - 1,2)
+                Math.max(this.size / 10 - 1,2),
+                this.player
             ));
 
         }
     }
-    if (keyState[32]){ // FIRE !!
+    if (keyState[playerKeys.fire[this.player]]){ // FIRE !!
 
         if (currentObjects < maxObjects) particles.push(new Bullet(
             this.x + 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
             this.y + 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
             bulletSpeed * Math.cos(this.angle + 0.01 * Math.random() - 0.005),
             bulletSpeed * Math.sin(this.angle + 0.01 * Math.random() - 0.005),
-            Math.max(this.size / 10 - 1,2)
+            Math.max(this.size / 10 - 1,2),
+            this.player
         ));
     }
-    if (keyState[40]){ // STOP!!
-        this.vx = this.vy = this.spin = 0;
-    }
-    if (keyState[66]){ // BOMB!!
+    // if (keyState[40]){ // STOP!!
+    //     this.vx = this.vy = this.spin = 0;
+    // }
+    if (keyState[playerKeys.bomb[this.player]]){ // BOMB!!
         if (currentObjects < maxObjects) for(var i = 0; i < 50; i++) {
             particles.push(new Bomb(
                 this.x + 1.1 * this.size * Math.cos(2 * Math.PI * 100 / i),
@@ -422,15 +463,15 @@ Ship.prototype.applyCommand = function(){
             ));
         }
     }
-    if (keyState[67]){ // Virus??
-            particles.push(new Virus(
-                this.x,
-                this.y,
-                0,
-                0,
-                4
-            ));
-    }
+    // if (keyState[67]){ // Virus??
+    //         particles.push(new Virus(
+    //             this.x,
+    //             this.y,
+    //             0,
+    //             0,
+    //             4
+    //         ));
+    // }
 };
 Ship.prototype.stabilise = function() {
     // while (this.speed() > speedCap){
@@ -451,10 +492,11 @@ function Baddy(x,y){
 Baddy.prototype = new Particle();
 Baddy.prototype.draw = function(){
     var h = gameArea.height;
+    var offSet = bombBaddy.drawingOffsetAngle;
     ctx.translate(this.x, h-this.y);
-    ctx.rotate(Math.PI - this.angle);
+    ctx.rotate(offSet - this.angle);
     ctx.drawImage(bombBaddy, -this.size, -this.size, 2 * this.size, 2 * this.size);
-    ctx.rotate(this.angle - Math.PI);
+    ctx.rotate(this.angle - offSet);
     ctx.translate(-this.x, -(h-this.y));
 };
 Baddy.prototype.chase = function(){

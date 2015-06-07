@@ -51,7 +51,7 @@ function level3(){
     // baddies.push(new Baddy(gameArea.width * 0.5,  gameArea.height * 0.95));
     // --
 
-    gravity         = -0.005;
+    // gravity         = -0.005;
     boundary_flag   = -1;
 
     for (var i = w*0.1; i < w * 0.9; i += 2 * 4){
