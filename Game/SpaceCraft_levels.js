@@ -41,14 +41,14 @@ function level2(){ // Asteroid cloud
 function level3(){
 
     // -- Hardcode ship and baddy start points
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.75));
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.25));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55));
     playerShips[0].player = 1;
     playerShips[1].player = 2;
-    baddies.push(new Baddy(gameArea.width * 0.5, gameArea.height * 0.9));
+    baddies.push(new Baddy(gameArea.width * 0.50, gameArea.height * 0.9));
     baddies.push(new Baddy(gameArea.width * 0.55, gameArea.height * 0.9));
-    // baddies.push(new Baddy(gameArea.width * 0.5,  gameArea.height * 0.9));
-    // baddies.push(new Baddy(gameArea.width * 0.5,  gameArea.height * 0.95));
+    baddies.push(new BossBaddy(gameArea.width * 0.95,  gameArea.height * 0.50));
+    baddies.push(new BossBaddy(gameArea.width * 0.95,  gameArea.height * 0.55));
     // --
 
     // gravity         = -0.005;

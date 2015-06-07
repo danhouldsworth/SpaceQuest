@@ -4,9 +4,8 @@ var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/Asteroid.png";
 var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";
 var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
 var chaseBaddy  = new Image(); chaseBaddy.src= "../FinnsArtwork/ChaseBaddy_cutout.png";
-var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png";
+var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png"; bossBaddy.drawingOffsetAngle = 0;
 var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = Math.PI;
-// var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = 0;
 var spaceShip = [];
 spaceShip[1] = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
 spaceShip[2] = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
@@ -515,6 +514,20 @@ Baddy.prototype.chase = function(){
         if (interaction.vector.x < 0)  this.angle = Math.PI + Math.atan(interaction.vector.y / interaction.vector.x);
     }
 };
+function BossBaddy(x,y){
+    this.base = Baddy;
+    this.base(x,y);
+}
+BossBaddy.prototype = new Baddy;
+BossBaddy.prototype.draw = function(){
+    var h = gameArea.height;
+    var offSet = bossBaddy.drawingOffsetAngle;
+    ctx.translate(this.x, h-this.y);
+    ctx.rotate(offSet - this.angle);
+    ctx.drawImage(bossBaddy, -this.size, -this.size, 2 * this.size, 2 * this.size);
+    ctx.rotate(this.angle - offSet);
+    ctx.translate(-this.x, -(h-this.y));
+}
 
 // -- Elasticon is a subset of Particle. And can stretch() [stronger / different attraction]
 function Elasticon(x, y, size){

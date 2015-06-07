@@ -91,6 +91,9 @@ function animate(){
                 if (typeGroup[i].name === 'bomb'){
                     typeGroup[i].size -= 0.1;
                 }
+                if (typeGroup[i].name === 'bullet'){
+                    typeGroup[i].size -= 0.05;
+                }
             } else {
                 typeGroup.splice(i--,1);
                 currentObjects--;
