@@ -102,29 +102,27 @@ Primitive.prototype.collide = function(that){
             that.y +=  delta2 * sin_theta;
         }
         var massSuck = 1;
-        if (that.name == 'baddy' && this.name == 'ship' && this.mass > 1 && that.mass > 1){
-            that.mass += massSuck;
-            this.mass -= massSuck;
-            this.size = Math.sqrt(this.mass / 3);
-            that.size = Math.sqrt(that.mass / 3);
-        }
-        if (this.name == 'baddy' && (that.name == 'bomb' || that.name == 'bullet' || that.name == 'virus') && this.mass > 1 && that.mass > 1){
-            this.mass -= massSuck;
-            that.mass -= massSuck;
-            this.size = Math.sqrt(this.mass / 3);
-            that.size = Math.sqrt(that.mass / 3);
-        }
-        if (that.name == 'wall'  && (this.name == 'bomb' || this.name == 'bullet' || this.name == 'virus') && this.mass > 1 && that.mass > 1){
-            // that.mass -= massSuck;
-            this.mass -= massSuck;
-            this.size = Math.sqrt(this.mass / 3);
-            // that.size = Math.sqrt(that.mass / 3);
-        }
         if (this.name == 'ship' && that.name == 'particle' && this.mass > 1 && that.mass > 1){
             this.mass += massSuck;
             that.mass -= massSuck;
             this.size = Math.sqrt(this.mass / 3);
             that.size = Math.sqrt(that.mass / 3);
+        }
+        if (this.name == 'ship' && that.name == 'baddy' && this.mass > 1 && that.mass > 1){
+            that.mass += massSuck;
+            this.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
+        }
+        if (this.name == 'baddy' && (that.name == 'bomb' || that.name == 'bullet') && this.mass > 1 && that.mass > 1){
+            this.mass -= massSuck;
+            that.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
+            that.size = Math.sqrt(that.mass / 3);
+        }
+        if (that.name == 'wall'  && (this.name == 'bomb' || this.name == 'bullet') && this.mass > 1 && that.mass > 1){
+            this.mass -= massSuck;
+            this.size = Math.sqrt(this.mass / 3);
         }
     }
 };
@@ -169,19 +167,6 @@ Particle.prototype.draw = function(shade){
     ctx.drawImage(asteroid, -this.size, -this.size, 2 * this.size, 2 * this.size);
     ctx.rotate(this.angle);
     ctx.translate(-this.x, -(h-this.y));
-
-    // draw_ball(
-    //     this.x,
-    //     h - this.y,
-    //     this.size,
-    //     Math.round(this.speed() * 30) + shade, shade, shade        // Redden with speed
-    // );
-    // if (this.size > 3) draw_ball(
-    //     this.x + Math.cos(this.angle) * this.size / 2,
-    //     h - (this.y + Math.sin(this.angle) * this.size / 2),
-    //     this.size / 5,
-    //     255, 255, 255
-    // );
 };
 
 Particle.prototype.update = function(drag){
@@ -364,28 +349,6 @@ Bomb.prototype.draw = function(){
     );
 };
 
-
-function Virus(x, y, vx, vy, size){
-    this.base = Particle;
-    this.base(x, y, vx, vy, size, 0);
-    // this.calcMass(); // Surely calculated as part of Particle constructor?
-    this.restitution = 0;
-    this.friction = 100;
-    this.name = 'virus';
-}
-Virus.prototype = new Particle();
-Virus.prototype.draw = function(){
-    var h = gameArea.height;
-
-    draw_ball(
-        this.x,
-        h - this.y,
-        this.size,
-        0, 255, 0
-    );
-};
-
-
 function Ship(x,y){
     this.base = Particle;
     this.base(x, y, 0, 0, 40, 0);
@@ -417,7 +380,7 @@ Ship.prototype.applyCommand = function(){
         right : [null,39,119-32],   // Arrow      w
         thrust: [null,38,101-32],   // Arrow      e
         fire  : [null,32,115-32],   // space      s 115
-        bomb  : [null,66,0]      // b          n/a
+        bomb  : [null,66,0]         // b          n/a
     };
 
     if (keyState[playerKeys.left[this.player]]) this.spin += deltaSpin;
@@ -462,15 +425,6 @@ Ship.prototype.applyCommand = function(){
             ));
         }
     }
-    // if (keyState[67]){ // Virus??
-    //         particles.push(new Virus(
-    //             this.x,
-    //             this.y,
-    //             0,
-    //             0,
-    //             4
-    //         ));
-    // }
 };
 Ship.prototype.stabilise = function() {
     // while (this.speed() > speedCap){
