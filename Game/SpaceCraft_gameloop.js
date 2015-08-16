@@ -1,4 +1,6 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
+/* global Interaction, Wall, playerShips, baddies, elasticons, particles, attachments, currentObjects, gameArea, timerAnimate, gameDisplayText */
+"use strict";
 
 var interaction = new Interaction();// -- Interaction object is useful to have seperation x,y,vx,vy,mass etc
 var wall = new Wall();              // -- Simulate wall as a infinitely large particle
@@ -75,16 +77,19 @@ function iteratePhysics(){
 
 function animate(){
 
+    // -- 5x physics steps for every display frame
     iteratePhysics();
     iteratePhysics();
     iteratePhysics();
     iteratePhysics();
     iteratePhysics();
+    // --
 
     function draw_all_of(typeGroup, shade){
         for (var i = 0; i < typeGroup.length; i++){
             if (typeGroup[i].size >=1.1){
                 typeGroup[i].draw(shade);
+                // -- Apply evaporation of particles
                 if (typeGroup[i].name === 'thrust'){
                     typeGroup[i].size -= 0.1;
                 }
@@ -94,9 +99,12 @@ function animate(){
                 if (typeGroup[i].name === 'bullet'){
                     typeGroup[i].size -= 0.05;
                 }
+                // --
             } else {
+                // -- Remove objects too small
                 typeGroup.splice(i--,1);
                 currentObjects--;
+                // --
             }
         }
     }
