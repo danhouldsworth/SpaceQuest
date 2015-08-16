@@ -138,10 +138,12 @@ function animate(){
     if (explosionActive === false){
         if (playerShips.length < 1){
             clearInterval(timerAnimate);
+            clearInterval(baddySpawn);
             gameDisplayText("You LOSE!!");
         }
         else if (baddies.length < 1){
             clearInterval(timerAnimate);
+            clearInterval(baddySpawn);
             gameDisplayText("You WIN!!");
         }
     }

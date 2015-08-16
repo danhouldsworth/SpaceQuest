@@ -443,10 +443,11 @@ Baddy.prototype.draw = function(){
     energyBar(this.x, this.y, Math.round(this.energy));
 };
 Baddy.prototype.chase = function(){
-    var deltaThrust = 0.001;
-    interaction.near(this,playerShips[0]);
-    interaction.touching(this,playerShips[0]);
-    interaction.resolve(this, playerShips[0]);
+    var deltaThrust = 0.005;
+    var target = playerShips[0] || new Particle(0,0,0,0,1,1);
+    interaction.near(this, target);
+    interaction.touching(this, target);
+    interaction.resolve(this, target);
     this.vx += deltaThrust * Math.cos(this.angle);
     this.vy += deltaThrust * Math.sin(this.angle);
     if (interaction.vector.y >= 0){

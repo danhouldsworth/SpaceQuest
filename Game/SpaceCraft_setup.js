@@ -14,6 +14,7 @@ var gameArea    = document.createElement('canvas'),
 
     keyState        = {},
     timerAnimate,
+    baddySpawn,
 
     gravity         = -0.001,
     boundary_flag   = -1,
