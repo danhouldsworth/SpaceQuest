@@ -6,10 +6,17 @@ var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
 var chaseBaddy  = new Image(); chaseBaddy.src= "../FinnsArtwork/ChaseBaddy_cutout.png";
 var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png"; bossBaddy.drawingOffsetAngle = 0;
 var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = Math.PI;
-var spaceShip = [];
-spaceShip[1] = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
-spaceShip[2] = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
+var spaceShip   = [];
+spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
+spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
 
+function energyBar(x, y, percent){
+    var h = gameArea.height;
+    ctx.fillStyle = "rgb(0,0,0)";
+    ctx.fillRect(x-50-1, h-y+50-1, 102, 10);
+    ctx.fillStyle = "rgb(" + (255 - percent * 2) + "," + (55 + percent * 2) + ",0)";
+    ctx.fillRect(x-50, h-y+50, percent, 8);
+}
 
 // -- Basic Primitive Object has Mass and Collide methods ***TO BE CHANGED WITH TRIANGLES***
 function Primitive(x, y, vx, vy, size, angle, spin){
@@ -101,28 +108,21 @@ Primitive.prototype.collide = function(that){
             that.x +=  delta2 * cos_theta;
             that.y +=  delta2 * sin_theta;
         }
-        var massSuck = 1;
-        if (this.name == 'ship' && that.name == 'particle' && this.mass > 1 && that.mass > 1){
-            this.mass += massSuck;
-            that.mass -= massSuck;
-            this.size = Math.sqrt(this.mass / 3);
-            that.size = Math.sqrt(that.mass / 3);
+
+        if (this.name == 'ship' && that.name == 'particle' && that.mass > 1){
+            this.energy += 1;
+            that.mass -= 1;
         }
-        if (this.name == 'ship' && that.name == 'baddy' && this.mass > 1 && that.mass > 1){
-            that.mass += massSuck;
-            this.mass -= massSuck;
-            this.size = Math.sqrt(this.mass / 3);
-            that.size = Math.sqrt(that.mass / 3);
+        if (this.name == 'ship' && that.name == 'baddy'){
+            that.energy += 0.5;
+            this.energy -= 0.5;
         }
-        if (this.name == 'baddy' && (that.name == 'bomb' || that.name == 'bullet') && this.mass > 1 && that.mass > 1){
-            this.mass -= massSuck;
-            that.mass -= massSuck;
-            this.size = Math.sqrt(this.mass / 3);
-            that.size = Math.sqrt(that.mass / 3);
+        if (this.name == 'baddy' && (that.name == 'bomb' || that.name == 'bullet') && that.mass > 1){
+            this.energy -= 0.1;
+            that.mass -= 1;
         }
-        if (that.name == 'wall'  && (this.name == 'bomb' || this.name == 'bullet') && this.mass > 1 && that.mass > 1){
-            this.mass -= massSuck;
-            this.size = Math.sqrt(this.mass / 3);
+        if (that.name == 'wall'  && (this.name == 'bomb' || this.name == 'bullet') && this.mass > 1){
+            this.mass -= 1;
         }
     }
 };
@@ -135,6 +135,7 @@ function Particle(x, y, vx, vy, size, spin){
     this.calcMass();
     this.restitution = 1;
     this.friction = 20;
+    this.energy = 100;
     this.name = 'particle';
 }
 
@@ -367,15 +368,16 @@ Ship.prototype.draw = function(){
     ctx.drawImage(spaceShip[this.player], -this.size, -this.size, 2 * this.size, 2 * this.size);
     ctx.rotate(this.angle-offSet);
     ctx.translate(-this.x, -(h-this.y));
+
+    energyBar(this.x, this.y, Math.round(this.energy));
 };
 Ship.prototype.applyCommand = function(){
     // This restricts input to the iteration frame rate
     var deltaThrust = 0.15;
-    var deltaSpin  = 0.0020;
+    var deltaSpin   = 0.0020;
     var bulletSpeed = 3;
     var thrustSpeed = 1;
-    var bombSpeed = 1;
-    var playerKeys = {
+    var playerKeys  = {
         left  : [null,37,113-32],   // Arrow      q
         right : [null,39,119-32],   // Arrow      w
         thrust: [null,38,101-32],   // Arrow      e
@@ -411,20 +413,6 @@ Ship.prototype.applyCommand = function(){
             this.player
         ));
     }
-    // if (keyState[40]){ // STOP!!
-    //     this.vx = this.vy = this.spin = 0;
-    // }
-    if (keyState[playerKeys.bomb[this.player]]){ // BOMB!!
-        if (currentObjects < maxObjects) for(var i = 0; i < 50; i++) {
-            particles.push(new Bomb(
-                this.x + 1.1 * this.size * Math.cos(2 * Math.PI * 100 / i),
-                this.y + 1.1 * this.size * Math.sin(2 * Math.PI * 100 / i),
-                bombSpeed * Math.cos(2 * Math.PI * 100 / i),
-                bombSpeed * Math.sin(2 * Math.PI * 100 / i),
-                Math.max(this.size / 5 - 1,4)
-            ));
-        }
-    }
 };
 Ship.prototype.stabilise = function() {
     // while (this.speed() > speedCap){
@@ -451,6 +439,8 @@ Baddy.prototype.draw = function(){
     ctx.drawImage(bombBaddy, -this.size, -this.size, 2 * this.size, 2 * this.size);
     ctx.rotate(this.angle - offSet);
     ctx.translate(-this.x, -(h-this.y));
+
+    energyBar(this.x, this.y, Math.round(this.energy));
 };
 Baddy.prototype.chase = function(){
     var deltaThrust = 0.001;
@@ -481,6 +471,8 @@ BossBaddy.prototype.draw = function(){
     ctx.drawImage(bossBaddy, -this.size, -this.size, 2 * this.size, 2 * this.size);
     ctx.rotate(this.angle - offSet);
     ctx.translate(-this.x, -(h-this.y));
+
+    energyBar(this.x, this.y, Math.round(this.energy));
 }
 
 // -- Elasticon is a subset of Particle. And can stretch() [stronger / different attraction]

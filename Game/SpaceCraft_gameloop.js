@@ -77,6 +77,8 @@ function iteratePhysics(){
 
 function animate(){
 
+    explosionActive = false;
+
     // -- 5x physics steps for every display frame
     iteratePhysics();
     iteratePhysics();
@@ -87,17 +89,20 @@ function animate(){
 
     function draw_all_of(typeGroup, shade){
         for (var i = 0; i < typeGroup.length; i++){
-            if (typeGroup[i].size >=1.1){
-                typeGroup[i].draw(shade);
+            var thisObject = typeGroup[i];
+            if (thisObject.size >=1.1 && thisObject.energy > 0){
+                if (thisObject.energy > 100) {thisObject.energy = 100;}
+                thisObject.draw(shade);
                 // -- Apply evaporation of particles
-                if (typeGroup[i].name === 'thrust'){
-                    typeGroup[i].size -= 0.1;
+                if (thisObject.name === 'thrust'){
+                    thisObject.size -= 0.1;
                 }
-                if (typeGroup[i].name === 'bomb'){
-                    typeGroup[i].size -= 0.1;
+                if (thisObject.name === 'bomb'){
+                    explosionActive = true;
+                    thisObject.size -= 0.1;
                 }
-                if (typeGroup[i].name === 'bullet'){
-                    typeGroup[i].size -= 0.05;
+                if (thisObject.name === 'bullet'){
+                    thisObject.size -= 0.05;
                 }
                 // --
             } else {
@@ -105,6 +110,20 @@ function animate(){
                 typeGroup.splice(i--,1);
                 currentObjects--;
                 // --
+                // If its a baddy or a ship then blow up
+                if (thisObject.name === 'ship' || thisObject.name === 'baddy'){
+                    explosionActive = true;
+                    var numberOfBombs = thisObject.size * 5;
+                    for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
+                        particles.push(new Bomb(
+                            thisObject.x + thisObject.size * Math.random() * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
+                            thisObject.y + thisObject.size * Math.random() * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
+                            Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
+                            Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
+                            4
+                        ));
+                    }
+                }
             }
         }
     }
@@ -116,13 +135,15 @@ function animate(){
     draw_all_of(baddies);
     draw_all_of(playerShips);
 
-    if (playerShips.length < 1){
-        clearInterval(timerAnimate);
-        gameDisplayText("You LOSE!!");
-    }
-    else if (baddies.length < 1){
-        clearInterval(timerAnimate);
-        gameDisplayText("You WIN!!");
+    if (explosionActive === false){
+        if (playerShips.length < 1){
+            clearInterval(timerAnimate);
+            gameDisplayText("You LOSE!!");
+        }
+        else if (baddies.length < 1){
+            clearInterval(timerAnimate);
+            gameDisplayText("You WIN!!");
+        }
     }
 
 }

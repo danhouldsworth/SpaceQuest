@@ -20,6 +20,8 @@ var gameArea    = document.createElement('canvas'),
     speedCap        = 5,
     snapThreshhold  = 25,
 
+    explosionActive = false,
+
     maxObjects      = 500,
     currentObjects  = 0;
 // --

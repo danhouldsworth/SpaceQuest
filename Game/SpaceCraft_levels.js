@@ -5,7 +5,8 @@ function level1(){
     gravity         = 0;
     boundary_flag   = -1;
 
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height / 2));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55));
     // baddies.push(new Baddy(gameArea.width * 0.90, gameArea.height / 2));
     baddies.push(new Baddy(gameArea.width * 0.95, gameArea.height / 2));
 
@@ -20,7 +21,8 @@ function level2(){ // Asteroid cloud
     gravity         = 0;
     boundary_flag   = -1;
 
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height / 2));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55));
     baddies.push(new Baddy(gameArea.width * 0.90, gameArea.height / 2));
     baddies.push(new Baddy(gameArea.width * 0.95, gameArea.height / 2));
 
@@ -43,8 +45,6 @@ function level3(){
     // -- Hardcode ship and baddy start points
     playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45));
     playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55));
-    playerShips[0].player = 1;
-    playerShips[1].player = 2;
     baddies.push(new Baddy(gameArea.width * 0.50, gameArea.height * 0.9));
     baddies.push(new Baddy(gameArea.width * 0.55, gameArea.height * 0.9));
     baddies.push(new BossBaddy(gameArea.width * 0.95,  gameArea.height * 0.50));
@@ -75,7 +75,8 @@ function level3(){
 
 function level4(){
     // -- Hardcode ship and baddy start points
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height / 2));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55));
     baddies.push(new Baddy(gameArea.width * 0.90, gameArea.height / 2));
     baddies.push(new Baddy(gameArea.width * 0.95, gameArea.height / 2));
     // baddies.push(new Baddy(gameArea.width * 0.5,  gameArea.height * 0.9));
@@ -91,7 +92,8 @@ function level4(){
 
 function level5(){
     // -- Hardcode ship and baddy start points
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height / 2));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55));
     baddies.push(new Baddy(gameArea.width * 0.90, gameArea.height / 2));
     baddies.push(new Baddy(gameArea.width * 0.95, gameArea.height / 2));
     baddies.push(new Baddy(gameArea.width * 0.5,  gameArea.height * 0.9));
@@ -121,11 +123,18 @@ function level5(){
     particles.push(new Particle(    w * 0.25,    h*0.9, 0,    0,      30, 0.01));
     particles.push(new Particle(    w * 0.85,    h*0.9, 0,    0,      50, 0.01));
 }
+function pvp(){
+    // Finn & Daddy shooting each other!!
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.5));
+    playerShips.push(new Ship(gameArea.width * 0.9, gameArea.height * 0.5));
+}
 // --
 
 // -- Hardcode launch level
 initGameArea();
 level3();
+playerShips[0].player = 1;
+playerShips[1].player = 2;
 timerAnimate = setInterval(animate, 35);
 // --
 
