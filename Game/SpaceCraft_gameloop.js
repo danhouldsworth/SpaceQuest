@@ -95,15 +95,21 @@ function animate(){
                 thisObject.draw(shade);
                 // -- Apply evaporation of particles
                 if (thisObject.name === 'thrust'){
-                    thisObject.size -= 0.1;
+                    thisObject.size -= (0.1 + currentObjects / 5000);
                 }
                 if (thisObject.name === 'bomb'){
                     explosionActive = true;
-                    thisObject.size -= 0.1;
+                    thisObject.size -= (0.05 + currentObjects / 2500);
                 }
                 if (thisObject.name === 'bullet'){
-                    thisObject.size -= 0.05;
+                    thisObject.size -= (0.05 + currentObjects / 2500);
                 }
+                // --
+                // -- Recharge baddy!
+                if (thisObject.name === 'baddy'){
+                    thisObject.energy += 1;
+                }
+
                 // --
             } else {
                 // -- Remove objects too small
@@ -111,7 +117,7 @@ function animate(){
                 currentObjects--;
                 // --
                 // If its a baddy or a ship then blow up
-                if (thisObject.name === 'ship' || thisObject.name === 'baddy'){
+                if (thisObject.name === 'baddy'){
                     explosionActive = true;
                     var numberOfBombs = thisObject.size * 5;
                     for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
@@ -120,9 +126,12 @@ function animate(){
                             thisObject.y + thisObject.size * Math.random() * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
                             Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
                             Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
-                            4
+                            Math.random() * 4 + 1
                         ));
                     }
+                }
+                if (thisObject.name === 'ship'){
+                    baddies.push(new BossBaddy(thisObject.x, thisObject.y));
                 }
             }
         }

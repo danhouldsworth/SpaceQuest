@@ -117,8 +117,12 @@ Primitive.prototype.collide = function(that){
             that.energy += 0.5;
             this.energy -= 0.5;
         }
-        if (this.name == 'baddy' && (that.name == 'bomb' || that.name == 'bullet') && that.mass > 1){
+        if (this.name == 'baddy' && that.name == 'bullet' && that.mass > 1){
             this.energy -= 0.1;
+            that.mass -= 1;
+        }
+        if (this.name == 'baddy' && that.name == 'bomb' && that.mass > 1){
+            this.energy -= 0.5;
             that.mass -= 1;
         }
         if (that.name == 'wall'  && (this.name == 'bomb' || this.name == 'bullet') && this.mass > 1){
@@ -279,7 +283,7 @@ Bullet.prototype.draw = function(){
                 this.x,
                 h - this.y,
                 this.size,
-                255, 0, 0
+                255, Math.floor(this.size*100), Math.floor(this.size*100)
             );
             break;
         case 2:
@@ -287,7 +291,7 @@ Bullet.prototype.draw = function(){
                 this.x,
                 h - this.y,
                 this.size,
-                255, 128, 0
+                255, 128, Math.floor(this.size*100)
             );
             break;
         default:
@@ -314,7 +318,7 @@ Thrust.prototype.draw = function(){
                 this.x,
                 h - this.y,
                 this.size,
-                0, 0, 255
+                Math.floor(this.size*100), Math.floor(this.size*100), 255
             );
             break;
         case 2:
@@ -322,7 +326,7 @@ Thrust.prototype.draw = function(){
                 this.x,
                 h - this.y,
                 this.size,
-                0, 255, 0
+                Math.floor(this.size*100), 255, Math.floor(this.size*100)
             );
             break;
         default:
@@ -341,12 +345,11 @@ function Bomb(x, y, vx, vy, size){
 Bomb.prototype = new Particle();
 Bomb.prototype.draw = function(){
     var h = gameArea.height;
-
     draw_ball(
         this.x,
         h - this.y,
         this.size,
-        255, 255, 0
+        255, 255, Math.floor(this.size*50)
     );
 };
 
@@ -428,6 +431,7 @@ function Baddy(x,y){
     this.restitution = 0;
     this.friction = 20;
     this.angle = Math.PI;
+    this.playerTarget = Math.floor(Math.random() * playerShips.length);
     this.name = 'baddy';
 }
 Baddy.prototype = new Particle();
@@ -444,7 +448,9 @@ Baddy.prototype.draw = function(){
 };
 Baddy.prototype.chase = function(){
     var deltaThrust = 0.005;
-    var target = playerShips[0] || new Particle(0,0,0,0,1,1);
+    // Hacky! Limited to 2 players
+    var target = playerShips[this.playerTarget] || playerShips[(this.playerTarget + 1)%2] || wall;
+    // --
     interaction.near(this, target);
     interaction.touching(this, target);
     interaction.resolve(this, target);

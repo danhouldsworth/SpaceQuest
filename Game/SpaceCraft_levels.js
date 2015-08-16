@@ -130,8 +130,9 @@ function pvp(){
 }
 function survival(){
     // Finn & Daddy shooting each other!!
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.5));
-    playerShips.push(new Ship(gameArea.width * 0.9, gameArea.height * 0.5));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.1));
+    playerShips.push(new Ship(gameArea.width * 0.9, gameArea.height * 0.1));
+    particles.push(new Particle(gameArea.width /2, gameArea.height / 2, 0,  0, 150, 0));
     baddies.push(new Baddy(gameArea.width / 2, gameArea.height * 0.9));
     baddySpawn = setInterval(function(){baddies.push(new Baddy(gameArea.width / 2, gameArea.height * 0.9));}, 2500);
 }

@@ -30,15 +30,6 @@ h3{
     top: 40px;
     left: 600px;
 }
-
-.keys{
-    font-family: 'Roboto', sans-serif;
-    font-weight: 300;
-    font-size: 30px;
-    position: absolute;
-    top: 675px;
-    left: 150px;
-}
 button{
     border :none;
     /*background:none;*/
