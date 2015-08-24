@@ -276,7 +276,6 @@ function Bullet(x, y, vx, vy, size, player){
 Bullet.prototype = new Particle();
 Bullet.prototype.draw = function(){
     var h = gameArea.height;
-
     switch (this.player){
         case 1:
             draw_ball(
@@ -297,7 +296,6 @@ Bullet.prototype.draw = function(){
         default:
             break;
     }
-
 };
 
 function Thrust(x, y, vx, vy, size, player){
@@ -388,26 +386,58 @@ Ship.prototype.applyCommand = function(){
         bomb  : [null,66,0]         // b          n/a
     };
 
-    if (keyState[playerKeys.left[this.player]]) this.spin += deltaSpin;
-    if (keyState[playerKeys.right[this.player]]) this.spin -= deltaSpin;
+    if (keyState[playerKeys.left[this.player]]) {
+        this.spin += deltaSpin;
+        particles.push(new Thrust(
+            this.x + 0.95* this.size * Math.sin(this.angle + 1.3) + Math.random()-0.5,
+            this.y - 0.95* this.size * Math.cos(this.angle + 1.3) + Math.random()-0.5,
+            +Math.sin(this.angle + 0.1*Math.random()-0.05),
+            -Math.cos(this.angle + 0.1*Math.random()-0.05),
+            Math.max(this.size / 15 - 1,1.5),
+            this.player
+        ));
+        particles.push(new Thrust(
+            this.x - 0.95* this.size * Math.sin(this.angle + 1.3) + Math.random()-0.5,
+            this.y + 0.95* this.size * Math.cos(this.angle + 1.3) + Math.random()-0.5,
+            -Math.sin(this.angle + 0.1*Math.random()-0.05),
+            +Math.cos(this.angle + 0.1*Math.random()-0.05),
+            Math.max(this.size / 15 - 1,1.5),
+            this.player
+        ));
+    }
+    if (keyState[playerKeys.right[this.player]]) {
+        this.spin -= deltaSpin;
+        particles.push(new Thrust(
+            this.x - 0.95* this.size * Math.sin(this.angle - 1.3) + Math.random()-0.5,
+            this.y + 0.95* this.size * Math.cos(this.angle - 1.3) + Math.random()-0.5,
+            -Math.sin(this.angle + 0.1*Math.random()-0.05),
+            +Math.cos(this.angle + 0.1*Math.random()-0.05),
+            Math.max(this.size / 15 - 1,1.5),
+            this.player
+        ));
+        particles.push(new Thrust(
+            this.x + 0.95* this.size * Math.sin(this.angle - 1.3) + Math.random()-0.5,
+            this.y - 0.95* this.size * Math.cos(this.angle - 1.3) + Math.random()-0.5,
+            +Math.sin(this.angle + 0.1*Math.random()-0.05),
+            -Math.cos(this.angle + 0.1*Math.random()-0.05),
+            Math.max(this.size / 15 - 1,1.5),
+            this.player
+        ));
+    }
     if (keyState[playerKeys.thrust[this.player]]){ // THRUST
-        if (currentObjects < maxObjects) {
-            this.vx += deltaThrust * Math.cos(this.angle);
-            this.vy += deltaThrust * Math.sin(this.angle);
-            particles.push(new Thrust(
-                this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
-                this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
-                -thrustSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
-                -thrustSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
-                Math.max(this.size / 10 - 1,2),
-                this.player
-            ));
-
-        }
+        this.vx += deltaThrust * Math.cos(this.angle);
+        this.vy += deltaThrust * Math.sin(this.angle);
+        particles.push(new Thrust(
+            this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
+            this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
+            -thrustSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
+            -thrustSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
+            Math.max(this.size / 10 - 1,2),
+            this.player
+        ));
     }
     if (keyState[playerKeys.fire[this.player]]){ // FIRE !!
-
-        if (currentObjects < maxObjects) particles.push(new Bullet(
+        particles.push(new Bullet(
             this.x + 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
             this.y + 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
             bulletSpeed * Math.cos(this.angle + 0.01 * Math.random() - 0.005),
@@ -448,6 +478,7 @@ Baddy.prototype.draw = function(){
 };
 Baddy.prototype.chase = function(){
     var deltaThrust = 0.005;
+    // var deltaThrust = 0.001;
     // Hacky! Limited to 2 players
     var target = playerShips[this.playerTarget] || playerShips[(this.playerTarget + 1)%2] || wall;
     // --
@@ -465,6 +496,7 @@ Baddy.prototype.chase = function(){
         if (interaction.vector.x < 0)  this.angle = Math.PI + Math.atan(interaction.vector.y / interaction.vector.x);
     }
 };
+
 function BossBaddy(x,y){
     this.base = Baddy;
     this.base(x,y);

@@ -48,9 +48,11 @@ function initGameArea(){
 
     window.document.body.appendChild(gameArea);
     window.addEventListener('keydown', function(e){
+        // e.preventDefault();
         keyState[e.keyCode] = true;
     });
     window.addEventListener('keyup', function(e){
+        // e.preventDefault();
         keyState[e.keyCode] = false;
     });
 }
