@@ -1,7 +1,7 @@
 canvas{
     position        : absolute;
-    left            : 200px;
-    top             : 100px;
+    left            : 10px;
+    top             : 10px;
     /*width           : 800px;*/
     /*height          : 600px;*/
     border          : 2px solid;
@@ -9,7 +9,7 @@ canvas{
 }
 body{
     background-image: url('../FinnsArtwork/SpaceCraftBackground.jpg');
-    background-size: 1200px 850px;
+    background-size: 2000px 1200px;
     background-repeat: no-repeat;
 }
 

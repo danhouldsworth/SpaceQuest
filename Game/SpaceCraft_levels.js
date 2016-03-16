@@ -5,8 +5,8 @@ function level1(){
     gravity         = 0;
     boundary_flag   = -1;
 
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45));
-    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.45, 1));
+    playerShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.55, 2));
     // baddies.push(new Baddy(gameArea.width * 0.90, gameArea.height / 2));
     baddies.push(new Baddy(gameArea.width * 0.95, gameArea.height / 2));
 
@@ -146,9 +146,13 @@ function survival(){
 
 // -- Hardcode launch level
 initGameArea();
-survival();
-playerShips[0].player = 1;
-playerShips[1].player = 2;
+// survival();
+// pvp();
+level1();
+// level2();
+// level3();
+// level4();
+// level5();
 timerAnimate = setInterval(animate, 35);
 // --
 

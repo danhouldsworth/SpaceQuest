@@ -1,3 +1,4 @@
+"use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
 
 // -- Globals
@@ -23,41 +24,21 @@ var gameArea    = document.createElement('canvas'),
 
     explosionActive = false,
 
-    maxObjects      = 500,
     currentObjects  = 0;
 // --
 
 // -- Maths / Shortcuts
-function modulus(x, y) {
-    return Math.sqrt(x * x + y * y);
-}
-
-function restitution(P1,P2){
-    return (P1.restitution + P2.restitution) / 2;
-}
-
-function friction(P1, P2){
-    return (P1.friction + P2.friction) / 2;
-}
-// --
-
+function modulus(x, y)      {return Math.sqrt(x * x + y * y);}
+function restitution(P1,P2) {return (P1.restitution + P2.restitution) / 2;}
+function friction(P1, P2)   {return (P1.friction + P2.friction) / 2;}
 // -- Setup & initialisation
 function initGameArea(){
-    w = gameArea.width = 800;
-    h = gameArea.height= 600;
-
+    w = gameArea.width = (1900*1);
+    h = gameArea.height= 1050;
     window.document.body.appendChild(gameArea);
-    window.addEventListener('keydown', function(e){
-        // e.preventDefault();
-        keyState[e.keyCode] = true;
-    });
-    window.addEventListener('keyup', function(e){
-        // e.preventDefault();
-        keyState[e.keyCode] = false;
-    });
+    window.addEventListener('keydown',  function(e){keyState[e.keyCode] = true;});
+    window.addEventListener('keyup',    function(e){keyState[e.keyCode] = false;});
 }
-// --
-
 // -- On screen display functions
 function gameDisplayText(text){
     ctx.font = "100px Verdana";
@@ -70,7 +51,6 @@ function gameDisplayText(text){
     ctx.fillStyle = gradient;
     ctx.fillText(text, 100, gameArea.height / 2);
 }
-
 function draw_ball(x, y, size, r, g, b){
     var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
     ctx.beginPath();
@@ -78,4 +58,12 @@ function draw_ball(x, y, size, r, g, b){
     ctx.fillStyle = colourstring;
     ctx.fill();
 }
+function energyBar(x, y, percent){
+    var h = gameArea.height;
+    ctx.fillStyle = "rgb(0,0,0)";
+    ctx.fillRect(x-50-1, h-y+50-1, 102, 10);
+    ctx.fillStyle = "rgb(" + (255 - percent * 2) + "," + (55 + percent * 2) + ",0)";
+    ctx.fillRect(x-50, h-y+50, percent, 8);
+}
+
 // --

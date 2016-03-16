@@ -87,12 +87,12 @@ function animate(){
     iteratePhysics();
     // --
 
-    function draw_all_of(typeGroup, shade){
+    function draw_all_of(typeGroup){
         for (var i = 0; i < typeGroup.length; i++){
             var thisObject = typeGroup[i];
             if (thisObject.size >=1.1 && thisObject.energy > 0){
                 if (thisObject.energy > 100) {thisObject.energy = 100;}
-                thisObject.draw(shade);
+                thisObject.draw();
                 // -- Apply evaporation of particles
                 if (thisObject.name === 'thrust'){
                     thisObject.size -= (0.1 + currentObjects / 5000);
@@ -102,12 +102,12 @@ function animate(){
                     thisObject.size -= (0.05 + currentObjects / 2500);
                 }
                 if (thisObject.name === 'bullet'){
-                    thisObject.size -= (0.05 + currentObjects / 2500);
+                    thisObject.size -= (0.05 + currentObjects / 10000);
                 }
                 // --
                 // -- Recharge baddy!
                 if (thisObject.name === 'baddy'){
-                    thisObject.energy += 1;
+                    thisObject.energy += 0.1;
                 }
 
                 // --
@@ -139,8 +139,8 @@ function animate(){
 
     gameArea.width = gameArea.width;
     draw_all_of(particles);
-    draw_all_of(elasticons, 100);
-    draw_all_of(attachments, 200);
+    draw_all_of(elasticons);
+    draw_all_of(attachments);
     draw_all_of(baddies);
     draw_all_of(playerShips);
 
