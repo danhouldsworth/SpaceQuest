@@ -63,7 +63,7 @@ function animate(){
 
     explosionActive = false;
 
-    for (var i = 0; i < spaceShips.length; i++) {spaceShips[i].getCommand();}
+    for (var i = 0; i < spaceShips.length; i++) {spaceShips[i].getPilotCommand();}
     iteratePhysics();
     iteratePhysics();
     iteratePhysics();
@@ -123,7 +123,7 @@ function animate(){
                 if (thisObject.gameClass === 'ship'){
                     scored = true;
                     var spiritBaddy = new BossBaddy(thisObject.x, thisObject.y);
-                    spiritBaddy.getCommand = Ship.prototype.getCommand;
+                    spiritBaddy.getPilotCommand = Ship.prototype.getPilotCommand;
                     spiritBaddy.player = thisObject.player;
                     // if (thisObject.player === 2) {
                         spiritBaddy.thrust *= 10;

@@ -102,7 +102,7 @@ Primitive.prototype.collide     = function(that){
         switch (that.gameClass){
             case 'bullet'   : if (that.player !== this.player) {this.energy -= 2 / this.mass;} break;
             case 'bomb'     : this.energy -= 3 / this.mass; break;
-            case 'baddy'    : if (this.gameClass === 'ship') {that.energy = 0;} break;
+            case 'missile'  : if (this.gameClass === 'ship') {that.energy = 0;} break;
             case 'wall'     :
             break;
         }
@@ -300,6 +300,7 @@ var Ship                        = function(x,y,version){
     this.base = Graphic;
     this.base(x, y, 0, 0, 40, 0);
     this.gameClass           = 'ship';
+    this.showEnergyBar  = true;
     this.player         = version || 1;
     this.image          = spaceShip[this.player];
     this.offSet         = spaceShip[this.player].drawingOffsetAngle;
@@ -312,11 +313,13 @@ var Ship                        = function(x,y,version){
 Ship.prototype                  = new Graphic();
 Ship.prototype.draw             = function(){
     Graphic.prototype.draw.call(this);
-    var h = gameArea.height;
-    ctx.fillStyle = "rgb(0,0,0)";
-    ctx.fillRect(this.x - this.size - 1, h - this.y + this.size - 1, 2 * this.size + 2, 10);
-    ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
-    ctx.fillRect(this.x - this.size, h - this.y + this.size, 2 * this.size * this.energy, 8);
+    if (this.showEnergyBar) {
+        var h = gameArea.height;
+        ctx.fillStyle = "rgb(0,0,0)";
+        ctx.fillRect(this.x - this.size - 1, h - this.y + this.size - 1, 2 * this.size + 2, 10);
+        ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
+        ctx.fillRect(this.x - this.size, h - this.y + this.size, 2 * this.size * this.energy, 8);
+    }
 };
 Ship.prototype.spinThrusters    = function(direction){
     var sideThrustSpeed = 0.1;
@@ -367,7 +370,15 @@ Ship.prototype.fireGun          = function(){
         ));
     }
 };
-Ship.prototype.getCommand     = function(){
+Ship.prototype.fireMissile      = function(){
+    var missileSpeed = 3;
+    var missileMass  = Math.max(this.size / 10 - 1,2);
+    particles.push(new Missile(
+        this.x + 1.2 * this.size * Math.cos(this.angle) + 4 * Math.random() - 2,
+        this.y + 1.2 * this.size * Math.sin(this.angle) + 4 * Math.random() - 2
+    ));
+};
+Ship.prototype.getPilotCommand     = function(){
     // This restricts input to the iteration frame rate
     var playerKeys  = {
         left  : [null,37,113-32],   // Arrow      q
@@ -380,6 +391,7 @@ Ship.prototype.getCommand     = function(){
     if (keyState[playerKeys.right[this.player]])    {this.spinThrusters(-1);}
     if (keyState[playerKeys.thrust[this.player]])   {this.mainThrusters();}
     if (keyState[playerKeys.fire[this.player]])     {this.fireGun();}
+    if (keyState[playerKeys.bomb[this.player]])     {this.fireMissile();}
 };
 Ship.prototype.stabilise        = function() {
     this.vx     *= 0.99;
@@ -401,7 +413,7 @@ var Baddy                       = function(x,y){
     // this.sideThrust = 25;
 };
 Baddy.prototype                 = new Ship();
-Baddy.prototype.getCommand    = function(){
+Baddy.prototype.getPilotCommand    = function(){
     // Hacky! Limited to 2 players
     this.target = (spaceShips[0] === this || spaceShips[0] === this.parent) ? spaceShips [1] : spaceShips[0];
     interaction.near(this, this.target);
@@ -433,10 +445,27 @@ Baddy.prototype.getCommand    = function(){
 
     if      (angleDiff <= Math.PI - 0.1){this.spinThrusters( 1);}
     else if (angleDiff >= Math.PI + 0.1){this.spinThrusters(-1);}
-
-    if (interaction.seperation < (this.target.size + this.size * 5)){this.fireGun();}
-    else {this.mainThrusters();}
+    this.getAttackCommand();
 };
+Baddy.prototype.getAttackCommand = function(){
+    if (interaction.seperation < (this.target.size + this.size * 5)){
+        this.fireGun();
+    }
+    else {
+        this.mainThrusters();
+    }
+};
+
+var Missile                   = function(x,y){
+    this.base   = Baddy;
+    this.base(x,y);
+    this.gameClass      = 'missile';
+    this.showEnergyBar  = false;
+    this.size   /= 4;
+    this.calcMass();
+};
+Missile.prototype             = new Baddy;
+
 
 var BossBaddy                   = function(x,y){
     this.base   = Baddy;
@@ -461,7 +490,6 @@ var BossBaddy                   = function(x,y){
             spaceShips.push(childBaddy);
         }, (parentBaddy.player === 2) ? 1500 : 1500);
     };
-
 };
 BossBaddy.prototype             = new Baddy;
 
