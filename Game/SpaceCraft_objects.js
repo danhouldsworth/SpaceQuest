@@ -1,6 +1,6 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
-
+/*global interaction, wall, restitution, friction */
 var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/Asteroid.png";
 var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";
 var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
@@ -100,12 +100,14 @@ Primitive.prototype.collide     = function(that){
 
         // Remember the ships are collided with the particles
         switch (that.gameClass){
-            case 'bullet'   : if (that.player !== this.player) {this.energy -= 2 / this.mass;} break;
-            case 'bomb'     : this.energy -= 3 / this.mass; break;
-            case 'missile'  : if (this.gameClass === 'ship') {that.energy = 0;} break;
+            case 'bullet'   : if (that.player !== this.player)  {this.energy -= 2 / this.mass;}     break;
+            case 'bomb'     : if (this.gameClass !== 'bomb')    {this.energy -= 10 / this.mass;}    break;
+            case 'missile'  : that.energy = 0;                                                      break;
             case 'wall'     :
             break;
         }
+
+        // if (this.gameClass === 'missile') this.energy = 0;
     }
 };
 
@@ -244,7 +246,6 @@ Bullet.prototype        = new Particle();
 var Thrust              = function(x, y, vx, vy, size, player){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
-    // this.calcMass(); // Surely calculated as part of Particle constructor?
     this.restitution = 0;
     this.friction = 100;
     this.gameClass = 'thrust';
@@ -304,9 +305,11 @@ var Ship                        = function(x,y,version){
     this.player         = version || 1;
     this.image          = spaceShip[this.player];
     this.offSet         = spaceShip[this.player].drawingOffsetAngle;
+    this.team           = version;
     this.restitution    = 0;
     this.friction       = 0;
     this.thrust         = 1000;
+    this.thrustRate     = 1;
     this.sideThrust     = 10;
     this.fireRate       = 10;
 };
@@ -347,7 +350,7 @@ Ship.prototype.mainThrusters    = function(){
     var thrustMass  = Math.max(this.size / 10 - 1,2);
     this.vx += (this.thrust / this.mass) * Math.cos(this.angle);
     this.vy += (this.thrust / this.mass) * Math.sin(this.angle);
-    particles.push(new Thrust(
+    for(var i = 0;i < this.thrustRate; i++) particles.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
         -thrustSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
@@ -370,13 +373,15 @@ Ship.prototype.fireGun          = function(){
         ));
     }
 };
-Ship.prototype.fireMissile      = function(){
-    var missileSpeed = 3;
-    var missileMass  = Math.max(this.size / 10 - 1,2);
-    particles.push(new Missile(
-        this.x + 1.2 * this.size * Math.cos(this.angle) + 4 * Math.random() - 2,
-        this.y + 1.2 * this.size * Math.sin(this.angle) + 4 * Math.random() - 2
-    ));
+Ship.prototype.fireMissile      = function(side){
+    var missile = new Missile(
+        this.x + 1.4 * side * this.size * Math.sin(this.angle),
+        this.y - 1.4 * side * this.size * Math.cos(this.angle)
+    );
+    missile.parent = this;
+    missile.target = spaceShips[0];
+    missile.orientate(side);
+    spaceShips.push(missile);
 };
 Ship.prototype.getPilotCommand     = function(){
     // This restricts input to the iteration frame rate
@@ -391,7 +396,12 @@ Ship.prototype.getPilotCommand     = function(){
     if (keyState[playerKeys.right[this.player]])    {this.spinThrusters(-1);}
     if (keyState[playerKeys.thrust[this.player]])   {this.mainThrusters();}
     if (keyState[playerKeys.fire[this.player]])     {this.fireGun();}
-    if (keyState[playerKeys.bomb[this.player]])     {this.fireMissile();}
+    if (keyState[playerKeys.bomb[this.player]] && !this.missleLaunchersHot) {
+        this.missleLaunchersHot = true;
+        this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
+        this.fireMissile(1);
+        this.fireMissile(-1);
+    }
 };
 Ship.prototype.stabilise        = function() {
     this.vx     *= 0.99;
@@ -407,13 +417,13 @@ var Baddy                       = function(x,y){
     this.gameClass      = 'baddy';
     this.angle          = 3*Math.PI/2;
     this.fireRate       = 1;
-    this.size           = 20;
+    this.size           *= .7;
     this.calcMass();
     this.thrust     /= 4;
     // this.sideThrust = 25;
 };
 Baddy.prototype                 = new Ship();
-Baddy.prototype.getPilotCommand    = function(){
+Baddy.prototype.getTarget           = function(){
     // Hacky! Limited to 2 players
     this.target = (spaceShips[0] === this || spaceShips[0] === this.parent) ? spaceShips [1] : spaceShips[0];
     interaction.near(this, this.target);
@@ -424,15 +434,14 @@ Baddy.prototype.getPilotCommand    = function(){
     interaction.touching(this, this.target);
     if (interaction.seperationSqrd > this.seperationSqrd) {
         this.target = spaceShips[0];
-        interaction.near(this, this.target);
-        interaction.touching(this, this.target);
     }
     // --
-
-    // interaction.near(this, this.target);
-    // interaction.touching(this, this.target);
+};
+Baddy.prototype.resolveTarget           = function(){
+    interaction.near(this, this.target);
+    interaction.touching(this, this.target);
     interaction.resolve(this, this.target);
-    interaction.angle = Math.atan(interaction.vector.y / interaction.vector.x)
+    interaction.angle = Math.atan(interaction.vector.y / interaction.vector.x);
     if (interaction.vector.y >= 0){
         if (interaction.vector.x >= 0) interaction.angle += 0;
         if (interaction.vector.x < 0)  interaction.angle += Math.PI;
@@ -440,20 +449,23 @@ Baddy.prototype.getPilotCommand    = function(){
         if (interaction.vector.x < 0)  interaction.angle += Math.PI;
         if (interaction.vector.x >= 0) interaction.angle += Math.PI * 2;
     }
-    var angleDiff = interaction.angle - this.angle;
-    angleDiff = (Math.PI * 2 + angleDiff) % (Math.PI * 2);
-
-    if      (angleDiff <= Math.PI - 0.1){this.spinThrusters( 1);}
-    else if (angleDiff >= Math.PI + 0.1){this.spinThrusters(-1);}
-    this.getAttackCommand();
+    this.angleToTarget = interaction.angle - this.angle;
+    this.angleToTarget = (Math.PI * 2 + this.angleToTarget) % (Math.PI * 2);
+    // this.getPilotCommand();
+};
+Baddy.prototype.getPilotCommand    = function(){
+    this.getTarget();
+    this.resolveTarget();
+    if      (this.angleToTarget <= Math.PI - 0.1){this.spinThrusters( 1);}
+    else if (this.angleToTarget >= Math.PI + 0.1){this.spinThrusters(-1);}
+    if (interaction.seperation > (this.target.size + this.size * 5)){
+        this.mainThrusters();
+    } else {
+        this.getAttackCommand();
+    }
 };
 Baddy.prototype.getAttackCommand = function(){
-    if (interaction.seperation < (this.target.size + this.size * 5)){
-        this.fireGun();
-    }
-    else {
-        this.mainThrusters();
-    }
+    this.fireGun();
 };
 
 var Missile                   = function(x,y){
@@ -461,11 +473,36 @@ var Missile                   = function(x,y){
     this.base(x,y);
     this.gameClass      = 'missile';
     this.showEnergyBar  = false;
-    this.size   /= 4;
+    this.size           /= 2;
+    this.sideThrust     /= 3;
+    // this.thrust         /=2;
+    this.thrustRate     = 6;
     this.calcMass();
+    this.mass           *= 2;
 };
-Missile.prototype             = new Baddy;
-
+Missile.prototype                   = new Baddy;
+Missile.prototype.getPilotCommand    = function(){
+    if (!this.target) {
+        this.energy = 0;
+        return;
+    }
+    interaction.near(this, this.parent);
+    interaction.touching(this, this.parent);
+    interaction.resolve(this, this.parent);
+    if (interaction.seperation > (this.parent.size * 2)){
+        this.mainThrusters();
+        this.getTarget();
+        this.resolveTarget();
+        if      (this.angleToTarget <= Math.PI - 0.1){this.spinThrusters( 1);}
+        else if (this.angleToTarget >= Math.PI + 0.1){this.spinThrusters(-1);}
+    }
+};
+Missile.prototype.orientate = function(side){
+    this.angle = this.parent.angle;
+    this.vx = this.parent.vx + side * Math.sin(this.parent.angle);
+    this.vy = this.parent.vy - side * Math.cos(this.parent.angle);
+};
+Missile.prototype.stabilise = function(){};
 
 var BossBaddy                   = function(x,y){
     this.base   = Baddy;
@@ -473,7 +510,7 @@ var BossBaddy                   = function(x,y){
     this.image      = bossBaddy;
     this.offSet     = bossBaddy.drawingOffsetAngle;
     this.angle      = Math.PI / 2;
-    this.fireRate   = 15;
+    this.fireRate   = 10;
     // this.thrust     = 100;
     this.size       = 60;
     this.calcMass();
@@ -488,7 +525,7 @@ var BossBaddy                   = function(x,y){
             // if (parentBaddy.player === 1) {childBaddy.size *= 3; childBaddy.calcMass();}
             // if (parentBaddy.player === 2) {childBaddy.size *= 1; childBaddy.calcMass();}
             spaceShips.push(childBaddy);
-        }, (parentBaddy.player === 2) ? 1500 : 1500);
+        }, (parentBaddy.player === 2) ? 5000 : 5000);
     };
 };
 BossBaddy.prototype             = new Baddy;

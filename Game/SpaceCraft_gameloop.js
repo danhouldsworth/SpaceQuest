@@ -105,11 +105,12 @@ function animate(){
                 typeGroup.splice(i--,1);
                 // --
                 // If its a baddy or a ship then blow up
-                if (thisObject.gameClass === 'baddy'){
+                if (thisObject instanceof Baddy){
                     scored = true;
                     explosionActive = true;
-                    clearInterval(thisObject.baddySpawnTimer);
-                    var numberOfBombs = thisObject.mass / 20;
+                    if (thisObject.baddySpawnTimer) clearInterval(thisObject.baddySpawnTimer);
+                    var numberOfBombs = (5 * thisObject.speed() + thisObject.mass) / 20;
+                    // console.log("numberOfBombs " + numberOfBombs);
                     for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
                         particles.push(new Bomb(
                             thisObject.x + thisObject.size * Math.random() * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
@@ -122,20 +123,6 @@ function animate(){
                 }
                 if (thisObject.gameClass === 'ship'){
                     scored = true;
-                    var spiritBaddy = new BossBaddy(thisObject.x, thisObject.y);
-                    spiritBaddy.getPilotCommand = Ship.prototype.getPilotCommand;
-                    spiritBaddy.player = thisObject.player;
-                    // if (thisObject.player === 2) {
-                        spiritBaddy.thrust *= 10;
-                        spiritBaddy.sideThrust *= 3;
-                        spiritBaddy.fireRate *= 3;
-                        spiritBaddy.calcMass();
-                    // } else {
-                        // spiritBaddy.size *= 1.5;
-                        // spiritBaddy.calcMass();
-                    // }
-                    spaceShips.push(spiritBaddy);
-                    spiritBaddy.baddySpawn(spiritBaddy);
                 }
             }
         }

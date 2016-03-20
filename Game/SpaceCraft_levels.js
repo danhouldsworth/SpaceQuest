@@ -157,6 +157,7 @@ function level6(){
 }
 function impossible(){
     gravity = 0.001;
+    boundary_flag   = 1;
     spaceShips.push(new Ship(gameArea.width * 0.9, gameArea.height * 0.5, 1));
     spaceShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.5, 2));
     spaceShips.push(new BossBaddy(gameArea.width * 0.5, gameArea.height / 2));
@@ -171,10 +172,10 @@ initGameArea();
 // level1();
 // level2();
 // level3();
-level4();
+// level4();
 // level5();
 // level6();
-// impossible();
+impossible();
 // spaceShips[1].stabilise = function(){};
 // spaceShips[1].thrust *= 2;
 // spaceShips[1].sideThrust *= 2;

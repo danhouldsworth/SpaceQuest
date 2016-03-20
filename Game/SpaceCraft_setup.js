@@ -31,8 +31,8 @@ function restitution(P1,P2) {return (P1.restitution + P2.restitution) / 2;}
 function friction(P1, P2)   {return (P1.friction + P2.friction) / 2;}
 // -- Setup & initialisation
 function initGameArea(){
-    w = gameArea.width = 1400;//(1900*1);
-    h = gameArea.height= 900;//1050;
+    w = gameArea.width = (1900*1);
+    h = gameArea.height= 1050;
     window.document.body.appendChild(gameArea);
     window.addEventListener('keydown',  function(e){keyState[e.keyCode] = true;});
     window.addEventListener('keyup',    function(e){keyState[e.keyCode] = false;});
