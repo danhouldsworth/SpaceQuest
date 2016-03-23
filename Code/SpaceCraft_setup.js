@@ -16,21 +16,28 @@ var gameArea    = document.createElement('canvas'),
 
     stars           = [],
 
-    scores = {
-        1 : 0,
-        2 : 0
-    },
-
     keyState        = {},
     timerAnimate,
     baddySpawn,
+
+    lastTime = {
+        iteratePhysics      : Date.now(),
+        animate             : Date.now(),
+        updateScoreStars    : Date.now()
+    },
+    deltaT = {
+        iteratePhysics      : 0,
+        animate             : 0,
+        updateScoreStars    : 0
+    },
 
     GlobalParams = {
         gravity         : -0.001,
         boundary_flag   : -1,
         speedCap        : 5,
         snapThreshhold  : 25,
-        explosionActive : false
+        explosionActive : false,
+        scores          : {1 : 0, 2 : 0}
     };
 
 // --
@@ -54,7 +61,7 @@ function initGameArea(){
         star.draw = function(){
             ctxStars.beginPath();
             ctxStars.arc(this.x,h-this.y,this.size, 0, 2 * Math.PI, false);
-            ctxStars.fillStyle = "rgb(255,255,255)";
+            ctxStars.fillStyle = "rgb("+Math.round(this.size*40)+","+Math.round(this.size*40)+","+Math.round(this.size*40)+")";
             ctxStars.fill();
         }
         star.gravity = 0;
@@ -64,7 +71,7 @@ function initGameArea(){
 }
 // -- On screen display functions
 function gameDisplayText(text, x, y){
-    ctxStars.font = "100px 'LatoLatin-Light'";
+    ctxStars.font = Math.floor(w / 20) + "px 'LatoLatin-Light'";
     // Create gradient
     var gradient = ctxStars.createLinearGradient(0, 0, gameArea.width, 0);
     gradient.addColorStop("0", "magenta");
@@ -73,7 +80,6 @@ function gameDisplayText(text, x, y){
     // Fill with gradient
     ctxStars.fillStyle = gradient;
     ctxStars.fillText(text, gameArea.width * x, gameArea.height * y);
-    console.log(text);
 }
 function draw_ball(x, y, size, r, g, b){
     var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");

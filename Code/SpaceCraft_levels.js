@@ -158,11 +158,11 @@ function level6(){
 function impossible(){
     GlobalParams.gravity = 0;
     GlobalParams.boundary_flag   = -1;
-    spaceShips.push(new Ship(gameArea.width * 0.9, gameArea.height * 0.5, 1));
-    spaceShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.5, 2));
+    spaceShips.push(new GhostBaddy(gameArea.width * 0.5, gameArea.height *0.9)); // must be first
+    spaceShips.push(new Ship(gameArea.width * 0.1, gameArea.height * 0.5, 1));
+    spaceShips.push(new Ship(gameArea.width * 0.9, gameArea.height * 0.5, 2));
     spaceShips.push(new BossBaddy(gameArea.width * 0.5, gameArea.height / 2));
     spaceShips[spaceShips.length - 1].baddySpawn(spaceShips[spaceShips.length - 1]);
-    // spaceShips.push(new BossBaddy(gameArea.width * 0.6, gameArea.height / 2));
 }
 // --
 
@@ -177,13 +177,7 @@ initGameArea();
 // level5();
 // level6();
 impossible();
-// spaceShips[1].stabilise = function(){};
-// spaceShips[1].thrust *= 2;
-// spaceShips[1].sideThrust *= 2;
-// spaceShips[1].fireRate *= 2;
-// spaceShips[0].size *= 2;
-// spaceShips[0].calcMass();
-timerAnimate = setInterval(animate, 35);
+launch();
 gameDisplayText("You WIN!!");
 // gameDisplayText("Go..... !!!");
 // --
