@@ -114,16 +114,19 @@ function animate(){
     draw_all_of(attachments);
     draw_all_of(spaceShips);
 
+
     starfield.width = starfield.width;
     for (var i = 0; i < stars.length; i++){
         stars[i].update().boundary().draw();
     }
+    gameDisplayText("Player 1 : " + (10000 + scores[1]).toString().slice(1), .1, .1);
+    gameDisplayText("Player 2 : " + (10000 + scores[2]).toString().slice(1), .6, .1);
 
     if (scored && GlobalParams.explosionActive === false){
         if ( (spaceShips.length === 1 && !(spaceShips[0] instanceof Baddy)) || (spaceShips.length === 2 && !(spaceShips[0] instanceof Baddy) && !(spaceShips[1] instanceof Baddy)) ) {
             clearInterval(timerAnimate);
             clearInterval(baddySpawn);
-            gameDisplayText("You WIN!!");
+            gameDisplayText("You WIN!!", .5, .5);
         }
     }
 }

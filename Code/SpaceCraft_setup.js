@@ -16,6 +16,11 @@ var gameArea    = document.createElement('canvas'),
 
     stars           = [],
 
+    scores = {
+        1 : 0,
+        2 : 0
+    },
+
     keyState        = {},
     timerAnimate,
     baddySpawn,
@@ -58,7 +63,7 @@ function initGameArea(){
     }
 }
 // -- On screen display functions
-function gameDisplayText(text){
+function gameDisplayText(text, x, y){
     ctxStars.font = "100px 'LatoLatin-Light'";
     // Create gradient
     var gradient = ctxStars.createLinearGradient(0, 0, gameArea.width, 0);
@@ -67,7 +72,8 @@ function gameDisplayText(text){
     gradient.addColorStop("1.0", "red");
     // Fill with gradient
     ctxStars.fillStyle = gradient;
-    ctxStars.fillText(text, gameArea.width / 2, gameArea.height / 2);
+    ctxStars.fillText(text, gameArea.width * x, gameArea.height * y);
+    console.log(text);
 }
 function draw_ball(x, y, size, r, g, b){
     var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
