@@ -1,10 +1,8 @@
 canvas{
     position        : absolute;
-    left            : 10px;
-    top             : 10px;
-    /*width           : 800px;*/
-    /*height          : 600px;*/
-    border          : 2px solid;
+    left            : 0px;
+    top             : 0px;
+    border          : none;
     background: transparent;
 }
 body{
@@ -31,4 +29,10 @@ h3{
 button{
     border :none;
     /*background:none;*/
+}
+@font-face {
+  font-family: 'LatoLatin-Light';
+  font-style: normal;
+  font-weight: normal;
+  src: url(LatoLatin-Light.woff) format('woff');
 }
