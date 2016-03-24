@@ -1,6 +1,6 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
-/*global interaction, wall, restitution, friction , particles, spaceShips, GlobalParams, deltaT, draw_ball, gameArea, ctx*/
+/*global interaction, wall, restitution, friction , gameObjects, gameObjects, GlobalParams, deltaT, draw_ball, gameArea, ctx*/
 var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/Asteroid.png";
 var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";
 var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
@@ -11,7 +11,7 @@ var spaceShip   = [];
 spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
 spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
 
-// -- Basic Primitive Object has Mass and Collide methods ***TO BE CHANGED WITH TRIANGLES***
+// -- Basic Primitive Object has size and 6DoF in state space
 var Primitive                   = function(x, y, vx, vy, size, angle, spin){
     this.x      = x || 0;
     this.y      = y || 0;
@@ -21,8 +21,54 @@ var Primitive                   = function(x, y, vx, vy, size, angle, spin){
     this.angle  = angle || 0;
     this.spin   = spin  || 0;
 };
-Primitive.prototype.collide     = function(that){
-    // Particle1 = this, Particle2 = that
+Primitive.prototype.speed    = function (){
+    var speed = modulus(this.vx, this.vy);
+    return speed;
+};
+Primitive.prototype.update   = function(deltaT){
+    // -- Modify speed due to gravity (& other field forces)
+    this.vy     += this.gravity * deltaT;
+    // -- Update position based on speed
+    this.x      = this.x + this.vx * deltaT;
+    this.y      = this.y + this.vy * deltaT;
+    this.angle  = this.angle + this.spin * deltaT;
+    // -- Normalise angle to 0<theta<2PI
+    this.angle = (Math.PI * 2 + this.angle) % (Math.PI * 2);
+    // --
+    return this;
+};
+Primitive.prototype.stabilise= function() {
+    while (this.speed() > GlobalParams.speedCap){
+        this.vx *= 0.9;
+        this.vy *= 0.9;
+    }
+    return this; // chainable
+};
+// -- Particle is a subset of Primitive. It has density (& therefor mass), restituion and friction - and so can interact with other gameObjects.
+var Particle                = function(x, y, vx, vy, size, spin){
+    this.base = Primitive;
+    this.base(x, y, vx, vy, size, Math.PI / 2, spin);
+    this.gameClass      = 'particle';
+    this.density = 1;
+    this.gravity        = GlobalParams.gravity;
+    this.boundary_flag  = GlobalParams.boundary_flag;
+    this.restitution    = 1;
+    this.friction       = 20;
+    this.calcMass     = function (){
+        this.mass = 3 * this.size * this.size * this.density;
+        return this;
+    };
+    this.calcMass();
+    this.energy         = 1; // Consider it adhesion
+};
+Particle.prototype              = new Primitive();
+Particle.prototype.collide      = function(that){
+
+    // that.impulseModulus = 0;
+    // var oldvx = that.vx || 0;
+    // var oldvy = that.vy || 0;
+
+    if (this === that || this.ephemeral || that.ephemeral) return false;
 
     if (interaction.near(this, that) && interaction.touching(this, that)){
 
@@ -94,59 +140,19 @@ Primitive.prototype.collide     = function(that){
             that.y +=  delta2 * sin_theta;
         }
 
-        // Remember the ships are collided with the particles
         switch (that.gameClass){
-            case 'bullet'   : if (this.gameClass !== 'bullet')  {this.energy -= that.damagePts / this.mass;}    break;
-            case 'bomb'     : if (this.gameClass !== 'bomb')    {this.energy -= that.damagePts / this.mass;}    break;
-            case 'missile'  :     that.energy = -1;              this.energy -= that.damagePts / this.mass;    break;
-            case 'fireball' : if (this !== that.parent)         {this.energy -= that.damagePts / this.mass;}   break;
-            case 'wall'     :
-                if (this.gameClass === 'missile') {this.energy = -1;}
-                else if (this.gameClass === 'fireball') {
-                    this.energy = -1;
-                    this.parent.longRangeGunHot = false;
-                }
-            break;
+            case 'bullet'   : if (this.gameClass !== 'bullet') {this.energy -= that.damagePts / this.mass;}                break;
+            case 'bomb'     : if (this.gameClass !== 'bomb')   {this.energy -= that.damagePts / this.mass;}                break;
+            case 'fireball' :
+            case 'missile'  : if (this instanceof Graphic)     {this.energy -= that.damagePts / this.mass; that.explode();}  break;
+            case 'wall'     : if (this.gameClass === 'missile' || this.gameClass === 'fireball') {this.explode();}           break;
         }
 
-        if ((this instanceof Ship) && (that.gameClass === 'bullet' || that.gameClass === 'missile') && (this !== that.parent)){
-            GlobalParams.scores[that.parent.team] += that.damagePts;
-             // || that.gameClass === 'bomb'
-        }
+        return true;
     }
-    return this;
+    return false;
 };
-Primitive.prototype.update   = function(){
-
-    // -- Modify speed due to gravity (& other field forces)
-    this.vy     += this.gravity * deltaT.iteratePhysics;
-    // -- Update position based on speed
-    this.x      = this.x + this.vx * deltaT.iteratePhysics;
-    this.y      = this.y + this.vy * deltaT.iteratePhysics;
-    this.angle  = this.angle + this.spin * deltaT.iteratePhysics;
-    // -- Normalise angle to 0<theta<2PI
-    this.angle = (Math.PI * 2 + this.angle) % (Math.PI * 2);
-    // --
-    return this;
-};
-
-
-// -- Particle is a BALL ONLY and a subset of Primitive. It can attract from a distance.
-var Particle                = function(x, y, vx, vy, size, spin){
-    this.base = Primitive;
-    this.base(x, y, vx, vy, size, Math.PI / 2, spin);
-    this.gameClass      = 'particle';
-    this.density = 1;
-    this.gravity        = GlobalParams.gravity;
-    this.boundary_flag  = GlobalParams.boundary_flag;
-    this.restitution    = 1;
-    this.friction       = 20;
-    this.energy         = 1;
-    this.calcMass();
-};
-Particle.prototype          = new Primitive();
-Particle.prototype.attract  = function(that) {
-
+Particle.prototype.attract      = function(that) {
     // F = Gm1m2/r^2
     var force = GlobalParams.distance_force * interaction.mass / (interaction.seperation * interaction.seperation);
 
@@ -154,26 +160,10 @@ Particle.prototype.attract  = function(that) {
     this.vy +=  force * interaction.vector.y / this.mass;
     that.vx += -force * interaction.vector.x / that.mass;
     that.vy += -force * interaction.vector.y / that.mass;
-    this.spin += 0;
-    that.spin += 0;
+
+    return this; // chainable
 };
-Particle.prototype.speed    = function (){
-    var speed = modulus(this.vx, this.vy);
-    return speed;
-};
-Particle.prototype.draw     = function(){
-    this.calcColour();
-    draw_ball(this.x, gameArea.height - this.y, this.size, this.red, this.green, this.blue);
-    return this;
-};
-Particle.prototype.stabilise= function() {
-    while (this.speed() > GlobalParams.speedCap){
-        this.vx *= 0.9;
-        this.vy *= 0.9;
-    }
-    return this;
-};
-Particle.prototype.boundary = function() {
+Particle.prototype.boundary     = function() {
     var w = gameArea.width,
         h = gameArea.height;
 
@@ -217,30 +207,50 @@ Particle.prototype.boundary = function() {
             this.y -= h;
         }
     }
-    return this;
+    return this; // chainable
 };
-Primitive.prototype.calcMass    = function (){
-    this.mass = 3 * this.size * this.size * this.density;
-    return this;
+Particle.prototype.draw         = function(){
+    this.calcColour();
+    draw_ball(this.x, gameArea.height - this.y, this.size, this.red, this.green, this.blue);
+    return this; // chainable
+};
+// Placeholders to make game loop cleaner
+Particle.prototype.getPilotCommand = function(){
+    return this; // chainable
+};
+Particle.prototype.explode = function(){
+    gameObjects.splice(gameObjects.indexOf(this),1);
 };
 
-// --
+var Star = function(x, y, vx, vy, size){
+    this.base = Particle;
+    this.base( Math.random() * w, Math.random() * h, Math.random() / 5, 0, Math.random() * 5, 0);
+    this.gravity = 0;
+    this.boundary_flag = 1;
+};
+Star.prototype = new Particle();
+Star.prototype.draw = function(){
+    ctxStars.beginPath();
+    ctxStars.arc(this.x,h-this.y,this.size, 0, 2 * Math.PI, false);
+    ctxStars.fillStyle = "rgb("+Math.round(this.size*40)+","+Math.round(this.size*40)+","+Math.round(this.size*40)+")";
+    ctxStars.fill();
+};
 
-// -- Particle based game objects
+
+// -- Game objects - based on gameObjects. They damage points for collisions, and know their parent.
 var Bullet              = function(x, y, vx, vy, size, parent){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
-    this.damagePts = 2;
-    this.restitution = 0;
-    this.friction = 100;
-    this.gameClass = 'bullet';
-    this.parent = parent;
-    this.team = parent.team;
-    this.player = parent.player;
+    this.gameClass      = 'bullet';
+    this.parent         = parent;
+    this.team           = parent.team;
+    this.damagePts      = 2;
+    this.restitution    = 0;
+    this.friction       = 100;
     this.calcColour = function(){
-        this.red    = (this.player % 2) ? 255                        : 255;
-        this.green  = (this.player % 2) ? Math.floor(this.size*100)  : 128;
-        this.blue   = (this.player % 2) ? Math.floor(this.size*100)  : Math.floor(this.size*100);
+        this.red    = (this.parent.team % 2) ? 255                        : 255;
+        this.green  = (this.parent.team % 2) ? Math.floor(this.size*100)  : 128;
+        this.blue   = (this.parent.team % 2) ? Math.floor(this.size*100)  : Math.floor(this.size*100);
     };
 };
 Bullet.prototype        = new Particle();
@@ -248,26 +258,29 @@ Bullet.prototype        = new Particle();
 var Thrust              = function(x, y, vx, vy, size, parent){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
-    this.restitution = 0;
-    this.friction = 100;
-    this.gameClass = 'thrust';
-    this.parent = parent;
-    this.player = parent.player;
+    this.gameClass      = 'thrust';
+    this.parent         = parent;
+    this.team           = parent.team;
+    this.damagePts      = 0;
+    this.restitution    = 0;
+    this.friction       = 100;
     this.calcColour = function(){
-        this.red    = (this.player % 2) ? Math.floor(this.size*100) : Math.floor(this.size*100);
-        this.green  = (this.player % 2) ? Math.floor(this.size*100) : 255;
-        this.blue   = (this.player % 2) ? 255                       : Math.floor(this.size*100);
+        this.red    = (this.parent.team % 2) ? Math.floor(this.size*100) : Math.floor(this.size*100);
+        this.green  = (this.parent.team % 2) ? Math.floor(this.size*100) : 255;
+        this.blue   = (this.parent.team % 2) ? 255                       : Math.floor(this.size*100);
     };
 };
 Thrust.prototype        = new Particle();
 
-var Bomb                = function(x, y, vx, vy, size){
+var Bomb                = function(x, y, vx, vy, size, parent){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
-    this.damagePts = 5;
-    this.restitution = 0;
-    this.friction = 100;
-    this.gameClass = 'bomb';
+    this.gameClass      = 'bomb';
+    this.parent         = parent;
+    this.team           = parent.team;
+    this.damagePts      = 5;
+    this.restitution    = 0;
+    this.friction       = 100;
     this.calcColour = function(){
         this.red    = 255;
         this.green  = 255;
@@ -277,7 +290,7 @@ var Bomb                = function(x, y, vx, vy, size){
 Bomb.prototype          = new Particle();
 // --
 
-// -- Add images
+// -- Like a particle but drawn with an image
 var Graphic             = function(x, y, vx, vy, size, spin){
     this.base = Particle;
     this.offSet = 0;
@@ -290,9 +303,28 @@ Graphic.prototype.draw  = function(){
     ctx.rotate(this.offSet - this.angle);
     ctx.drawImage(this.image, -this.size, -this.size, 2 * this.size, 2 * this.size);
     ctx.restore();
+    return this; // chainable
+};
+Graphic.prototype.explode = function(){
+    Particle.prototype.explode.call(this);
+    var numberOfBombs   = 10    + (this.speed() * 5 + this.mass) / 30;
+    var bombSpeed       = 0.1   + (this.speed() * 0.5);
+    for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
+        gameObjects.push(new Bomb(
+            this.x + this.size * Math.random() * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
+            this.y + this.size * Math.random() * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
+            bombSpeed * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
+            bombSpeed * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
+            Math.random() * 4 + 1,
+            this
+        ));
+    }
+    if (this.baddySpawnTimer) {clearInterval(this.baddySpawnTimer);}
+    return this; // chainable
 };
 // --
-// Image based game objects
+
+// Game objects - based on Graphics. Have active controls and specific actions
 var Asteroid            = function(x, y, vx, vy, size, spin){
     this.base = Graphic;
     this.image = asteroid;
@@ -300,18 +332,22 @@ var Asteroid            = function(x, y, vx, vy, size, spin){
 };
 Asteroid.prototype      = new Graphic();
 
-// Image based game objects
 var Fireball            = function(x, y, vx, vy, parent){
     this.base = Graphic;
     this.image = fireball;
     this.parent = parent;
-    this.base(x, y, vx, vy, 20, 0);
+    this.team   = parent.team;
+    this.base(x, y, vx, vy, parent.size / 3, 0);
     this.damagePts      = 1000;
     this.density        *= 10;
     this.calcMass();
     this.gameClass      = 'fireball';
 };
 Fireball.prototype      = new Graphic();
+Fireball.prototype.explode = function(){
+    Graphic.prototype.explode.call(this);
+    this.parent.longRangeGunHot = false;
+};
 
 var Ship                        = function(x,y,version){
     this.base = Graphic;
@@ -339,12 +375,13 @@ Ship.prototype.draw             = function(){
         ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
         ctx.fillRect(this.x - this.size, h - this.y + this.size, 2 * this.size * this.energy, 8);
     }
+    return this; // chainable
 };
 Ship.prototype.spinThrusters    = function(direction){
     var sideThrustSpeed = 0.1;
     var sideThrustMass  = Math.max(this.size / 15 - 1,1.5);
     this.spin += direction * this.sideThrust / this.mass;
-    particles.push(new Thrust(
+    gameObjects.push(new Thrust(
         this.x + direction * 0.95* this.size * Math.sin(this.angle + direction * 1.3) + Math.random()-0.5,
         this.y - direction * 0.95* this.size * Math.cos(this.angle + direction * 1.3) + Math.random()-0.5,
         +direction * sideThrustSpeed * Math.sin(this.angle + 0.1*Math.random()-0.05),
@@ -352,7 +389,7 @@ Ship.prototype.spinThrusters    = function(direction){
         sideThrustMass,
         this
     ));
-    particles.push(new Thrust(
+    gameObjects.push(new Thrust(
         this.x - direction * 0.95* this.size * Math.sin(this.angle + direction * 1.3) + Math.random()-0.5,
         this.y + direction * 0.95* this.size * Math.cos(this.angle + direction * 1.3) + Math.random()-0.5,
         -direction * sideThrustSpeed * Math.sin(this.angle + 0.1*Math.random()-0.05),
@@ -360,13 +397,14 @@ Ship.prototype.spinThrusters    = function(direction){
         sideThrustMass,
         this
     ));
+    return this; // chainable
 };
 Ship.prototype.mainThrusters    = function(){
     var thrustSpeed = 0.2;
     var thrustMass  = Math.max(this.size / 10 - 1,2);
     this.vx += (this.thrust / this.mass) * Math.cos(this.angle);
     this.vy += (this.thrust / this.mass) * Math.sin(this.angle);
-    for(var i = 0;i < this.thrustRate; i++) {particles.push(new Thrust(
+    for(var i = 0;i < this.thrustRate; i++) {gameObjects.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
         -thrustSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
@@ -374,12 +412,13 @@ Ship.prototype.mainThrusters    = function(){
         thrustMass,
         this
     ));}
+    return this; // chainable
 };
 Ship.prototype.fireGun          = function(){
     var bulletSpeed = 0.3;
     var bulletMass  = Math.max(this.size / 10 - 1,2);
     for(var i = 0;i < this.fireRate; i++){
-        particles.push(new Bullet(
+        gameObjects.push(new Bullet(
             this.x + 1.3 * this.size * Math.cos(this.angle) + 4 * Math.random() - 2,
             this.y + 1.3 * this.size * Math.sin(this.angle) + 4 * Math.random() - 2,
             bulletSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
@@ -388,21 +427,22 @@ Ship.prototype.fireGun          = function(){
             this
         ));
     }
+    return this; // chainable
 };
 Ship.prototype.fireMissile      = function(side){
     var missile = new Missile(
         this.x + 1.4 * side * this.size * Math.sin(this.angle),
-        this.y - 1.4 * side * this.size * Math.cos(this.angle)
+        this.y - 1.4 * side * this.size * Math.cos(this.angle),
+        this
     );
-    missile.parent = this;
-    missile.team = this.team;
-    missile.target = spaceShips[0];
+    missile.target = gameObjects[0];
     missile.orientate(side/10);
     missile.getTarget();
     missile.target.enemyLock = true;
-    spaceShips.push(missile);
+    gameObjects.push(missile);
+    return this; // chainable
 };
-Ship.prototype.getPilotCommand     = function(){
+Ship.prototype.getPilotCommand  = function(){
     // This restricts input to the iteration frame rate
     var playerKeys  = {
         left  : [null,113-32,37],   // Arrow      q
@@ -421,11 +461,13 @@ Ship.prototype.getPilotCommand     = function(){
         this.fireMissile(1);
         this.fireMissile(-1);
     }
+    return this; // chainable
 };
 Ship.prototype.stabilise        = function() {
     this.vx     *= 0.99;
     this.vy     *= 0.99;
     this.spin   *= 0.99;
+    return this; // chainable
 };
 
 var Baddy                       = function(x,y){
@@ -434,33 +476,34 @@ var Baddy                       = function(x,y){
     this.image      = bombBaddy;
     this.offSet     = bombBaddy.drawingOffsetAngle;
     this.gameClass      = 'baddy';
-    this.angle          = 3*Math.PI/2;
+    this.team           = 3;
+    this.angle          = 3 * Math.PI/2;
     this.fireRate       = 3;
-    this.size           *= .7;
+    this.size           *= 0.7;
     this.calcMass();
-    this.thrust     /= 4;
+    this.thrust         *= 0.25;
     // this.sideThrust = 25;
 };
 Baddy.prototype                 = new Ship();
-Baddy.prototype.getTarget           = function(){
-    if (spaceShips.length === 1) {
+Baddy.prototype.getTarget       = function(){
+    if (gameObjects.length === 1) {
         this.target = this;
         return;
     }
     // Hacky! Limited to 2 players
-    this.target = (spaceShips[0] === this || spaceShips[0] === this.parent) ? spaceShips [1] : spaceShips[0];
+    this.target = (gameObjects[0] === this || gameObjects[0] === this.parent) ? gameObjects [1] : gameObjects[0];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     this.seperationSqrd = interaction.seperationSqrd;
-    this.target = (spaceShips[1] === this || spaceShips[1] === this.parent) ? spaceShips [0] : spaceShips[1];
+    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [0] : gameObjects[1];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     if (interaction.seperationSqrd > this.seperationSqrd) {
-        this.target = spaceShips[0];
+        this.target = gameObjects[0];
     }
-    // --
+    return this; // chainable
 };
-Baddy.prototype.resolveTarget           = function(){
+Baddy.prototype.resolveTarget   = function(){
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     interaction.resolve(this, this.target);
@@ -474,8 +517,9 @@ Baddy.prototype.resolveTarget           = function(){
     }
     this.angleToTarget = interaction.angle - this.angle;
     this.angleToTarget = (Math.PI * 2 + this.angleToTarget) % (Math.PI * 2);
+    return this; // chainable
 };
-Baddy.prototype.getPilotCommand    = function(){
+Baddy.prototype.getPilotCommand = function(){
     this.getTarget();
     this.resolveTarget();
     if      (this.angleToTarget <= Math.PI - 0.1){this.spinThrusters( 1);}
@@ -486,54 +530,63 @@ Baddy.prototype.getPilotCommand    = function(){
     } else {
         this.fireGun();
     }
+    return this; // chainable
 };
-Baddy.prototype.fireLongRange = function(){
+Baddy.prototype.fireLongRange   = function(){
     // this.fireGun();
+    return this; // chainable
 };
 
-var Missile                   = function(x,y){
-    this.base   = Baddy;
+var Missile                     = function(x, y, parent){
+    this.base = Baddy;
     this.base(x,y);
     this.gameClass      = 'missile';
-    this.damagePts      = 500;
+    this.parent         = parent;
+    this.team           = parent.team;
     this.showEnergyBar  = false;
-    this.size           /= 2;
-    this.sideThrust     /= 3;
-    this.thrust         *=2;
+
+    this.damagePts      = 500;
+    this.size           = parent.size / 3;
+    this.sideThrust     *= 0.3;
+    this.thrust         *= 2;
     this.thrustRate     = 6;
     this.density        *= 4;
     this.calcMass();
 };
 Missile.prototype                   = new Baddy;
-Missile.prototype.getPilotCommand    = function(){
+Missile.prototype.getPilotCommand   = function(){
     if (!this.target) {
         this.energy = 0;
         return;
     }
-    interaction.near(this, this.parent);
-    interaction.touching(this, this.parent);
-    interaction.resolve(this, this.parent);
+    interaction.near(       this, this.parent);
+    interaction.touching(   this, this.parent);
+    interaction.resolve(    this, this.parent);
     if (interaction.seperation > (this.parent.size * 2)){
-        this.mainThrusters();
-        this.resolveTarget();
+        this.resolveTarget().mainThrusters();
         if      (this.angleToTarget <= Math.PI - 0.1){this.spinThrusters( 1);}
         else if (this.angleToTarget >= Math.PI + 0.1){this.spinThrusters(-1);}
     }
+    return this; // chainable
 };
-Missile.prototype.orientate = function(side){
+Missile.prototype.orientate         = function(side){
     this.angle = this.parent.angle;
     this.vx = this.parent.vx + side * Math.sin(this.parent.angle);
     this.vy = this.parent.vy - side * Math.cos(this.parent.angle);
+    return this; // chainable
 };
-Missile.prototype.stabilise = function(){};
-Missile.prototype.draw      = function(){
+Missile.prototype.stabilise         = function(){
+    return this; // chainable
+};
+Missile.prototype.draw              = function(){
     Graphic.prototype.draw.call(this);
     ctx.strokeStyle = 'yellow';
     ctx.rect(this.target.x - this.target.size, h-this.target.y-this.target.size, 2 * this.target.size, 2 * this.target.size);
     ctx.stroke();
+    return this; // chainable
 };
 
-var BossBaddy                   = function(x,y){
+var BossBaddy                       = function(x,y){
     this.base   = Baddy;
     this.base(x,y);
     this.image      = bossBaddy;
@@ -550,28 +603,30 @@ var BossBaddy                   = function(x,y){
                 parentBaddy.y - 1.2 * parentBaddy.size * Math.sin(parentBaddy.angle) + 4 * Math.random() - 2
                 );
             childBaddy.parent = parentBaddy;
-            childBaddy.player = parentBaddy.player;
-            spaceShips.push(childBaddy);
+            childBaddy.size = parentBaddy.size / 2;
+            gameObjects.push(childBaddy);
         }, (parentBaddy.player === 2) ? 5000 : 5000);
     };
 };
-BossBaddy.prototype             = new Baddy;
-BossBaddy.prototype.fireLongRange  = function(){
+BossBaddy.prototype                 = new Baddy;
+BossBaddy.prototype.fireLongRange   = function(){
     if (this.longRangeGunHot === true) return;
     this.longRangeGunHot = true;
     var bulletSpeed = 0.5;
-    particles.push(new Fireball(
-        this.x + 1.3 * this.size * Math.cos(this.angle) + 4 * Math.random() - 2,
-        this.y + 1.3 * this.size * Math.sin(this.angle) + 4 * Math.random() - 2,
-        bulletSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
-        bulletSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
+    gameObjects.push(new Fireball(
+        this.x + 1.4 * this.size * Math.cos(this.angle),
+        this.y + 1.4 * this.size * Math.sin(this.angle),
+        bulletSpeed * Math.cos(this.angle),
+        bulletSpeed * Math.sin(this.angle),
         this
     ));
+    return this; // chainable
 };
 
-var GhostBaddy                   = function(x,y){
+var GhostBaddy                  = function(x,y){
     this.base   = Baddy;
     this.base(x,y);
+    this.ephemeral  = true;
     this.showEnergyBar  = false;
     this.image      = bossBaddy;
     this.offSet     = bossBaddy.drawingOffsetAngle;
@@ -579,22 +634,22 @@ var GhostBaddy                   = function(x,y){
     this.size       = 70;
     this.calcMass();
 };
-GhostBaddy.prototype             = new Baddy;
-GhostBaddy.prototype.collide = function(){};
-GhostBaddy.prototype.draw  = function(){
+GhostBaddy.prototype            = new Baddy;
+GhostBaddy.prototype.draw       = function(){
     ctx.save();
     ctx.translate(this.x, h-this.y);
     ctx.rotate(this.offSet - this.angle);
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = 1 - this.ephemeral;
     ctx.drawImage(this.image, -this.size, -this.size, 2 * this.size, 2 * this.size);
     ctx.restore();
+    return this; // chainable
 };
-GhostBaddy.prototype.mainThrusters    = function(angle){
+GhostBaddy.prototype.mainThrusters      = function(angle){
     var thrustSpeed = 0.2;
     var thrustMass  = 3;
     this.vx += (this.thrust / this.mass) * Math.cos(angle);
     this.vy += (this.thrust / this.mass) * Math.sin(angle);
-    particles.push(new Thrust(
+    gameObjects.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(angle) + Math.random() - 0.5,
         -thrustSpeed * Math.cos(angle + 0.1 * Math.random() - 0.05),
@@ -602,6 +657,7 @@ GhostBaddy.prototype.mainThrusters    = function(angle){
         thrustMass,
         this
     ));
+    return this; // chainable
 };
 GhostBaddy.prototype.getPilotCommand    = function(){
     this.getTarget();
@@ -610,59 +666,12 @@ GhostBaddy.prototype.getPilotCommand    = function(){
     if (interaction.y < 0) this.mainThrusters(Math.PI * 1.5);
     if (interaction.x < 0) this.mainThrusters(Math.PI * 1);
     if (interaction.x > 0) this.mainThrusters(0);
-    if (interaction.seperation < this.size) this.target.energy -= 50 / this.target.mass;
-};
-
-
-// -- Elasticon is a subset of Particle. And can stretch() [stronger / different attraction]
-var Elasticon               = function(x, y, size){
-    this.base = Particle;
-    this.base(x, y, 0, 0, size);
-    this.restitution = 0;
-    this.friction = 20;
-    this.attached = false;
-    this.calcColour = function(){
-        this.red    = Math.round(this.speed() * 30) + 100;
-        this.green  = 100;
-        this.blue   = 100;
+    if (interaction.seperation < this.size) {
+        this.size += 0.3; this.calcMass();
+        this.target.size -= 0.3; this.target.calcMass();
     }
-    this.gameClass = 'elasticon';
-}
-Elasticon.prototype         = new Particle();
-Elasticon.prototype.stretch = function(that) {
-
-    if (!interaction.resolved) {
-        interaction.touching(this, that);
-        interaction.resolve(this, that);
-    }
-
-    if (interaction.seperation > snapThreshhold) return;
-
-    interaction.massProduct = this.mass * that.mass;
-    interaction.massSum     = this.mass + that.mass;
-    // F = m1m2*r/(m1+m2) = ~~ mr/2
-    var force = interaction.massProduct * (interaction.seperation - interaction.size) / (interaction.massSum);
-
-
-    // We could make this more computationally efficient as x and / by mass several times.
-    this.vx +=  force * interaction.vector.x / this.mass;
-    this.vy +=  force * interaction.vector.y / this.mass;
-    that.vx += -force * interaction.vector.x / that.mass;
-    that.vy += -force * interaction.vector.y / that.mass;
-    // this.spin += 0;
-    // that.spin += 0;
+    return this; // chainable
 };
-// -- Attachment is a fixed Ghost of a Elasticon. Targets only ONE Elasticon.
-var Attachement             = function(x, y, magnet_number, attachment_number){
-    this.size = 5;
-    this.base = Elasticon;
-    this.base(x, y, this.size);
-    elasticons[magnet_number].attached = attachment_number;
-    this.restitution = 0;
-    this.friction = 100;
-};
-Attachement.prototype       = new Elasticon();
-// --
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
 var Interaction                 = function(){
@@ -684,7 +693,7 @@ Interaction.prototype.resolve   = function(P1, P2){
 
     this.seperation = Math.sqrt(this.seperationSqrd);
 
-    // Hard coded stability!!!
+    // Hard coded stability!!! Only 2 1/2px gameObjects colliding could have a sep < 1
     this.seperation = Math.max(this.seperation, 1);
     //
 

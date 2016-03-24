@@ -8,7 +8,6 @@ Collaborating on a space game with Finn (my 6 year old son) to steer his enthusi
 
 2) BITMAP characters
 
-
 --> 6) Quadrant for collissions
 
 7) PID / Ghost baddy
@@ -18,3 +17,9 @@ Collaborating on a space game with Finn (my 6 year old son) to steer his enthusi
 10) Obsticle avoidance
 
 5) Sounds
+
+Prevent double counting calcs
+
+
+Differentials
+ - impulse

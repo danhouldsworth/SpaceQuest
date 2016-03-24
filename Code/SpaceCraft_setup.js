@@ -9,16 +9,11 @@ var gameArea    = document.createElement('canvas'),
     starfield   = document.createElement('canvas'),
     ctxStars    = starfield.getContext('2d'),
 
-    particles       = [],
-    elasticons      = [],
-    attachments     = [],
-    spaceShips      = [],
+    gameObjects     = [],
 
     stars           = [],
 
     keyState        = {},
-    timerAnimate,
-    baddySpawn,
 
     lastTime = {
         iteratePhysics      : Date.now(),
@@ -34,10 +29,7 @@ var gameArea    = document.createElement('canvas'),
     GlobalParams = {
         gravity         : -0.001,
         boundary_flag   : -1,
-        speedCap        : 5,
-        snapThreshhold  : 25,
-        explosionActive : false,
-        scores          : {1 : 0, 2 : 0}
+        scores          : {1 : 0, 2 : 0, 3 : 0}
     };
 
 // --
@@ -56,22 +48,11 @@ function initGameArea(){
     window.addEventListener('keyup',    function(e){keyState[e.keyCode] = false;});
     starfield.style.zIndex = 1;
     gameArea.style.zIndex = 2;
-    for (var count = 0, star; count < 500; count++){
-        star = new Bomb( Math.random() * w, Math.random() * h, Math.random(), 0, Math.random() * 5);
-        star.draw = function(){
-            ctxStars.beginPath();
-            ctxStars.arc(this.x,h-this.y,this.size, 0, 2 * Math.PI, false);
-            ctxStars.fillStyle = "rgb("+Math.round(this.size*40)+","+Math.round(this.size*40)+","+Math.round(this.size*40)+")";
-            ctxStars.fill();
-        }
-        star.gravity = 0;
-        star.boundary_flag = 1;
-        stars.push(star);
-    }
+    for (var count = 0, star; count < 500; count++) stars.push(new Star);
 }
 // -- On screen display functions
 function gameDisplayText(text, x, y){
-    ctxStars.font = Math.floor(w / 20) + "px 'LatoLatin-Light'";
+    ctxStars.font = Math.floor(h / 20) + "px 'LatoLatin-Light'";
     // Create gradient
     var gradient = ctxStars.createLinearGradient(0, 0, gameArea.width, 0);
     gradient.addColorStop("0", "magenta");
@@ -88,38 +69,3 @@ function draw_ball(x, y, size, r, g, b){
     ctx.fillStyle = colourstring;
     ctx.fill();
 }
-
-// --
-// http://www.html5tutorial.info/html5-audio.php
-// http://www.html5rocks.com/en/tutorials/webaudio/games/
-// var mgun = new MachineGun(new AudioContext());
-
-// function MachineGun(context) {
-//   var ctx = this;
-//   function onLoaded(buffers) {ctx.buffers = buffers;};
-//   var loader = new BufferLoader(context, ['sounds/m1-garand.mp3'], onLoaded);
-//   loader.load();
-//   context.decodeAudioData()
-// }
-
-// MachineGun.prototype.shootRound = function(rounds, interval) {
-//   var time = context.currentTime;
-//   // Make multiple sources using the same buffer and play in quick succession.
-//   for (var i = 0; i < rounds; i++) {
-//     var source = this.makeSource(this.buffers[0]);
-//     source.playbackRate.value = 1 + Math.random();
-//     source.start(time + i * interval);
-//   }
-// }
-
-// MachineGun.prototype.makeSource = function(buffer) {
-//   var source        = context.createBufferSource();
-//   var compressor    = context.createDynamicsCompressor();
-//   var gain          = context.createGain();
-//   gain.gain.value   = 0.2;
-//   source.buffer     = buffer;
-//   source.connect(gain);
-//   gain.connect(compressor);
-//   compressor.connect(context.destination);
-//   return source;
-// };
