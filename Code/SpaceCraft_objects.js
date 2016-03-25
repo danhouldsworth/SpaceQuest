@@ -335,6 +335,10 @@ Fireball.prototype.explode = function(){
     Graphic.prototype.explode.call(this);
     this.parent.longRangeGunHot = false;
 };
+Fireball.prototype.stabilise = function(){
+    return this;
+};
+
 
 var Ship                        = function(x,y,version){
     this.base = Graphic;

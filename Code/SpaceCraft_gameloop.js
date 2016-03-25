@@ -39,8 +39,8 @@ function animate(){
 
     for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animate);
 
-    window.requestAnimationFrame(animate);
-    // setTimeout(animate,20);
+    // window.requestAnimationFrame(animate);
+    setTimeout(animate,20);
 }
 
 function updateScoreStars(){
