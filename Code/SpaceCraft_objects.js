@@ -472,7 +472,7 @@ Ship.prototype.getPilotCommand  = function(deltaT){
 Ship.prototype.stabilise        = function() {
     this.vx     *= 0.99;
     this.vy     *= 0.99;
-    this.spin   *= 0.99;
+    this.spin   *= 0.98;
     return this; // chainable
 };
 

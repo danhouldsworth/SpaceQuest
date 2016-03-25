@@ -57,7 +57,7 @@ function initGameArea(){
     window.addEventListener('keyup',    function(e){keyState[e.keyCode] = false;});
     starfield.style.zIndex = 1;
     gameArea.style.zIndex = 2;
-    for (var count = 0, star; count < 500; count++) stars.push(new Star);
+    for (var count = 0, star; count < w; count++) stars.push(new Star);
 }
 // -- On screen display functions
 function gameDisplayText(text, x, y){
