@@ -1,5 +1,14 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
+var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/Asteroid.png";
+var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";
+var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
+var chaseBaddy  = new Image(); chaseBaddy.src= "../FinnsArtwork/ChaseBaddy_cutout.png";
+var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png"; bossBaddy.drawingOffsetAngle = 0;
+var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = Math.PI;
+var spaceShip   = [];
+spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
+spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
 
 // -- Globals
 var gameArea    = document.createElement('canvas'),

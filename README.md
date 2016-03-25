@@ -3,23 +3,20 @@ Collaborating on a space game with Finn (my 6 year old son) to steer his enthusi
 
 # TODO
 
-1) Move to SI units
-	Including change of momentum for thrust etc
+0) BITMAP characters
+	i) Block per 101
 
-2) BITMAP characters
+1) PID
+	*) Proportional action
+	i) 	GhostBaddy
+	ii) Missiles
 
---> 6) Quadrant for collissions
+2) Trajectory
+	i) 	Plot
+	ii)	Anticipate others velocities / and current accels
+	iii)Base projectile fire on anticipated location
+	iv) Obstical avoidance
 
-7) PID / Ghost baddy
-
-8) Trajectory draw
-9) State space
-10) Obsticle avoidance
-
-5) Sounds
-
-Prevent double counting calcs
+3) State space
 
 
-Differentials
- - impulse

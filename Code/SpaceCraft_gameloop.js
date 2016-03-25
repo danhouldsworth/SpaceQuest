@@ -10,19 +10,19 @@ function timeStep(timer){
 }
 
 function iteratePhysics(){
-
     timeStep("iteratePhysics");
     var i,j;
 
     for (let p1 of gameObjects){
-
-        for (let p2 of gameObjects) if (p1.collide(p2) && p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) GlobalParams.scores[p2.team] += p2.damagePts;
+        for (let p2 of gameObjects) if (p1.collide(p2) && p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) {
+            GlobalParams.scores[p2.team] += p2.damagePts;
+        }
 
         switch (p1.gameClass){
             case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            case 'thrust'   :   p1.size -= deltaT.iteratePhysics/200;       break;
-            case 'bomb'     :   p1.size -= deltaT.iteratePhysics/200;       break;
-            case 'bullet'   :   p1.size -= deltaT.iteratePhysics/200;       break;
+            case 'thrust'   :   p1.size -= deltaT.iteratePhysics/100;       break;
+            case 'bomb'     :   p1.size -= deltaT.iteratePhysics/100;       break;
+            case 'bullet'   :   p1.size -= deltaT.iteratePhysics/100;       break;
         }
 
         if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}
@@ -34,14 +34,13 @@ function iteratePhysics(){
 }
 
 function animate(){
-
     timeStep('animate');
     gameArea.width = gameArea.width;
 
-    for (var gameObject of gameObjects) gameObject.draw().getPilotCommand();
+    for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animate);
 
-    setTimeout(animate, 20);
-    // window.requestAnimationFrame(animate);
+    window.requestAnimationFrame(animate);
+    // setTimeout(animate,20);
 }
 
 function updateScoreStars(){
