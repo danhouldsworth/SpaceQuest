@@ -13,8 +13,8 @@ function iteratePhysics(){
     timeStep("iteratePhysics");
     var i,j;
 
-    for (let p1 of gameObjects){
-        for (let p2 of gameObjects) if (p1.collide(p2) && p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) {
+    for (var p1 of gameObjects){
+        for (var p2 of gameObjects) if (p1.collide(p2) && p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) {
             GlobalParams.scores[p2.team] += p2.damagePts;
         }
 
