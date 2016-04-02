@@ -14,15 +14,25 @@ function iteratePhysics(){
     var i,j;
 
     for (var p1 of gameObjects){
-        for (var p2 of gameObjects) if (p1.collide(p2) && p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) {
-            GlobalParams.scores[p2.team] += p2.damagePts;
+
+        if (p1.inFreeSpace) {
+            p1.inFreeSpace--;
+        } else {
+            p1.inFreeSpace = true;
+            for (var p2 of gameObjects) {
+                if (p1.collide(p2)){
+                    p1.inFreeSpace = false;
+                    if (p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) GlobalParams.scores[p2.team] += p2.damagePts;
+                }
+            }
+            if (p1.inFreeSpace) p1.inFreeSpace = 10;
         }
 
         switch (p1.gameClass){
             case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            case 'thrust'   :   p1.size -= deltaT.iteratePhysics/100;       break;
-            case 'bomb'     :   p1.size -= deltaT.iteratePhysics/100;       break;
-            case 'bullet'   :   p1.size -= deltaT.iteratePhysics/100;       break;
+            case 'thrust'   :   p1.size -= deltaT.iteratePhysics/500;       break;
+            case 'bomb'     :   p1.size -= deltaT.iteratePhysics/500;       break;
+            case 'bullet'   :   p1.size -= deltaT.iteratePhysics/500;       break;
         }
 
         if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}

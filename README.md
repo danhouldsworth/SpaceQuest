@@ -20,3 +20,11 @@ Collaborating on a space game with Finn (my 6 year old son) to steer his enthusi
 3) State space
 
 
+
+Text bursts over character
+Skip iterations (for 5) if not hit last turn
+
+
+
+
+
