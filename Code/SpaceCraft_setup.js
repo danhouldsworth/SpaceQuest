@@ -10,7 +10,7 @@ var spaceShip   = [];
 spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
 spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
 
-// -- Globals
+// -- GlobalParams
 var gameArea    = document.createElement('canvas'),
     ctx         = gameArea.getContext('2d'),
     w           = gameArea.width,
@@ -18,6 +18,7 @@ var gameArea    = document.createElement('canvas'),
     starfield   = document.createElement('canvas'),
     ctxStars    = starfield.getContext('2d'),
 
+    textsInAction = [],
     gameObjects     = [],
 
     stars           = [],
@@ -57,7 +58,7 @@ function initGameArea(){
     window.addEventListener('keyup',    function(e){keyState[e.keyCode] = false;});
     starfield.style.zIndex = 1;
     gameArea.style.zIndex = 2;
-    for (var count = 0, star; count < w; count++) stars.push(new Star);
+    for (var count = 0, star; count < 300; count++) stars.push(new Star);
 }
 // -- On screen display functions
 function gameDisplayText(text, x, y){
@@ -70,6 +71,34 @@ function gameDisplayText(text, x, y){
     // Fill with gradient
     ctxStars.fillStyle = gradient;
     ctxStars.fillText(text, gameArea.width * x, gameArea.height * y);
+}
+function experimentText(text, x, y){
+    textsInAction.push({
+        text : text,
+        x : x,
+        y:y,
+        counter: 1
+    });
+}
+function updateExperimentText(){
+    // Create gradient
+    var gradient = ctxStars.createLinearGradient(0, 0, gameArea.width, 0);
+    gradient.addColorStop("0", "magenta");
+    gradient.addColorStop("0.5", "blue");
+    gradient.addColorStop("1.0", "red");
+    // Fill with gradient
+    ctxStars.fillStyle = gradient;
+
+    for (var i = textsInAction.length - 1; i >= 0; i--) {
+        textsInAction[i]
+        ctxStars.font = (textsInAction[i].counter + 20) + "px 'LatoLatin-Light'";
+        ctxStars.fillText(text, x, y);
+        if (textsInAction[i].counter < 100) {
+            textsInAction[i].counter += 2;
+        } else {
+            textsInAction.splice(i,1);
+        }
+    }
 }
 function draw_ball(x, y, size, r, g, b){
     var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");

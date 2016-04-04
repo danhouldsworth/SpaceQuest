@@ -334,6 +334,7 @@ Fireball.prototype      = new Graphic();
 Fireball.prototype.explode = function(){
     Graphic.prototype.explode.call(this);
     this.parent.longRangeGunHot = false;
+    // experimentText("Cannon", this.x, this.y);
 };
 Fireball.prototype.stabilise = function(){
     return this;
@@ -426,7 +427,7 @@ Ship.prototype.fireMissile      = function(side){
         this.y - 1.4 * side * this.size * Math.cos(this.angle),
         this
     );
-    missile.target = gameObjects[0];
+    missile.target = gameObjects[2];
     missile.orientate(side/10);
     missile.getTarget();
     missile.target.enemyLock = true;
@@ -497,15 +498,15 @@ Baddy.prototype.getTarget       = function(){
         return;
     }
     // Hacky! Limited to 2 players
-    this.target = (gameObjects[0] === this || gameObjects[0] === this.parent) ? gameObjects [1] : gameObjects[0];
+    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [2] : gameObjects[1];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     this.seperationSqrd = interaction.seperationSqrd;
-    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [0] : gameObjects[1];
+    this.target = (gameObjects[2] === this || gameObjects[2] === this.parent) ? gameObjects [1] : gameObjects[2];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     if (interaction.seperationSqrd > this.seperationSqrd) {
-        this.target = gameObjects[0];
+        this.target = gameObjects[1];
     }
     return this; // chainable
 };

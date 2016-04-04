@@ -12,6 +12,7 @@ function timeStep(timer){
 function iteratePhysics(){
     timeStep("iteratePhysics");
     var i,j;
+    var evaporationRate = 1 - deltaT.iteratePhysics * deltaT.iteratePhysics / 500;
 
     for (var p1 of gameObjects){
 
@@ -29,10 +30,10 @@ function iteratePhysics(){
         }
 
         switch (p1.gameClass){
-            case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            case 'thrust'   :   p1.size -= deltaT.iteratePhysics/500;       break;
-            case 'bomb'     :   p1.size -= deltaT.iteratePhysics/500;       break;
-            case 'bullet'   :   p1.size -= deltaT.iteratePhysics/500;       break;
+            case 'ship'     :   p1.energy = Math.min(p1.energy + 0.01, 1); break;
+            case 'thrust'   :   p1.size *= evaporationRate;                 break;
+            case 'bomb'     :   p1.size *= evaporationRate;                 break;
+            case 'bullet'   :   p1.size *= evaporationRate;                 break;
         }
 
         if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}
@@ -49,8 +50,8 @@ function animate(){
 
     for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animate);
 
-    // window.requestAnimationFrame(animate);
-    setTimeout(animate,20);
+    window.requestAnimationFrame(animate);
+    // setTimeout(animate,20);
 }
 
 function updateScoreStars(){
@@ -68,7 +69,7 @@ function updateScoreStars(){
     gameDisplayText("FPS : "    + Math.round(GlobalParams.FPS), .15, .95);
     gameDisplayText("Objects : "+ gameObjects.length, .45, .95);
     gameDisplayText("CPF : "    + Math.round(GlobalParams.CPF), .75, .95);
-
+    // updateExperimentText();
     setTimeout(updateScoreStars,30);
 }
 
