@@ -30,9 +30,9 @@ Primitive.prototype.update   = function(deltaT){
 };
 Primitive.prototype.stabilise= function() {
     // while (this.speed( > GlobalParams.speedCap){
-        this.vx     *= 0.995;
-        this.vy     *= 0.995;
-        this.spin   *= 0.995;
+        this.vx     *= 0.99;
+        this.vy     *= 0.99;
+        this.spin   *= 0.99;
     // }
     return this; // chainable
 };
@@ -145,6 +145,13 @@ Particle.prototype.collide      = function(that){
             case 'fireball' :
             case 'missile'  : if (this instanceof Graphic)     {this.energy -= that.damagePts / this.mass; that.explode();} break;
             case 'wall'     : if (this.gameClass === 'missile' || this.gameClass === 'fireball') {this.explode();}          break;
+        }
+        switch (this.gameClass){
+            case 'bullet'   : if (that.gameClass !== 'bullet') {that.energy -= this.damagePts / that.mass;}                 break;
+            case 'bomb'     : if (that.gameClass !== 'bomb')   {that.energy -= this.damagePts / that.mass;}                 break;
+            case 'fireball' :
+            case 'missile'  : if (that instanceof Graphic)     {that.energy -= this.damagePts / that.mass; this.explode();} break;
+            case 'wall'     : if (that.gameClass === 'missile' || that.gameClass === 'fireball') {that.explode();}          break;
         }
 
         return true;
@@ -265,7 +272,7 @@ var Bomb                = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'bomb';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = 5;
+    this.damagePts      = 15;
     this.restitution    = 0;
     this.friction       = 100;
     this.calcColour = function(){
@@ -275,6 +282,23 @@ var Bomb                = function(x, y, vx, vy, size, parent){
     };
 };
 Bomb.prototype          = new Particle();
+Bomb.prototype.stabilise = function(){
+    if (Math.random() < (this.size*this.size/100000) ){
+        var numberOfBombs   = 0    + (this.speed() * 5 + this.size * this.density);
+        var bombSpeed       = 0.5   + (this.speed() * 0.5);
+        for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
+            gameObjects.push(new Bomb(
+                this.x + this.size * Math.random() * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
+                this.y + this.size * Math.random() * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
+                bombSpeed * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
+                bombSpeed * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
+                Math.random() * this.size,
+                this
+            ));
+        }
+    }
+    return this;
+}
 // --
 
 // -- Like a particle but drawn with an image
@@ -294,7 +318,7 @@ Graphic.prototype.draw  = function(){
 };
 Graphic.prototype.explode = function(){
     Particle.prototype.explode.call(this);
-    var numberOfBombs   = 10    + (this.speed() * 5 + this.mass) / 30;
+    var numberOfBombs   = 10    + (this.speed() * 5 + this.size * this.density);
     var bombSpeed       = 0.1   + (this.speed() * 0.5);
     for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
         gameObjects.push(new Bomb(
@@ -302,7 +326,7 @@ Graphic.prototype.explode = function(){
             this.y + this.size * Math.random() * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
             bombSpeed * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
             bombSpeed * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
-            Math.random() * 4 + 1,
+            Math.random() * this.size + 1,
             this
         ));
     }
@@ -333,7 +357,7 @@ var Fireball            = function(x, y, vx, vy, parent){
 Fireball.prototype      = new Graphic();
 Fireball.prototype.explode = function(){
     Graphic.prototype.explode.call(this);
-    this.parent.longRangeGunHot = false;
+    // this.parent.longRangeGunHot = false;
     // experimentText("Cannon", this.x, this.y);
 };
 Fireball.prototype.stabilise = function(){
@@ -352,9 +376,9 @@ var Ship                        = function(x,y,version){
     this.team           = version;
     this.restitution    = 0;
     this.friction       = 0;
-    this.thrust         = 3;
+    this.thrust         = 5;
     this.thrustRate     = 1;
-    this.sideThrust     = 2;
+    this.sideThrust     = 4;
     this.fireRate       = 10;
 };
 Ship.prototype                  = new Graphic();
@@ -430,6 +454,7 @@ Ship.prototype.fireMissile      = function(side){
     missile.target = gameObjects[2];
     missile.orientate(side/10);
     missile.getTarget();
+    // missile.target = gameObjects[gameObjects.length-1];
     missile.target.enemyLock = true;
     gameObjects.push(missile);
     return this; // chainable
@@ -437,12 +462,13 @@ Ship.prototype.fireMissile      = function(side){
 Ship.prototype.fireCanonBall   = function(){
     if (this.longRangeGunHot === true) return;
     this.longRangeGunHot = true;
+    this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, 1000);})(this);
     var bulletSpeed = 0.5;
     gameObjects.push(new Fireball(
-        this.x + 1.4 * this.size * Math.cos(this.angle),
-        this.y + 1.4 * this.size * Math.sin(this.angle),
-        bulletSpeed * Math.cos(this.angle),
-        bulletSpeed * Math.sin(this.angle),
+        this.x + 1.5 * this.size * Math.cos(this.angle),
+        this.y + 1.5 * this.size * Math.sin(this.angle),
+        this.vx + bulletSpeed * Math.cos(this.angle),
+        this.vy + bulletSpeed * Math.sin(this.angle),
         this
     ));
     return this; // chainable
@@ -454,14 +480,17 @@ Ship.prototype.getPilotCommand  = function(deltaT){
         right   : [null,87,39],   //       w    Arrow
         thrust  : [null,69,38],   //       e    Arrow
         fire    : [null,83,32],   //       s    space
-        missile : [null,82,0 ],   //       r
-        cannon  : [null,0, 40]    //            Down Arrow
+        missile : [null,null,40 ],   //       r
+        cannon  : [null,82, null]    //            Down Arrow
     };
     if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
     if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}
     if (keyState[playerKeys.thrust[ this.player]])      {this.mainThrusters(deltaT);}
     if (keyState[playerKeys.fire[   this.player]])      {this.fireGun();}
-    if (keyState[playerKeys.cannon[ this.player]])      {this.fireCanonBall();}
+    if (keyState[playerKeys.cannon[ this.player]])      {
+        // this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
+        this.fireCanonBall();
+    }
     if (keyState[playerKeys.missile[this.player]] && !this.missleLaunchersHot) {
         this.missleLaunchersHot = true;
         this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
@@ -471,9 +500,9 @@ Ship.prototype.getPilotCommand  = function(deltaT){
     return this; // chainable
 };
 Ship.prototype.stabilise        = function() {
-    this.vx     *= 0.99;
-    this.vy     *= 0.99;
-    this.spin   *= 0.98;
+    this.vx     *= 0.999;
+    this.vy     *= 0.999;
+    this.spin   *= 0.99;
     return this; // chainable
 };
 
@@ -498,11 +527,11 @@ Baddy.prototype.getTarget       = function(){
         return;
     }
     // Hacky! Limited to 2 players
-    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [2] : gameObjects[1];
+    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [0] : gameObjects[1];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     this.seperationSqrd = interaction.seperationSqrd;
-    this.target = (gameObjects[2] === this || gameObjects[2] === this.parent) ? gameObjects [1] : gameObjects[2];
+    this.target = (gameObjects[0] === this || gameObjects[0] === this.parent) ? gameObjects [1] : gameObjects[0];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     if (interaction.seperationSqrd > this.seperationSqrd) {
@@ -533,14 +562,13 @@ Baddy.prototype.getPilotCommand = function(deltaT){
     else if (this.angleToTarget >= Math.PI + 0.1){this.spinThrusters(deltaT, -1);}
     var engagementDistance = this.target.size + this.size * 5;
     if (interaction.seperation > engagementDistance){
-        if (Math.random() < interaction.seperation / (engagementDistance * 3)) {this.mainThrusters(deltaT);}
-        if ((interaction.seperation > this.size * 5) && ((this.angleToTarget < 0.1) || (this.angleToTarget > Math.PI * 2 - 0.1))) {this.fireCanonBall();}
+        if (Math.random() < 0.3 * (interaction.seperation / engagementDistance) ) {this.mainThrusters(deltaT);}
+        if ((this.angleToTarget < 0.1) || (this.angleToTarget > (Math.PI * 2 - 0.1))) {
+            this.fireCanonBall();
+        }
     } else {
         this.fireGun(deltaT);
     }
-    return this; // chainable
-};
-Baddy.prototype.fireCanonBall   = function(){
     return this; // chainable
 };
 
@@ -582,6 +610,9 @@ Missile.prototype.orientate         = function(side){
     this.vy = this.parent.vy - side * Math.cos(this.parent.angle);
     return this; // chainable
 };
+Missile.prototype.stabilise = function(){
+    return this;
+};
 
 var BossBaddy                       = function(x,y){
     this.base   = Baddy;
@@ -603,7 +634,7 @@ var BossBaddy                       = function(x,y){
             childBaddy.parent = parentBaddy;
             childBaddy.size = parentBaddy.size / 2;
             gameObjects.push(childBaddy);
-        }, 2000);
+        }, 5000);
     })(this);
 };
 BossBaddy.prototype                 = new Baddy;
