@@ -8,6 +8,8 @@ var Primitive                   = function(x, y, vx, vy, size, angle, spin){
     this.y      = y || 0;
     this.vx     = vx || 0;
     this.vy     = vy || 0;
+    this.ax     = 0;
+    this.ay     = 0;
     this.size   = size  || 0;
     this.angle  = angle || 0;
     this.spin   = spin  || 0;
@@ -18,7 +20,8 @@ Primitive.prototype.speed    = function (){
 };
 Primitive.prototype.update   = function(deltaT){
     // -- Modify speed due to gravity (& other field forces)
-    this.vy     += this.gravity * deltaT;
+    this.vx     += this.ax * deltaT;
+    this.vy     += (this.ay + this.gravity) * deltaT;
     // -- Update position based on speed
     this.x      = this.x + this.vx * deltaT;
     this.y      = this.y + this.vy * deltaT;
@@ -385,7 +388,6 @@ Ship.prototype                  = new Graphic();
 Ship.prototype.draw             = function(){
     Graphic.prototype.draw.call(this);
     if (this.showEnergyBar) {
-        var h = gameArea.height;
         ctx.fillStyle = "rgb(0,0,0)";
         ctx.fillRect(this.x - this.size - 1, h - this.y + this.size - 1, 2 * this.size + 2, 10);
         ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
@@ -418,8 +420,10 @@ Ship.prototype.spinThrusters    = function(deltaT, direction){
 Ship.prototype.mainThrusters    = function(deltaT){
     var thrustSpeed = 0.2;
     var thrustMass  = Math.max(this.size / 10 - 1,2);
-    this.vx += (deltaT * this.thrust / this.mass) * Math.cos(this.angle);
-    this.vy += (deltaT * this.thrust / this.mass) * Math.sin(this.angle);
+    // this.vx += (deltaT * this.thrust / this.mass) * Math.cos(this.angle);
+    // this.vy += (deltaT * this.thrust / this.mass) * Math.sin(this.angle);
+    this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
+    this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
     for(var i = 0;i < this.thrustRate; i++) {gameObjects.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
@@ -485,7 +489,7 @@ Ship.prototype.getPilotCommand  = function(deltaT){
     };
     if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
     if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}
-    if (keyState[playerKeys.thrust[ this.player]])      {this.mainThrusters(deltaT);}
+    if (keyState[playerKeys.thrust[ this.player]])      {this.mainThrusters(deltaT);} else {this.ax = this.ay = 0;}
     if (keyState[playerKeys.fire[   this.player]])      {this.fireGun();}
     if (keyState[playerKeys.cannon[ this.player]])      {
         // this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
@@ -613,6 +617,22 @@ Missile.prototype.orientate         = function(side){
 Missile.prototype.stabilise = function(){
     return this;
 };
+Missile.prototype.draw = function(){
+    Graphic.prototype.draw.call(this);
+    if (!this.ax || ! this.ay) return this;
+    var dT = 1000;
+    var grad = ctx.createLinearGradient(this.x, this.y, this.x + (this.vx + 0.5 * this.ax * dT) * dT, h - this.y - (this.vy + 0.5 * this.ay * dT) * dT);
+    grad.addColorStop(0, "red");
+    grad.addColorStop(1, "transparent");
+    ctx.beginPath();
+    ctx.moveTo(this.x, h - this.y);
+    ctx.strokeStyle = grad;
+    for (dT = 1; dT < 1000; dT = dT+50){
+        ctx.lineTo(this.x + (this.vx + 0.5 * this.ax * dT) * dT, h - this.y - (this.vy + 0.5 * this.ay * dT) * dT);
+    }
+    ctx.stroke();
+    return this;
+};
 
 var BossBaddy                       = function(x,y){
     this.base   = Baddy;
@@ -663,8 +683,10 @@ GhostBaddy.prototype.draw       = function(){
 GhostBaddy.prototype.mainThrusters      = function(deltaT, angle){
     var thrustSpeed = 0.2;
     var thrustMass  = 3;
-    this.vx += (this.thrust / this.mass) * Math.cos(angle);
-    this.vy += (this.thrust / this.mass) * Math.sin(angle);
+    // this.vx += (this.thrust / this.mass) * Math.cos(angle);
+    // this.vy += (this.thrust / this.mass) * Math.sin(angle);
+    this.ax = (this.thrust / this.mass) * Math.cos(angle);
+    this.ay = (this.thrust / this.mass) * Math.sin(angle);
     gameObjects.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(angle) + Math.random() - 0.5,
@@ -736,3 +758,4 @@ Wall.prototype.clear    = function() {
     this.spin       = 0;
 };
 // --
+//
