@@ -166,49 +166,49 @@ Particle.prototype.boundary     = function() {
         h = gameArea.height;
 
     if (this.boundary_flag === -1){
-        if (this.x < -2*w){
+        if (this.x < -4*w){
             wall.clear();
             wall.y      = this.y;
-            wall.x      = -2*w-wall.size;
+            wall.x      = -4*w-wall.size;
             this.collide(wall);
         }
-        if (this.x > 2*w){
+        if (this.x > 4*w){
             wall.clear();
             wall.y      = this.y;
-            wall.x      = 2*w + wall.size;
+            wall.x      = 4*w + wall.size;
             this.collide(wall);
         }
-        if (this.y < -2*h){
+        if (this.y < -4*h){
             wall.clear();
             wall.x = this.x;
-            wall.y = -2*h-wall.size;
+            wall.y = -4*h-wall.size;
             this.collide(wall);
         }
-        if (this.y > 2*h){
+        if (this.y > 4*h){
             wall.clear();
             wall.x      = this.x;
-            wall.y      = 2*h + wall.size;
+            wall.y      = 4*h + wall.size;
             this.collide(wall);
         }
 
     } else if (this.boundary_flag == 1){
-        while (this.x < -2*w){
-            this.x += 4*w;
+        while (this.x < -4*w){
+            this.x += 8*w;
         }
-        while (this.x > (2*w)){
-            this.x -= 4*w;
+        while (this.x > (4*w)){
+            this.x -= 8*w;
         }
-        while (this.y < -2*h){
-            this.y += 4*h;
+        while (this.y < -4*h){
+            this.y += 8*h;
         }
-        while (this.y > 2*h){
-            this.y -= 4*h;
+        while (this.y > 4*h){
+            this.y -= 8*h;
         }
     } else {
-        if (this.x < -2*w || this.x > 2*w){
+        if (this.x < -4*w || this.x > 4*w){
             this.vx = 0;
         }
-        if (this.y < -2*h || this.y > 2*h){
+        if (this.y < -4*h || this.y > 4*h){
             this.vy = 0;
         }
     }
@@ -226,9 +226,9 @@ Particle.prototype.getPilotCommand = function(deltaT){
     return this; // chainable
 };
 
-var Star = function(x, y, vx, vy, size){
+var Star = function(){
     this.base = Particle;
-    this.base( (Math.random()-0.5) * 4*w, (Math.random()-0.5) * 4*h, Math.random() / 5, 0, Math.random() * 5, 0);
+    this.base( (Math.random()-0.5) * 8*w, (Math.random()-0.5) * 8*h, Math.random() / 5, 0, Math.random() * 10, 0);
     this.gravity = 0;
     this.boundary_flag = 1;
 };
@@ -236,7 +236,7 @@ Star.prototype = new Particle();
 Star.prototype.draw = function(){
     ctxStars.beginPath();
     ctxStars.arc(this.x,this.y,this.size, 0, 2 * Math.PI, false);
-    ctxStars.fillStyle = "rgb("+Math.round(this.size*40)+","+Math.round(this.size*40)+","+Math.round(this.size*40)+")";
+    ctxStars.fillStyle = "rgb("+Math.round(this.size*20)+","+Math.round(this.size*20)+","+Math.round(this.size*20)+")";
     ctxStars.fill();
 };
 
@@ -470,7 +470,7 @@ Ship.prototype.fireMissile      = function(side){
     missile.target = gameObjects[2];
     missile.orientate(side/10);
     missile.getTarget();
-    missile.selfDestructTimer = setTimeout(function(){missile.explode();}, 3000);
+    // missile.selfDestructTimer = setTimeout(function(){missile.explode();}, 3000);
     missile.target.enemyLock = true;
     gameObjects.push(missile);
     return this; // chainable
@@ -478,11 +478,11 @@ Ship.prototype.fireMissile      = function(side){
 Ship.prototype.fireCanonBall   = function(){
     if (this.longRangeGunHot === true) return;
     this.longRangeGunHot = true;
-    this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, 1000);})(this);
-    var cannonBallSpeed = 0.5;
+    this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:1000));})(this);
+    var cannonBallSpeed = 1;
     var cannonBall = new Fireball(
-        this.x + 1.5 * this.size * Math.cos(this.angle),
-        this.y + 1.5 * this.size * Math.sin(this.angle),
+        this.x + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.cos(this.angle),
+        this.y + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.sin(this.angle),
         this.vx + cannonBallSpeed * Math.cos(this.angle),
         this.vy + cannonBallSpeed * Math.sin(this.angle),
         this
@@ -498,8 +498,8 @@ Ship.prototype.getPilotCommand  = function(deltaT){
         right   : [null,87,39],   //       w    Arrow
         thrust  : [null,69,38],   //       e    Arrow
         fire    : [null,83,32],   //       s    space
-        missile : [null,null,40 ],   //       r
-        cannon  : [null,82, null]    //            Down Arrow
+        missile : [null,82,40 ],   //       r
+        cannon  : [null,82, 40]    //            Down Arrow
     };
     if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
     if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}
@@ -545,11 +545,11 @@ Baddy.prototype.getTarget       = function(){
         return;
     }
     // Hacky! Limited to 2 players
-    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [0] : gameObjects[1];
+    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [2] : gameObjects[1];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     this.seperationSqrd = interaction.seperationSqrd;
-    this.target = (gameObjects[0] === this || gameObjects[0] === this.parent) ? gameObjects [1] : gameObjects[0];
+    this.target = (gameObjects[2] === this || gameObjects[2] === this.parent) ? gameObjects [1] : gameObjects[2];
     interaction.near(this, this.target);
     interaction.touching(this, this.target);
     if (interaction.seperationSqrd > this.seperationSqrd) {

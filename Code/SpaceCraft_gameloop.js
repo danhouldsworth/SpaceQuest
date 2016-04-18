@@ -103,7 +103,7 @@ function updateScoreStars(){
     // ctxStars.rotate(GlobalParams.theta);
     ctxStars.scale( GlobalParams.scale, GlobalParams.scale);
     ctxStars.translate(GlobalParams.centreX, GlobalParams.centreY);
-    ctxStars.rect(-2*w,-2*h,4*w,4*h);
+    ctxStars.rect(-4*w,-4*h,8*w,8*h);
     ctxStars.lineWidth=5;
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
