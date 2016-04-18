@@ -27,11 +27,12 @@ function iteratePhysics(){
                     if (p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) GlobalParams.scores[p2.team] += p2.damagePts;
                 }
             }
-            if (p1.inFreeSpace) p1.inFreeSpace = 10;
+            if (p1.inFreeSpace && !(p1 instanceof Graphic)) p1.inFreeSpace = 10;
         }
 
         switch (p1.gameClass){
             case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
+            case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'thrust'   :   p1.size *= evaporationRate;                 break;
             case 'bomb'     :   p1.size *= evaporationRate;                 break;
             case 'bullet'   :   p1.size *= evaporationRate;                 break;
@@ -48,8 +49,33 @@ function iteratePhysics(){
 function animate(){
     timeStep('animate');
     gameArea.width = gameArea.width;
+    // Get bearing between ships
+    interaction.near(gameObjects[0], gameObjects[1]);
+    interaction.touching(gameObjects[0], gameObjects[1]);
+    interaction.resolve(gameObjects[0], gameObjects[1]);
+    var cos_theta   = interaction.vector.x;
+    var sin_theta   = interaction.vector.y;
+    GlobalParams.theta = Math.atan(sin_theta/cos_theta);
+    // if (theta > Math.PI / 2) theta+= Math.PI;
+    // if (theta < -Math.PI / 2) theta+= Math.PI;
+    if (cos_theta < 0) GlobalParams.theta+= Math.PI;
 
-    for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animate);
+    // Centre origin in middle of screen
+    ctx.translate(w/2,  h/2);
+    // ctx.rotate(GlobalParams.theta);
+
+    // Reverse y axis so Y is up
+    ctx.scale(1, -1);
+    // Scale so always fits
+
+    GlobalParams.scale = Math.min(3, h/interaction.seperation);
+    GlobalParams.centreX = -(gameObjects[0].x + interaction.x * 0.5);
+    GlobalParams.centreY = -(gameObjects[0].y + interaction.y * 0.5);
+
+    ctx.scale( GlobalParams.scale, GlobalParams.scale);
+    // Move viewport to centre on midpoint between ships
+    ctx.translate(GlobalParams.centreX, GlobalParams.centreY);
+    for (var gameObject of gameObjects) {gameObject.draw().getPilotCommand(deltaT.animate);}
 
     window.requestAnimationFrame(animate);
     // setTimeout(animate,20);
@@ -59,10 +85,9 @@ function updateScoreStars(){
     timeStep("updateScoreStars");
 
     GlobalParams.FPS        = 1000 / deltaT.animate;
-    GlobalParams.CPS        = 1000 / deltaT.iteratePhysics;
+    GlobalParams.CPS        = 1000 / deltaT.iteratePhysics;w
 
     starfield.width = starfield.width;
-    for (var star of stars) {star.boundary().update(deltaT.updateScoreStars).draw();}
 
     gameDisplayText("Daddy : "  + (1000000 + GlobalParams.scores[1]).toString().slice(1), .05, .1);
     gameDisplayText("Baddies : "  + (1000000 + GlobalParams.scores[3]).toString().slice(1), .4, .1);
@@ -71,6 +96,19 @@ function updateScoreStars(){
     gameDisplayText("Objects : "+ gameObjects.length, .45, .95);
     gameDisplayText("CPS : "    + Math.round(GlobalParams.CPS), .75, .95);
     // updateExperimentText();
+
+    ctxStars.translate(w/2,  h/2);
+    ctxStars.scale(1, -1);
+
+    // ctxStars.rotate(GlobalParams.theta);
+    ctxStars.scale( GlobalParams.scale, GlobalParams.scale);
+    ctxStars.translate(GlobalParams.centreX, GlobalParams.centreY);
+    ctxStars.rect(-2*w,-2*h,4*w,4*h);
+    ctxStars.lineWidth=5;
+    ctxStars.strokeStyle = "white";
+    ctxStars.stroke();
+    for (var star of stars) {star.boundary().update(deltaT.updateScoreStars).draw();}
+
     setTimeout(updateScoreStars,30);
 }
 
