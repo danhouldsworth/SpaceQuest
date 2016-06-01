@@ -463,8 +463,8 @@ Ship.prototype.fireGun          = function(deltaT){
 };
 Ship.prototype.fireMissile      = function(side){
     var missile = new Missile(
-        this.x + 1.4 * side * this.size * Math.sin(this.angle),
-        this.y - 1.4 * side * this.size * Math.cos(this.angle),
+        this.x + (1.4 + this.speed()) * side * this.size * Math.sin(this.angle),
+        this.y - (1.4 + this.speed()) * side * this.size * Math.cos(this.angle),
         this
     );
     missile.target = gameObjects[2];
@@ -494,12 +494,12 @@ Ship.prototype.fireCanonBall   = function(){
 Ship.prototype.getPilotCommand  = function(deltaT){
     // http://keycode.info/
     var playerKeys  = {
-        left    : [null,81,37],   //       q    Arrow
-        right   : [null,87,39],   //       w    Arrow
-        thrust  : [null,69,38],   //       e    Arrow
-        fire    : [null,83,32],   //       s    space
-        missile : [null,82,40 ],   //       r
-        cannon  : [null,82, 40]    //            Down Arrow
+        left    : [null, 81, 37],   //       q    Arrow
+        right   : [null, 87, 39],   //       w    Arrow
+        thrust  : [null, 69, 38],   //       e    Arrow
+        fire    : [null, 83, 32],   //       s    space
+        missile : [null, 82, null],   //       r
+        cannon  : [null, null, 40]    //            Down Arrow
     };
     if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
     if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}

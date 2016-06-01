@@ -31,7 +31,7 @@ function iteratePhysics(){
         }
 
         switch (p1.gameClass){
-            case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
+            case 'ship'     :   p1.energy = Math.min(p1.energy + 0.005, 1); break;
             case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'thrust'   :   p1.size *= evaporationRate;                 break;
             case 'bomb'     :   p1.size *= evaporationRate;                 break;
