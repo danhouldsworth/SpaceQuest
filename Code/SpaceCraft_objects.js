@@ -259,6 +259,23 @@ var Bullet              = function(x, y, vx, vy, size, parent){
 };
 Bullet.prototype        = new Particle();
 
+var Virus              = function(x, y, vx, vy, parent){
+    this.base = Particle;
+    this.base(x, y, vx, vy, parent.size / 4, 0);
+    this.gameClass      = 'virus';
+    this.parent         = parent;
+    this.team           = parent.team;
+    this.damagePts      = 0;
+    this.restitution    = 0;
+    this.friction       = 100;
+    this.calcColour = function(){
+        this.red    = 0;
+        this.green  = 255;
+        this.blue   = 0;
+    };
+};
+Virus.prototype        = new Particle();
+
 var Thrust              = function(x, y, vx, vy, size, parent){
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0);
@@ -491,24 +508,40 @@ Ship.prototype.fireCanonBall   = function(){
     gameObjects.push(cannonBall);
     return this; // chainable
 };
+Ship.prototype.launchVirus = function(){
+    if (this.virusPreparing === true) return;
+    this.virusPreparing = true;
+    this.virusPrepTimer = (function(thisShip){setTimeout(function(){thisShip.virusPreparing = false;}, 500);})(this);
+    var virusTravelSpeed = 1.5;
+    var virusSpore = new Virus(
+        this.x + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.cos(this.angle),
+        this.y + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.sin(this.angle),
+        this.vx + virusTravelSpeed * Math.cos(this.angle),
+        this.vy + virusTravelSpeed * Math.sin(this.angle),
+        this
+    );
+    virusSpore.selfDestructTimer = setTimeout(function(){virusSpore.explode();}, 3000);
+    gameObjects.push(virusSpore);
+    return this; // chainable
+};
 Ship.prototype.getPilotCommand  = function(deltaT){
-    // http://keycode.info/
+    // Use http://keycode.info/ to get keycodes
     var playerKeys  = {
-        left    : [null, 81, 37],   //       q    Arrow
-        right   : [null, 87, 39],   //       w    Arrow
-        thrust  : [null, 69, 38],   //       e    Arrow
-        fire    : [null, 83, 32],   //       s    space
-        missile : [null, 82, null],   //       r
-        cannon  : [null, null, 40]    //            Down Arrow
+        //            Daddy / Finn
+        left    : [null, 81, 37],   // q    Arrow
+        right   : [null, 87, 39],   // w    Arrow
+        thrust  : [null, 69, 38],   // e    Arrow
+        fire    : [null, 83, 32],   // s    Space
+        missile : [null, 82, null], // r    -
+        virus   : [null, null, 77], // -    m
+        cannon  : [null, null, 40]  // -    Down Arrow
     };
     if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
     if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}
     if (keyState[playerKeys.thrust[ this.player]])      {this.mainThrusters(deltaT);} else {this.ax = this.ay = 0;}
     if (keyState[playerKeys.fire[   this.player]])      {this.fireGun();}
-    if (keyState[playerKeys.cannon[ this.player]])      {
-        // this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
-        this.fireCanonBall();
-    }
+    if (keyState[playerKeys.cannon[ this.player]])      {this.fireCanonBall();}
+    if (keyState[playerKeys.virus[  this.player]])      {this.launchVirus();}
     if (keyState[playerKeys.missile[this.player]] && !this.missleLaunchersHot) {
         this.missleLaunchersHot = true;
         this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
