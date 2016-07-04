@@ -68,7 +68,7 @@ function animate(){
     ctx.scale(1, -1);
     // Scale so always fits
 
-    GlobalParams.scale = Math.min(3, h/interaction.seperation);
+    GlobalParams.scale = Math.min(3, (h*0.9)/interaction.seperation);
     GlobalParams.centreX = -(gameObjects[0].x + interaction.x * 0.5);
     GlobalParams.centreY = -(gameObjects[0].y + interaction.y * 0.5);
 
