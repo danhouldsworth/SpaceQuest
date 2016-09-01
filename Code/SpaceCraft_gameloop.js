@@ -108,7 +108,7 @@ function updateScoreStars(){
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
     for (var star of stars) {star.boundary().update(deltaT.updateScoreStars).draw();}
-
+    // lollipopBlackHole();
     setTimeout(updateScoreStars,30);
 }
 

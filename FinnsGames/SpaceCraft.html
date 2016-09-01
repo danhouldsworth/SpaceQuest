@@ -1,8 +1,149 @@
 <html><head>
 <link rel='stylesheet' type='text/css' href='SpaceCraft.css'>
 </head><body></body>
+</html>
+<body></body>
+<script type="x-shader" id="x-vertex">
+    attribute   float   a_label;
+    uniform     float   u_viewScale;
+    varying     vec2    v_bilerpOutput;
+    void main(void) {
+        vec2 Cz;
+        vec3 screenCoord;
+        if      (a_label == 1.0) {screenCoord = vec3(-1.0, -1.0, 0.0); Cz = vec2(-1.0*u_viewScale, -1.0*u_viewScale);}
+        else if (a_label == 2.0) {screenCoord = vec3(-1.0, +1.0, 0.0); Cz = vec2(-1.0*u_viewScale, +1.0*u_viewScale);}
+        else if (a_label == 3.0) {screenCoord = vec3(+1.0, -1.0, 0.0); Cz = vec2(+1.0*u_viewScale, -1.0*u_viewScale);}
+        else if (a_label == 4.0) {screenCoord = vec3(+1.0, +1.0, 0.0); Cz = vec2(+1.0*u_viewScale, +1.0*u_viewScale);}
+        v_bilerpOutput  = Cz;
+
+        gl_Position = vec4(screenCoord, 1.0);
+    }
+</script>
+<script type="x-shader" id="x-fragment">
+    precision   highp   float;
+    uniform     float   u_time;
+    uniform     vec2    u_mouse;
+    varying     vec2    v_bilerpOutput;
+    #define R               vec2(1.0, 0.0)
+    #define I               vec2(0.0, 1.0)
+    #define PI              3.14159265
+    #define product(a, b)   vec2(a.x * b.x - a.y * b.y, a.x * b.y + a.y * b.x)
+    #define square(z)       product(z, z)
+    #define conjugate(a)    vec2(a.x, -a.y)
+    #define divide(a, b)    vec2(((a.x * b.x + a.y * b.y) / (b.x * b.x + b.y * b.y)), ((a.y * b.x - a.x * b.y) / (b.x * b.x + b.y * b.y)))
+    vec3 chooseHSV(vec2 z){
+        float modulus      = length(z);
+        float bandStart    = 0.0;
+        float bandEnd      = 1.0;
+        for (int i = 0; i<10; i++){
+            if (modulus > bandEnd){ // Chose first band that modulus sits in
+                bandStart = bandEnd;
+                bandEnd = bandEnd * 2.7183;
+            }
+        }
+        float k = (modulus - bandStart) / (bandEnd - bandStart);    // Proportion through band
+        k = (k < 0.5) ? (2.0 * k) : (1.0 - 2.0*(k-0.5));            // Take Saturation as rise and fall /\/\/\/\/\/\ and not saw tooth  /|/|/|/|
+        float sat = k;          // 0->1->0
+        float val = 1.0 - k;    // 1->0->1 ie 1/2 out of phase
+
+        vec3 HSVcolor;
+        HSVcolor[0] = acos(dot(z, R) / length(z)) / PI;              // Hue [0:1]
+        HSVcolor[1] = 1.0 - sat*sat*sat*sat*sat*sat*sat;             // Saturation           (Smoother topped hills / steeper vallies)
+        HSVcolor[2] = 1.0 - val*val*val*val*val*val*val;             // Value (brightness)   (Smoother topped hills / steeper vallies)
+        return HSVcolor;
+    }
+    vec4 mapHSVtoRGB(vec3 HSVcolor) {
+            vec4    RGBcolor;
+            float   hue     = HSVcolor[0];
+            float   sat     = HSVcolor[1];
+            float   bright  = HSVcolor[2];
+
+            float   primaryCol  = floor(hue * 6.0);           // [0,1,2,3,4,5]
+            float   fractional  = hue * 6.0 - primaryCol;     // [0:1]
+            float   greyness    = bright * (1.0 - sat);
+            float   prevPrimary = bright * (1.0 - sat * fractional);
+            float   nextPrimary = bright * (1.0 - sat * (1.0 - fractional));
+            if      (primaryCol == 0.0) {RGBcolor.r=bright;         RGBcolor.g=nextPrimary;  RGBcolor.b=greyness;    }// Red
+            else if (primaryCol == 1.0) {RGBcolor.r=prevPrimary;    RGBcolor.g=bright;       RGBcolor.b=greyness;    }// Yellow
+            else if (primaryCol == 2.0) {RGBcolor.r=greyness;       RGBcolor.g=bright;       RGBcolor.b=nextPrimary; }// Green
+            else if (primaryCol == 3.0) {RGBcolor.r=greyness;       RGBcolor.g=prevPrimary;  RGBcolor.b=bright;      }// Cyan
+            else if (primaryCol == 4.0) {RGBcolor.r=nextPrimary;    RGBcolor.g=greyness;     RGBcolor.b=bright;      }// Blue
+            else if (primaryCol == 5.0) {RGBcolor.r=bright;         RGBcolor.g=greyness;     RGBcolor.b=prevPrimary; }// Purple
+            else                        {RGBcolor.r=bright;         RGBcolor.g=greyness;     RGBcolor.b=prevPrimary;}
+            RGBcolor.a = 1.0;
+            return RGBcolor;
+    }
+
+    void main(void) {
+        float theta = u_time * 0.05;
+        float scale = 1.0 - u_time * 0.001;
+        mat3 RotZ = mat3(
+            +cos(theta),   -sin(theta), 0.0,
+            +sin(theta),   +cos(theta), 0.0,
+            0.0, 0.0, 1.0
+        );
+        vec3 targetPt = scale * RotZ * vec3(6.0,1.0,0.0);
+
+        vec2    z = v_bilerpOutput;
+        vec2    c = z;
+        vec2    z1, z2, z3, z4, z5, z6, z7, z8;
+        // f = (z - 1) * (z + 1) * (z - 3 - I) * (z - 6 - I) / ( (z + 2 + I) * (z - 3) );
+        z1 = z - u_mouse;
+        z2 = z + R;
+        z3 = z - 3.0*R - I;
+        z4 = z - targetPt.xy;
+        z5 = z + 2.0*R + I;
+        z6 = z - 3.0*R;
+        z7 = product(product(z1, z2), product(z3, z4));
+        z8 = product(z5, z6);
+        z  = divide(z7, z8);
+
+        gl_FragColor = mapHSVtoRGB(chooseHSV(z));
+    }
+</script>
+<script type="text/javascript">
+    var mouseX = 0;
+    var mouseY = 0;
+    var canvas  = document.createElement("canvas");
+    canvas.width = canvas.height = 2048;
+    canvas.addEventListener("mousemove", function(e) {
+        mouseX = (e.clientX - canvas.getBoundingClientRect().left) / (0.5*canvas.width) - 1.0;
+        mouseY = (e.clientY - canvas.getBoundingClientRect().top ) / (0.5*canvas.width) - 1.0;
+    });
+    document.body.appendChild(canvas);
+
+    var gl      = canvas.getContext("webgl");
+
+    var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, document.getElementById("x-vertex").text);
+    gl.compileShader(vertexShader);
+    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, document.getElementById("x-fragment").text);
+    gl.compileShader(fragmentShader);
+    var shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+
+    var uniqueButMeaninglessLabels = new Float32Array([1,2,3,4]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, uniqueButMeaninglessLabels, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(     gl.getAttribLocation(shaderProgram, "a_label"), 1, gl.FLOAT, false, 0, 0);   // 'Vertex' attributes of size 1
+    gl.enableVertexAttribArray( gl.getAttribLocation(shaderProgram, "a_label"));
+    var ticks = 0.0;
+    var u_viewScale = 18;
+    var lollipopBlackHole = function(){
+        // gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        // gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "u_time"), ticks++);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "u_viewScale"), u_viewScale);
+        gl.uniform2f(gl.getUniformLocation(shaderProgram, "u_mouse"), u_viewScale * mouseX, u_viewScale * (-mouseY));
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, uniqueButMeaninglessLabels.length);
+    };
+    // window.requestAnimationFrame(lollipopBlackHole);
+</script>
 <script src="../Code/SpaceCraft_setup.js"   ></script>
 <script src="../Code/SpaceCraft_objects.js" ></script>
 <script src="../Code/SpaceCraft_gameloop.js"></script>
 <script src="../Code/SpaceCraft_levels.js"  ></script>
-</html>
