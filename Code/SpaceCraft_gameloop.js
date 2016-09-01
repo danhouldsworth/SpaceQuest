@@ -33,8 +33,9 @@ function iteratePhysics(){
         switch (p1.gameClass){
             case 'ship'     :   p1.energy = Math.min(p1.energy + 0.005, 1); break;
             case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            case 'thrust'   :   p1.size *= evaporationRate;                 break;
-            case 'bomb'     :   p1.size *= evaporationRate;                 break;
+            case 'virus'    :   p1.size *= 0.99;                            break;
+            case 'thrust'   :
+            case 'bomb'     :
             case 'bullet'   :   p1.size *= evaporationRate;                 break;
         }
 
@@ -75,7 +76,10 @@ function animate(){
     ctx.scale( GlobalParams.scale, GlobalParams.scale);
     // Move viewport to centre on midpoint between ships
     ctx.translate(GlobalParams.centreX, GlobalParams.centreY);
-    for (var gameObject of gameObjects) {gameObject.draw().getPilotCommand(deltaT.animate);}
+    for (var gameObject of gameObjects) {
+        gameObject.draw();
+        if (!gameObject.paralised) {gameObject.getPilotCommand(deltaT.animate);}
+    }
 
     window.requestAnimationFrame(animate);
     // setTimeout(animate,20);
