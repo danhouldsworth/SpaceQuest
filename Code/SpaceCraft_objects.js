@@ -539,17 +539,45 @@ Ship.prototype.launchVirus = function(){
     gameObjects.push(virusSpore);
     return this; // chainable
 };
+Ship.prototype.fireLaser = function(){
+    var laserLength = 2000;
+    var grad = ctx.createLinearGradient(this.x, this.y, this.x + Math.cos(this.angle) * laserLength, this.y + Math.sin(this.angle) * laserLength);
+    grad.addColorStop(0, "purple");
+    grad.addColorStop(1, "transparent");
+    ctx.beginPath();
+    // ctx.moveTo(this.x, h - this.y);
+    ctx.moveTo(this.x, this.y);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth=15;
+    ctx.lineTo(this.x + Math.cos(this.angle) * laserLength, this.y + Math.sin(this.angle) * laserLength);
+    ctx.stroke();
+
+    for (var laserTarget of gameObjects){
+        if (laserTarget === this) continue;
+        interaction.near(this, laserTarget);
+        interaction.touching(this, laserTarget);
+        if (interaction.seperationSqrd < (laserLength * laserLength)){
+            var angleToTarget = Math.atan(interaction.vector.y / interaction.vector.x);
+            var angleDiff = (Math.PI * 2 + (angleToTarget - this.angle)) % (Math.PI * 2);
+            console.log(angleDiff)
+            if (angleDiff < .1) console.log(angleDiff);//laserTarget.energy -= 1;
+        }
+    }
+
+    return this;
+};
 Ship.prototype.getPilotCommand  = function(deltaT){
     // Use http://keycode.info/ to get keycodes
     var playerKeys  = {
-        //            Daddy / Finn
+        //                              Daddy / Finn
         left    : [null, 81, 37],   // q    Arrow
         right   : [null, 87, 39],   // w    Arrow
         thrust  : [null, 69, 38],   // e    Arrow
         fire    : [null, 83, 32],   // s    Space
-        missile : [null, 82, null], // r    -
-        virus   : [null, null, 77], // -    m
-        cannon  : [null, null, 40]  // -    Down Arrow
+        missile : [null, 82, 40], // r    -
+        virus   : [null, null, null],
+        laser   : [null, 84, 77], //   t  m
+        cannon  : [null, null, null]  // -    Down Arrow
     };
     if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
     if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}
@@ -557,6 +585,7 @@ Ship.prototype.getPilotCommand  = function(deltaT){
     if (keyState[playerKeys.fire[   this.player]])      {this.fireGun();}
     if (keyState[playerKeys.cannon[ this.player]])      {this.fireCanonBall();}
     if (keyState[playerKeys.virus[  this.player]])      {this.launchVirus();}
+    if (keyState[playerKeys.laser[  this.player]])      {this.fireLaser();}
     if (keyState[playerKeys.missile[this.player]] && !this.missleLaunchersHot) {
         this.missleLaunchersHot = true;
         this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
@@ -619,6 +648,7 @@ Baddy.prototype.resolveTarget   = function(){
     }
     this.angleToTarget = interaction.angle - this.angle;
     this.angleToTarget = (Math.PI * 2 + this.angleToTarget) % (Math.PI * 2);
+    // this.angleToTarget = interaction.angle(this, this.target);
     return this; // chainable
 };
 Baddy.prototype.getPilotCommand = function(deltaT){
@@ -751,6 +781,19 @@ Interaction.prototype.resolve = function(P1, P2){
     };
     this.resolved = true;
 };
+// Interaction.prototype.angle = function(P1, P2){
+//     this.angle = Math.atan(this.vector.y / this.vector.x);
+//     if (this.vector.y >= 0){
+//         if (this.vector.x >= 0) this.angle += 0;
+//         if (this.vector.x < 0)  this.angle += Math.PI;
+//     } else if (this.vector.y < 0){
+//         if (this.vector.x < 0)  this.angle += Math.PI;
+//         if (this.vector.x >= 0) this.angle += Math.PI * 2;
+//     }
+//     this.angle = this.angle - P1.angle;
+//     this.angle = (Math.PI * 2 + this.angle) % (Math.PI * 2);
+//     return this.angle;
+// };
 Interaction.prototype.clear     = function(){
     this.resolved = false;
 };
