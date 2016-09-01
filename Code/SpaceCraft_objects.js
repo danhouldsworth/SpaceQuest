@@ -147,13 +147,28 @@ Particle.prototype.collide      = function(that){
             case 'bomb'     : if (this.gameClass !== 'bomb')   {this.energy -= that.damagePts / this.mass;}                 break;
             case 'fireball' :
             case 'missile'  : if (this instanceof Graphic)     {this.energy -= that.damagePts / this.mass; that.explode();} break;
+            case 'virus'    :
+                that.vx = this.vx;
+                that.vy = this.vy;
+                that.size += 0.5;
+                this.paralised = true;
+                // if (Math.random() < 0.25) {gameObjects.push(new Virus(that.x, that.y, that.vx, that.vy, that));}
+                break;
             case 'wall'     : if (this.gameClass === 'missile' || this.gameClass === 'fireball') {this.explode();}          break;
         }
+        // Is the only reason we explain the counter side - because we skip particles that haven't collided in a while?
         switch (this.gameClass){
             case 'bullet'   : if (that.gameClass !== 'bullet') {that.energy -= this.damagePts / that.mass;}                 break;
             case 'bomb'     : if (that.gameClass !== 'bomb')   {that.energy -= this.damagePts / that.mass;}                 break;
             case 'fireball' :
             case 'missile'  : if (that instanceof Graphic)     {that.energy -= this.damagePts / that.mass; this.explode();} break;
+            case 'virus'    :
+                this.vx = that.vx;
+                this.vy = that.vy;
+                that.paralised = true;
+                this.size += 0.5;
+                // gameObjects.push(new Virus(this.x, this.y, this.vx, this.vy, this));
+                break;
             case 'wall'     : if (that.gameClass === 'missile' || that.gameClass === 'fireball') {that.explode();}          break;
         }
 
@@ -553,7 +568,7 @@ Ship.prototype.getPilotCommand  = function(deltaT){
 Ship.prototype.stabilise        = function() {
     this.vx     *= 0.999;
     this.vy     *= 0.999;
-    this.spin   *= 0.99;
+    this.spin   *= 0.97;
     return this; // chainable
 };
 
