@@ -33,7 +33,6 @@ function iteratePhysics(){
         switch (p1.gameClass){
             case 'ship'     :   p1.energy = Math.min(p1.energy + 0.005, 1); break;
             case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            case 'virus'    :   p1.size *= 0.99;                            break;
             case 'thrust'   :
             case 'bomb'     :
             case 'bullet'   :   p1.size *= evaporationRate;                 break;
@@ -94,12 +93,11 @@ function updateScoreStars(){
     starfield.width = starfield.width;
 
     gameDisplayText("Daddy : "  + (1000000 + GlobalParams.scores[1]).toString().slice(1), .05, .1);
-    gameDisplayText("Baddies : "  + (1000000 + GlobalParams.scores[3]).toString().slice(1), .4, .1);
+    gameDisplayText("Baddies : "+ (1000000 + GlobalParams.scores[3]).toString().slice(1), .4, .1);
     gameDisplayText("Finn : "   + (1000000 + GlobalParams.scores[2]).toString().slice(1), .8, .1);
     gameDisplayText("FPS : "    + Math.round(GlobalParams.FPS), .15, .95);
     gameDisplayText("Objects : "+ gameObjects.length, .45, .95);
     gameDisplayText("CPS : "    + Math.round(GlobalParams.CPS), .75, .95);
-    // updateExperimentText();
 
     ctxStars.translate(w/2,  h/2);
     ctxStars.scale(1, -1);
@@ -112,7 +110,6 @@ function updateScoreStars(){
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
     for (var star of stars) {star.boundary().update(deltaT.updateScoreStars).draw();}
-    // lollipopBlackHole();
     setTimeout(updateScoreStars,30);
 }
 

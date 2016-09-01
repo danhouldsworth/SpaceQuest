@@ -32,11 +32,9 @@ Primitive.prototype.update   = function(deltaT){
     return this;
 };
 Primitive.prototype.stabilise= function() {
-    // while (this.speed( > GlobalParams.speedCap){
-        this.vx     *= 0.99;
-        this.vy     *= 0.99;
-        this.spin   *= 0.99;
-    // }
+    this.vx     *= 0.99;
+    this.vy     *= 0.99;
+    this.spin   *= 0.99;
     return this; // chainable
 };
 
@@ -60,19 +58,9 @@ var Particle                = function(x, y, vx, vy, size, spin){
 Particle.prototype              = new Primitive();
 Particle.prototype.collide      = function(that){
 
-    // that.impulseModulus = 0;
-    // var oldvx = that.vx || 0;
-    // var oldvy = that.vy || 0;
-
-    if (this === that || that.ephemeral) return false;
+    if (this === that) return false;
 
     if (interaction.near(this, that) && interaction.touching(this, that)){
-
-        if (this.ephemeral && that instanceof Graphic) {
-            this.size += 0.1; this.calcMass();
-            that.size -= 0.1; that.calcMass();
-            return;
-        }
 
         interaction.resolve(this, that);
 
@@ -147,13 +135,6 @@ Particle.prototype.collide      = function(that){
             case 'bomb'     : if (this.gameClass !== 'bomb')   {this.energy -= that.damagePts / this.mass;}                 break;
             case 'fireball' :
             case 'missile'  : if (this instanceof Graphic)     {this.energy -= that.damagePts / this.mass; that.explode();} break;
-            case 'virus'    :
-                that.vx = this.vx;
-                that.vy = this.vy;
-                that.size += 0.5;
-                this.paralised = true;
-                // if (Math.random() < 0.25) {gameObjects.push(new Virus(that.x, that.y, that.vx, that.vy, that));}
-                break;
             case 'wall'     : if (this.gameClass === 'missile' || this.gameClass === 'fireball') {this.explode();}          break;
         }
         // Is the only reason we explain the counter side - because we skip particles that haven't collided in a while?
@@ -162,13 +143,6 @@ Particle.prototype.collide      = function(that){
             case 'bomb'     : if (that.gameClass !== 'bomb')   {that.energy -= this.damagePts / that.mass;}                 break;
             case 'fireball' :
             case 'missile'  : if (that instanceof Graphic)     {that.energy -= this.damagePts / that.mass; this.explode();} break;
-            case 'virus'    :
-                this.vx = that.vx;
-                this.vy = that.vy;
-                that.paralised = true;
-                this.size += 0.5;
-                // gameObjects.push(new Virus(this.x, this.y, this.vx, this.vy, this));
-                break;
             case 'wall'     : if (that.gameClass === 'missile' || that.gameClass === 'fireball') {that.explode();}          break;
         }
 
@@ -273,23 +247,6 @@ var Bullet              = function(x, y, vx, vy, size, parent){
     };
 };
 Bullet.prototype        = new Particle();
-
-var Virus              = function(x, y, vx, vy, parent){
-    this.base = Particle;
-    this.base(x, y, vx, vy, parent.size / 4, 0);
-    this.gameClass      = 'virus';
-    this.parent         = parent;
-    this.team           = parent.team;
-    this.damagePts      = 0;
-    this.restitution    = 0;
-    this.friction       = 100;
-    this.calcColour = function(){
-        this.red    = 0;
-        this.green  = 255;
-        this.blue   = 0;
-    };
-};
-Virus.prototype        = new Particle();
 
 var Thrust              = function(x, y, vx, vy, size, parent){
     this.base = Particle;
@@ -464,8 +421,6 @@ Ship.prototype.spinThrusters    = function(deltaT, direction){
 Ship.prototype.mainThrusters    = function(deltaT){
     var thrustSpeed = 0.2;
     var thrustMass  = Math.max(this.size / 10 - 1,2);
-    // this.vx += (deltaT * this.thrust / this.mass) * Math.cos(this.angle);
-    // this.vy += (deltaT * this.thrust / this.mass) * Math.sin(this.angle);
     this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
     this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
     for(var i = 0;i < this.thrustRate; i++) {gameObjects.push(new Thrust(
@@ -523,49 +478,6 @@ Ship.prototype.fireCanonBall   = function(){
     gameObjects.push(cannonBall);
     return this; // chainable
 };
-Ship.prototype.launchVirus = function(){
-    if (this.virusPreparing === true) return;
-    this.virusPreparing = true;
-    this.virusPrepTimer = (function(thisShip){setTimeout(function(){thisShip.virusPreparing = false;}, 500);})(this);
-    var virusTravelSpeed = 1.5;
-    var virusSpore = new Virus(
-        this.x + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.cos(this.angle),
-        this.y + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.sin(this.angle),
-        this.vx + virusTravelSpeed * Math.cos(this.angle),
-        this.vy + virusTravelSpeed * Math.sin(this.angle),
-        this
-    );
-    virusSpore.selfDestructTimer = setTimeout(function(){virusSpore.explode();}, 3000);
-    gameObjects.push(virusSpore);
-    return this; // chainable
-};
-Ship.prototype.fireLaser = function(){
-    var laserLength = 2000;
-    var grad = ctx.createLinearGradient(this.x, this.y, this.x + Math.cos(this.angle) * laserLength, this.y + Math.sin(this.angle) * laserLength);
-    grad.addColorStop(0, "purple");
-    grad.addColorStop(1, "transparent");
-    ctx.beginPath();
-    // ctx.moveTo(this.x, h - this.y);
-    ctx.moveTo(this.x, this.y);
-    ctx.strokeStyle = grad;
-    ctx.lineWidth=15;
-    ctx.lineTo(this.x + Math.cos(this.angle) * laserLength, this.y + Math.sin(this.angle) * laserLength);
-    ctx.stroke();
-
-    for (var laserTarget of gameObjects){
-        if (laserTarget === this) continue;
-        interaction.near(this, laserTarget);
-        interaction.touching(this, laserTarget);
-        if (interaction.seperationSqrd < (laserLength * laserLength)){
-            var angleToTarget = Math.atan(interaction.vector.y / interaction.vector.x);
-            var angleDiff = (Math.PI * 2 + (angleToTarget - this.angle)) % (Math.PI * 2);
-            console.log(angleDiff)
-            if (angleDiff < .1) console.log(angleDiff);//laserTarget.energy -= 1;
-        }
-    }
-
-    return this;
-};
 Ship.prototype.getPilotCommand  = function(deltaT){
     // Use http://keycode.info/ to get keycodes
     var playerKeys  = {
@@ -574,18 +486,14 @@ Ship.prototype.getPilotCommand  = function(deltaT){
         right   : [null, 87, 39],   // w    Arrow
         thrust  : [null, 69, 38],   // e    Arrow
         fire    : [null, 83, 32],   // s    Space
-        missile : [null, 82, 40], // r    -
-        virus   : [null, null, null],
-        laser   : [null, 84, 77], //   t  m
-        cannon  : [null, null, null]  // -    Down Arrow
+        missile : [null, 82, 40],   // r    Down Arrow
+        cannon  : [null, 84, 77]    // t    m
     };
     if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
     if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}
     if (keyState[playerKeys.thrust[ this.player]])      {this.mainThrusters(deltaT);} else {this.ax = this.ay = 0;}
     if (keyState[playerKeys.fire[   this.player]])      {this.fireGun();}
     if (keyState[playerKeys.cannon[ this.player]])      {this.fireCanonBall();}
-    if (keyState[playerKeys.virus[  this.player]])      {this.launchVirus();}
-    if (keyState[playerKeys.laser[  this.player]])      {this.fireLaser();}
     if (keyState[playerKeys.missile[this.player]] && !this.missleLaunchersHot) {
         this.missleLaunchersHot = true;
         this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
@@ -781,19 +689,6 @@ Interaction.prototype.resolve = function(P1, P2){
     };
     this.resolved = true;
 };
-// Interaction.prototype.angle = function(P1, P2){
-//     this.angle = Math.atan(this.vector.y / this.vector.x);
-//     if (this.vector.y >= 0){
-//         if (this.vector.x >= 0) this.angle += 0;
-//         if (this.vector.x < 0)  this.angle += Math.PI;
-//     } else if (this.vector.y < 0){
-//         if (this.vector.x < 0)  this.angle += Math.PI;
-//         if (this.vector.x >= 0) this.angle += Math.PI * 2;
-//     }
-//     this.angle = this.angle - P1.angle;
-//     this.angle = (Math.PI * 2 + this.angle) % (Math.PI * 2);
-//     return this.angle;
-// };
 Interaction.prototype.clear     = function(){
     this.resolved = false;
 };

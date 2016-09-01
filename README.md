@@ -25,6 +25,17 @@ Text bursts over character
 Skip iterations (for 5) if not hit last turn
 
 
+==> Simple sandbox for controlling (human or AI) phyiscal objects
+==> SI units
+==> abstraction between pilot / interaction with other objects
+
+==> Mumeration?
+==> 'Sight' of object (eg missiles)
+==> Distance force like tractor beams
+
+
+
+
 
 
 
