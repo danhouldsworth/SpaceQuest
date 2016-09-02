@@ -100,7 +100,7 @@ function updateScoreStars(){
     ctxStars.translate(w/2,  h/2);
     ctxStars.scale(1, -1);
 
-    if (GlobalParams.rotatingFrame) {ctxStars.rotate(GlobalParams.theta);}
+    if (GlobalParams.rotatingFrame) {ctxStars.rotate(-GlobalParams.theta);}
     ctxStars.scale( GlobalParams.scale, GlobalParams.scale);
     ctxStars.translate(GlobalParams.centreX, GlobalParams.centreY);
     ctxStars.rect(-4*w,-4*h,8*w,8*h);
