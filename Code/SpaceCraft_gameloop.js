@@ -56,13 +56,11 @@ function animate(){
     var cos_theta   = interaction.vector.x;
     var sin_theta   = interaction.vector.y;
     GlobalParams.theta = Math.atan(sin_theta/cos_theta);
-    // if (theta > Math.PI / 2) theta+= Math.PI;
-    // if (theta < -Math.PI / 2) theta+= Math.PI;
     if (cos_theta < 0) GlobalParams.theta+= Math.PI;
 
     // Centre origin in middle of screen
     ctx.translate(w/2,  h/2);
-    // ctx.rotate(GlobalParams.theta);
+    if (GlobalParams.rotatingFrame) {ctx.rotate(GlobalParams.theta);}
 
     // Reverse y axis so Y is up
     ctx.scale(1, -1);
@@ -80,8 +78,8 @@ function animate(){
         if (!gameObject.paralised) {gameObject.getPilotCommand(deltaT.animate);}
     }
 
-    window.requestAnimationFrame(animate);
-    // setTimeout(animate,20);
+    // window.requestAnimationFrame(animate);
+    setTimeout(animate,20);
 }
 
 function updateScoreStars(){
@@ -102,7 +100,7 @@ function updateScoreStars(){
     ctxStars.translate(w/2,  h/2);
     ctxStars.scale(1, -1);
 
-    // ctxStars.rotate(GlobalParams.theta);
+    if (GlobalParams.rotatingFrame) {ctxStars.rotate(GlobalParams.theta);}
     ctxStars.scale( GlobalParams.scale, GlobalParams.scale);
     ctxStars.translate(GlobalParams.centreX, GlobalParams.centreY);
     ctxStars.rect(-4*w,-4*h,8*w,8*h);

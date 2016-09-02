@@ -387,7 +387,7 @@ Ship.prototype.draw             = function(){
     if (this.showEnergyBar) {
         ctx.save();
         ctx.translate(this.x, this.y);
-        // ctx.rotate(GlobalParams.theta);
+        if (GlobalParams.rotatingFrame) {ctx.rotate(GlobalParams.theta);}
         ctx.fillStyle = "rgb(0,0,0)";
         ctx.fillRect( - this.size - 1,  - this.size - 1, 2 * this.size + 2, 10);
         ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
@@ -502,12 +502,6 @@ Ship.prototype.getPilotCommand  = function(deltaT){
     }
     return this; // chainable
 };
-Ship.prototype.stabilise        = function() {
-    this.vx     *= 0.999;
-    this.vy     *= 0.999;
-    this.spin   *= 0.97;
-    return this; // chainable
-};
 
 var Baddy                       = function(x,y){
     this.base = Ship;
@@ -613,9 +607,6 @@ Missile.prototype.orientate         = function(side){
     this.vx = this.parent.vx + side * Math.sin(this.parent.angle);
     this.vy = this.parent.vy - side * Math.cos(this.parent.angle);
     return this; // chainable
-};
-Missile.prototype.stabilise = function(){
-    return this;
 };
 Missile.prototype.draw = function(){
     if (!this.ax || ! this.ay) return this;
