@@ -313,6 +313,18 @@ Graphic.prototype.draw  = function(){
     ctx.rotate(this.offSet + this.angle);
     ctx.drawImage(this.image, -this.size, -this.size, 2 * this.size, 2 * this.size);
     ctx.restore();
+    if (this.target){
+        ctx.beginPath();
+        var grad = ctx.createLinearGradient(this.x, this.y, this.target.x, this.target.y);
+        grad.addColorStop(1, "cyan");
+        grad.addColorStop(0, "transparent");
+        ctx.moveTo(this.x, this.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth=2;
+        ctx.lineTo(this.target.x, this.target.y);
+        ctx.stroke();
+    }
+
     return this; // chainable
 };
 Graphic.prototype.explode = function(){
@@ -622,6 +634,7 @@ Missile.prototype.draw = function(){
         ctx.lineTo(this.x + (this.vx + 0.5 * this.ax * dT) * dT, this.y + (this.vy + 0.5 * this.ay * dT) * dT);
     }
     ctx.stroke();
+
     Graphic.prototype.draw.call(this);
     return this;
 };
