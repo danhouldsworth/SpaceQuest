@@ -615,13 +615,11 @@ Missile.prototype.draw = function(){
     grad.addColorStop(0, "red");
     grad.addColorStop(1, "transparent");
     ctx.beginPath();
-    // ctx.moveTo(this.x, h - this.y);
     ctx.moveTo(this.x, this.y);
     ctx.strokeStyle = grad;
     ctx.lineWidth=4;
     for (var dT = 1; dT < maxTimeSteps; dT = dT+50){
         ctx.lineTo(this.x + (this.vx + 0.5 * this.ax * dT) * dT, this.y + (this.vy + 0.5 * this.ay * dT) * dT);
-        // ctx.lineTo(this.x + (this.vx + 0.5 * this.ax * dT) * dT, h - this.y - (this.vy + 0.5 * this.ay * dT) * dT);
     }
     ctx.stroke();
     Graphic.prototype.draw.call(this);
