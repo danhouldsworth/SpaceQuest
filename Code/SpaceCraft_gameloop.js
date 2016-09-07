@@ -38,9 +38,22 @@ function iteratePhysics(){
 function animate(){
     timeStep('animate');
     gameArea.width = gameArea.width;
-    GlobalParams.cameraPos1 = gameObjects[0];
-    GlobalParams.cameraPos2 = gameObjects[1];
-    interaction.near(GlobalParams.cameraPos1, GlobalParams.cameraPos2);
+    // GlobalParams.cameraPos1 = gameObjects[0];
+    // GlobalParams.cameraPos2 = gameObjects[1];
+    if (GlobalParams.camera.Blender[0] > 0) GlobalParams.camera.Blender[0]--;
+    if (GlobalParams.camera.Blender[1] > 0) GlobalParams.camera.Blender[1]--;
+    var camera1 = {
+        x : GlobalParams.camera.Targets[0].x + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[0] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[0].x - GlobalParams.camera.Targets[0].x),
+        y : GlobalParams.camera.Targets[0].y + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[0] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[0].y - GlobalParams.camera.Targets[0].y),
+        size : 1
+    };
+    var camera2 = {
+        x : GlobalParams.camera.Targets[1].x + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[1] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[1].x - GlobalParams.camera.Targets[1].x),
+        y : GlobalParams.camera.Targets[1].y + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[1] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[1].y - GlobalParams.camera.Targets[1].y),
+        size : 1
+    };
+
+    interaction.near(camera1, camera2);
     interaction.touching();
     interaction.resolve();
     var cos_theta   = interaction.vector.x;
@@ -57,8 +70,8 @@ function animate(){
     // Scale so always fits
 
     GlobalParams.scale = Math.min(3, (h*0.9)/interaction.seperation);
-    GlobalParams.centreX = -(gameObjects[0].x + interaction.x * 0.5);
-    GlobalParams.centreY = -(gameObjects[0].y + interaction.y * 0.5);
+    GlobalParams.centreX = -(camera1.x + interaction.x * 0.5);
+    GlobalParams.centreY = -(camera1.y + interaction.y * 0.5);
 
     ctx.scale( GlobalParams.scale, GlobalParams.scale);
     // Move viewport to centre on midpoint between ships

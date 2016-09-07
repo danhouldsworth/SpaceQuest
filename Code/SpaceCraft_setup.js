@@ -34,6 +34,11 @@ var gameArea    = document.createElement('canvas'),
         gravity         : -0,
         boundary_flag   : -1,
         scores          : {1 : 0, 2 : 0, 3 : 0},
+        camera          : {
+            Targets         : [{x : 0, y : 0, size : 1}, {x : 0, y : 0, size : 1}],
+            OldTargets      : [{x : 0, y : 0, size : 1}, {x : 0, y : 0, size : 1}],
+            Blender         : [100, 100]
+        },
         refreshInterval : {
             physics         : 1,
             animation       : 20,

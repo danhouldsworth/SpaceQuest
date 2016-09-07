@@ -16,6 +16,13 @@ function impossible(){
     for (var count = 0, star; count < 50; count++)
         gameObjects.push(new Asteroid( (Math.random()-0.5) * 8*w, (Math.random()-0.5) * 8*h, 0.2 * (Math.random() - 0.5), 0.2 * (Math.random() - 0.5), 200 * Math.random(), 0.01 * (Math.random() - 0.5)));
 
+    GlobalParams.camera.Targets[0] = gameObjects[0];
+    GlobalParams.camera.Targets[1] = gameObjects[1];
+    GlobalParams.camera.OldTargets[0] = GlobalParams.camera.OldTargets[1] = {
+        x : (GlobalParams.camera.Targets[0].x + GlobalParams.camera.Targets[1].x) / 2,
+        y : (GlobalParams.camera.Targets[0].y + GlobalParams.camera.Targets[1].y) / 2,
+        size : 1
+    };
 }
 // --
 initGameArea();
