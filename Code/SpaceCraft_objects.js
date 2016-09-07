@@ -211,19 +211,35 @@ Particle.prototype.explode = function(){
     if (index === -1) {console.log(this);}
     else {
         gameObjects.splice(index,1);
-        if (index === 0 ){
+    }
+    //     if (index === 0 ){
+    //         GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
+    //         GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
+    //         GlobalParams.camera.Blender[0] = 100;
+    //     }
+    //     if (index === 1 ){
+    //         GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
+    //         GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
+    //         GlobalParams.camera.Blender[1] = 100;
+    //     }
+    // }
+    if (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1) {
+        if (GlobalParams.camera.Blender[0] === 0){
             GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
-            GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
             GlobalParams.camera.Blender[0] = 100;
         }
-        if (index === 1 ){
+        GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
+        // GlobalParams.camera.Targets[0] = gameObjects[0];
+    }
+    if (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1) {
+        if (GlobalParams.camera.Blender[1] === 0){
             GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
-            GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
             GlobalParams.camera.Blender[1] = 100;
         }
+        GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
+        // GlobalParams.camera.Blender[1] = 100;
+        // GlobalParams.camera.Targets[1] = gameObjects[1];
     }
-    if (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1) {GlobalParams.camera.Targets[0] = gameObjects[0];}
-    if (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1) {GlobalParams.camera.Targets[1] = gameObjects[1];}
 };
 Particle.prototype.getPilotCommand = function(deltaT){
     return this; // chainable
