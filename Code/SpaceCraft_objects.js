@@ -134,16 +134,16 @@ Particle.prototype.collide      = function(that){
             case 'bullet'   : if (this.gameClass !== 'bullet') {this.energy -= that.damagePts / this.mass;}                 break;
             case 'bomb'     : if (this.gameClass !== 'bomb')   {this.energy -= that.damagePts / this.mass;}                 break;
             case 'fireball' :
-            case 'missile'  : if (this instanceof Graphic)     {this.energy -= that.damagePts / this.mass; that.explode();} break;
-            case 'wall'     : if (this.gameClass === 'missile' || this.gameClass === 'fireball') {this.explode();}          break;
+            case 'missile'  : if (this instanceof Graphic || this.gameClass === 'wall')     {this.energy -= that.damagePts / this.mass; that.explode();} break;
+            // case 'wall'     : if (this.gameClass === 'missile' || this.gameClass === 'fireball') {this.explode();}          break;
         }
         // Is the only reason we explain the counter side - because we skip particles that haven't collided in a while?
         switch (this.gameClass){
             case 'bullet'   : if (that.gameClass !== 'bullet') {that.energy -= this.damagePts / that.mass;}                 break;
             case 'bomb'     : if (that.gameClass !== 'bomb')   {that.energy -= this.damagePts / that.mass;}                 break;
             case 'fireball' :
-            case 'missile'  : if (that instanceof Graphic)     {that.energy -= this.damagePts / that.mass; this.explode();} break;
-            case 'wall'     : if (that.gameClass === 'missile' || that.gameClass === 'fireball') {that.explode();}          break;
+            case 'missile'  : if (that instanceof Graphic || that.gameClass === 'wall')     {that.energy -= this.damagePts / that.mass; this.explode();} break;
+            // case 'wall'     : if (that.gameClass === 'missile' || that.gameClass === 'fireball') {that.explode();}          break;
         }
 
         return true;
