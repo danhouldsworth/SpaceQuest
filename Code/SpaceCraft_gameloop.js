@@ -11,31 +11,20 @@ function timeStep(timer){
 
 function iteratePhysics(){
     timeStep("iteratePhysics");
-    var i,j;
-    var evaporationRate = 1 - deltaT.iteratePhysics * deltaT.iteratePhysics / 2000;
-    // var evaporationRate = deltaT.iteratePhysics * deltaT.iteratePhysics / 1500;
 
     for (var p1 of gameObjects){
 
-        if (p1.inFreeSpace) {
-            p1.inFreeSpace--;
-        } else {
-            p1.inFreeSpace = true;
-            for (var p2 of gameObjects) {
-                if (p1.collide(p2)){
-                    p1.inFreeSpace = false;
-                    if (p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) GlobalParams.scores[p2.team] += p2.damagePts;
-                }
-            }
-            if (p1.inFreeSpace && !(p1 instanceof Graphic)) p1.inFreeSpace = 10;
-        }
+        for (var p2 of gameObjects)
+            if (p1.collide(p2) && p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) GlobalParams.scores[p2.team] += p2.damagePts;
 
         switch (p1.gameClass){
-            case 'ship'     :   p1.energy = Math.min(p1.energy + 0.005, 1); break;
+            case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'thrust'   :
             case 'bomb'     :
-            case 'bullet'   :   p1.size *= evaporationRate;                 break;
+            case 'bullet'   :
+                var evaporationRate = 1 - deltaT.iteratePhysics * deltaT.iteratePhysics / 2000;
+                p1.size *= evaporationRate;
         }
 
         if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}
@@ -43,16 +32,17 @@ function iteratePhysics(){
         p1.boundary().stabilise().update(deltaT.iteratePhysics);
     }
 
-    setTimeout(iteratePhysics, 0);
+    setTimeout(iteratePhysics, GlobalParams.refreshInterval.physics);
 }
 
 function animate(){
     timeStep('animate');
     gameArea.width = gameArea.width;
-    // Get bearing between ships
-    interaction.near(gameObjects[0], gameObjects[1]);
-    interaction.touching(gameObjects[0], gameObjects[1]);
-    interaction.resolve(gameObjects[0], gameObjects[1]);
+    GlobalParams.cameraPos1 = gameObjects[0];
+    GlobalParams.cameraPos2 = gameObjects[1];
+    interaction.near(GlobalParams.cameraPos1, GlobalParams.cameraPos2);
+    interaction.touching();
+    interaction.resolve();
     var cos_theta   = interaction.vector.x;
     var sin_theta   = interaction.vector.y;
     GlobalParams.theta = Math.atan(sin_theta/cos_theta);
@@ -73,20 +63,17 @@ function animate(){
     ctx.scale( GlobalParams.scale, GlobalParams.scale);
     // Move viewport to centre on midpoint between ships
     ctx.translate(GlobalParams.centreX, GlobalParams.centreY);
-    for (var gameObject of gameObjects) {
-        gameObject.draw();
-        if (!gameObject.paralised) {gameObject.getPilotCommand(deltaT.animate);}
-    }
+    for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animate);
 
     // window.requestAnimationFrame(animate);
-    setTimeout(animate,20);
+    setTimeout(animate, GlobalParams.refreshInterval.animation);
 }
 
 function updateScoreStars(){
     timeStep("updateScoreStars");
 
     GlobalParams.FPS        = 1000 / deltaT.animate;
-    GlobalParams.CPS        = 1000 / deltaT.iteratePhysics;w
+    GlobalParams.CPS        = 1000 / deltaT.iteratePhysics;
 
     starfield.width = starfield.width;
 
@@ -103,12 +90,13 @@ function updateScoreStars(){
     if (GlobalParams.rotatingFrame) {ctxStars.rotate(-GlobalParams.theta);}
     ctxStars.scale( GlobalParams.scale, GlobalParams.scale);
     ctxStars.translate(GlobalParams.centreX, GlobalParams.centreY);
-    ctxStars.rect(-4*w,-4*h,8*w,8*h);
-    ctxStars.lineWidth=5;
+    ctxStars.rect(-4 * w, -4 * h, 8 * w, 8 * h);
+    ctxStars.lineWidth = 5;
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
-    for (var star of stars) {star.boundary().update(deltaT.updateScoreStars).draw();}
-    setTimeout(updateScoreStars,30);
+    for (var star of stars) star.boundary().update(deltaT.updateScoreStars).draw();
+
+    setTimeout(updateScoreStars, GlobalParams.refreshInterval.starsAndScores);
 }
 
 function launch(){

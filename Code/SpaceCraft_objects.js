@@ -34,7 +34,7 @@ Primitive.prototype.update   = function(deltaT){
 Primitive.prototype.stabilise= function() {
     this.vx     *= 0.999;
     this.vy     *= 0.999;
-    this.spin   *= 0.999;
+    this.spin   *= 0.99;
     return this; // chainable
 };
 
@@ -60,9 +60,9 @@ Particle.prototype.collide      = function(that){
 
     if (this === that) return false;
 
-    if (interaction.near(this, that) && interaction.touching(this, that)){
+    if (interaction.near(this, that) && interaction.touching()){
 
-        interaction.resolve(this, that);
+        interaction.resolve();
 
         var e = restitution(this,that);
         var f = friction(this,that);
@@ -135,7 +135,6 @@ Particle.prototype.collide      = function(that){
             case 'bomb'     : if (this.gameClass !== 'bomb')   {this.energy -= that.damagePts / this.mass;}                 break;
             case 'fireball' :
             case 'missile'  : if (this instanceof Graphic || this.gameClass === 'wall')     {this.energy -= that.damagePts / this.mass; that.explode();} break;
-            // case 'wall'     : if (this.gameClass === 'missile' || this.gameClass === 'fireball') {this.explode();}          break;
         }
         // Is the only reason we explain the counter side - because we skip particles that haven't collided in a while?
         switch (this.gameClass){
@@ -143,7 +142,6 @@ Particle.prototype.collide      = function(that){
             case 'bomb'     : if (that.gameClass !== 'bomb')   {that.energy -= this.damagePts / that.mass;}                 break;
             case 'fireball' :
             case 'missile'  : if (that instanceof Graphic || that.gameClass === 'wall')     {that.energy -= this.damagePts / that.mass; this.explode();} break;
-            // case 'wall'     : if (that.gameClass === 'missile' || that.gameClass === 'fireball') {that.explode();}          break;
         }
 
         return true;
@@ -228,7 +226,11 @@ Star.prototype.draw = function(){
     ctxStars.fillStyle = "rgb("+Math.round(this.size*20)+","+Math.round(this.size*20)+","+Math.round(this.size*20)+")";
     ctxStars.fill();
 };
-
+Star.prototype.update = function(deltaT){
+    this.x      = this.x + this.vx * deltaT;
+    this.y      = this.y + this.vy * deltaT;
+    return this;
+};
 
 // -- Game objects - based on gameObjects. They damage points for collisions, and know their parent.
 var Bullet              = function(x, y, vx, vy, size, parent){
@@ -237,7 +239,7 @@ var Bullet              = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'bullet';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = 2;
+    this.damagePts      = 20;
     this.restitution    = 0;
     this.friction       = 100;
     this.calcColour = function(){
@@ -271,7 +273,7 @@ var Bomb                = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'bomb';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = 15;
+    this.damagePts      = 40;
     this.restitution    = 0;
     this.friction       = 100;
     this.calcColour = function(){
@@ -283,8 +285,10 @@ var Bomb                = function(x, y, vx, vy, size, parent){
 Bomb.prototype          = new Particle();
 Bomb.prototype.stabilise = function(){
     if (Math.random() < (this.size*this.size/100000) ){
-        var numberOfBombs   = 0    + (this.speed() * 5 + this.size * this.density);
-        var bombSpeed       = 0.5   + (this.speed() * 0.5);
+        var numberOfBombs   = 5 * this.speed() + this.size;
+        var bombSpeed       = 1.2 * this.speed();
+        if (numberOfBombs > 100) numberOfBombs = 100;
+        // var numberOfBombs = 2;
         for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
             gameObjects.push(new Bomb(
                 this.x + this.size * Math.random() * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
@@ -297,7 +301,7 @@ Bomb.prototype.stabilise = function(){
         }
     }
     return this;
-}
+};
 // --
 
 // -- Like a particle but drawn with an image
@@ -330,17 +334,17 @@ Graphic.prototype.draw  = function(){
 Graphic.prototype.explode = function(){
     Particle.prototype.explode.call(this);
     var numberOfBombs   = 10    + (this.speed() * 5 + this.size * this.density);
-    var bombSpeed       = 0.1   + (this.speed() * 0.5);
-    if (numberOfBombs > 300) numberOfBombs = 300;
+    var bombSpeed       = 0.1   + (this.speed() * 0.5 + 0.001 * this.size * this.density);
+    if (numberOfBombs > 100) numberOfBombs = 100;
     for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
         var fragSize = Math.random() * this.size + 1;
+        if (fragSize > 30) fragSize = 30;
         gameObjects.push(new Bomb(
-
             this.x + this.size * Math.random() * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
             this.y + this.size * Math.random() * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
             bombSpeed * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
             bombSpeed * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
-            (fragSize > 30) ? 30 : fragSize,
+            fragSize,
             this
         ));
     }
@@ -366,16 +370,12 @@ var Fireball            = function(x, y, vx, vy, parent){
     this.parent = parent;
     this.team   = parent.team;
     this.base(x, y, vx, vy, parent.size / 3, 0);
-    this.damagePts      = 1000;
+    this.damagePts      = 200;
     this.density        *= 10;
     this.calcMass();
     this.gameClass      = 'fireball';
 };
 Fireball.prototype      = new Graphic();
-Fireball.prototype.stabilise = function(){
-    return this;
-};
-
 
 var Ship                        = function(x,y,version){
     this.base = Graphic;
@@ -531,28 +531,17 @@ var Baddy                       = function(x,y){
 };
 Baddy.prototype                 = new Ship();
 Baddy.prototype.getTarget       = function(){
-    if (gameObjects.length === 1) {
-        this.target = this;
-        return;
+    this.target = false;
+    for (var threat of gameObjects){
+        if (this.target === false && threat instanceof Graphic)                           {this.target = threat;}
+        if (threat.team && threat.team !== this.team && threat.mass > this.target.mass) {this.target = threat;}
     }
-    this.target = gameObjects[0];
-    // Hacky! Limited to 2 players
-    // this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [2] : gameObjects[1];
-    // interaction.near(this, this.target);
-    // interaction.touching(this, this.target);
-    // this.seperationSqrd = interaction.seperationSqrd;
-    // this.target = (gameObjects[2] === this || gameObjects[2] === this.parent) ? gameObjects [1] : gameObjects[2];
-    // interaction.near(this, this.target);
-    // interaction.touching(this, this.target);
-    // if (interaction.seperationSqrd > this.seperationSqrd) {
-    //     this.target = gameObjects[1];
-    // }
     return this; // chainable
 };
 Baddy.prototype.resolveTarget   = function(){
     interaction.near(this, this.target);
-    interaction.touching(this, this.target);
-    interaction.resolve(this, this.target);
+    interaction.touching();
+    interaction.resolve();
     interaction.angle = Math.atan(interaction.vector.y / interaction.vector.x);
     if (interaction.vector.y >= 0){
         if (interaction.vector.x >= 0) interaction.angle += 0;
@@ -591,7 +580,7 @@ var Missile                     = function(x, y, parent){
     this.team           = parent.team;
     this.showEnergyBar  = false;
 
-    this.damagePts      = 500;
+    this.damagePts      = 200;
     this.size           = parent.size / 3;
     this.sideThrust     *= 0.1;
     this.thrust         *= 2;
@@ -599,15 +588,13 @@ var Missile                     = function(x, y, parent){
     this.density        *= 4;
     this.calcMass();
 };
-Missile.prototype                   = new Baddy;
+Missile.prototype                   = new Baddy();
 Missile.prototype.getPilotCommand   = function(deltaT){
-    if (!this.target) {
-        this.energy = 0;
-        return;
-    }
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();}
+
     interaction.near(       this, this.parent);
-    interaction.touching(   this, this.parent);
-    interaction.resolve(    this, this.parent);
+    interaction.touching();
+    interaction.resolve();
     if (interaction.seperation > (this.parent.size * 2)){
         this.resolveTarget().mainThrusters(deltaT);
         if      (this.angleToTarget <= Math.PI - 0.1){this.spinThrusters(deltaT, 1);}
@@ -663,7 +650,7 @@ var BossBaddy                       = function(x,y){
         }, 5000);
     })(this);
 };
-BossBaddy.prototype                 = new Baddy;
+BossBaddy.prototype                 = new Baddy();
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
 var Interaction                 = function(){
@@ -676,12 +663,12 @@ Interaction.prototype.near      = function(P1, P2){
     this.size = P2.size + P1.size;  // Interaction distance at point of contact
     return ((Math.abs(this.x) <= this.size) && (Math.abs(this.y) <= this.size));
 };
-Interaction.prototype.touching  = function(P1, P2){
+Interaction.prototype.touching  = function(){
     this.seperationSqrd = this.x * this.x + this.y * this.y;
     this.sizeSqrd       = this.size * this.size;
     return ( this.seperationSqrd <= this.sizeSqrd );
 };
-Interaction.prototype.resolve = function(P1, P2){
+Interaction.prototype.resolve = function(){
 
     // Hard coded stability!!! Only 2 1/2px gameObjects colliding could have a sep < 1
     this.seperation = (this.seperationSqrd < 1) ? 1 : Math.sqrt(this.seperationSqrd);

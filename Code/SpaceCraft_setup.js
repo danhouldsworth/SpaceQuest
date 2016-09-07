@@ -33,7 +33,12 @@ var gameArea    = document.createElement('canvas'),
         rotatingFrame   : true,
         gravity         : -0,
         boundary_flag   : -1,
-        scores          : {1 : 0, 2 : 0, 3 : 0}
+        scores          : {1 : 0, 2 : 0, 3 : 0},
+        refreshInterval : {
+            physics         : 1,
+            animation       : 20,
+            starsAndScores  : 50
+        }
     };
 
 // --
