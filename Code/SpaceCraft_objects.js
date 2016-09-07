@@ -32,9 +32,9 @@ Primitive.prototype.update   = function(deltaT){
     return this;
 };
 Primitive.prototype.stabilise= function() {
-    this.vx     *= 0.99;
-    this.vy     *= 0.99;
-    this.spin   *= 0.99;
+    this.vx     *= 0.999;
+    this.vy     *= 0.999;
+    this.spin   *= 0.999;
     return this; // chainable
 };
 
@@ -331,13 +331,16 @@ Graphic.prototype.explode = function(){
     Particle.prototype.explode.call(this);
     var numberOfBombs   = 10    + (this.speed() * 5 + this.size * this.density);
     var bombSpeed       = 0.1   + (this.speed() * 0.5);
+    if (numberOfBombs > 300) numberOfBombs = 300;
     for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
+        var fragSize = Math.random() * this.size + 1;
         gameObjects.push(new Bomb(
+
             this.x + this.size * Math.random() * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
             this.y + this.size * Math.random() * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
             bombSpeed * Math.cos(2 * Math.PI * numberOfBombs / bombPiece),
             bombSpeed * Math.sin(2 * Math.PI * numberOfBombs / bombPiece),
-            Math.random() * this.size + 1,
+            (fragSize > 30) ? 30 : fragSize,
             this
         ));
     }
@@ -352,6 +355,8 @@ var Asteroid            = function(x, y, vx, vy, size, spin){
     this.base = Graphic;
     this.image = asteroid;
     this.base(x, y, vx, vy, size, spin);
+    this.energy /=100;
+    this.density *= 10;
 };
 Asteroid.prototype      = new Graphic();
 
@@ -367,11 +372,6 @@ var Fireball            = function(x, y, vx, vy, parent){
     this.gameClass      = 'fireball';
 };
 Fireball.prototype      = new Graphic();
-Fireball.prototype.explode = function(){
-    Graphic.prototype.explode.call(this);
-    // this.parent.longRangeGunHot = false;
-    // experimentText("Cannon", this.x, this.y);
-};
 Fireball.prototype.stabilise = function(){
     return this;
 };
@@ -389,8 +389,8 @@ var Ship                        = function(x,y,version){
     this.restitution    = 0;
     this.friction       = 0;
     this.thrust         = 5;
-    this.thrustRate     = 1;
-    this.sideThrust     = 4;
+    this.thrustRate     = 3;
+    this.sideThrust     = 2;
     this.fireRate       = 10;
 };
 Ship.prototype                  = new Graphic();
@@ -477,7 +477,7 @@ Ship.prototype.fireMissile      = function(side){
 Ship.prototype.fireCanonBall   = function(){
     if (this.longRangeGunHot === true) return;
     this.longRangeGunHot = true;
-    this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:1000));})(this);
+    this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:250));})(this);
     var cannonBallSpeed = 1;
     var cannonBall = new Fireball(
         this.x + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.cos(this.angle),
@@ -535,17 +535,18 @@ Baddy.prototype.getTarget       = function(){
         this.target = this;
         return;
     }
+    this.target = gameObjects[0];
     // Hacky! Limited to 2 players
-    this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [2] : gameObjects[1];
-    interaction.near(this, this.target);
-    interaction.touching(this, this.target);
-    this.seperationSqrd = interaction.seperationSqrd;
-    this.target = (gameObjects[2] === this || gameObjects[2] === this.parent) ? gameObjects [1] : gameObjects[2];
-    interaction.near(this, this.target);
-    interaction.touching(this, this.target);
-    if (interaction.seperationSqrd > this.seperationSqrd) {
-        this.target = gameObjects[1];
-    }
+    // this.target = (gameObjects[1] === this || gameObjects[1] === this.parent) ? gameObjects [2] : gameObjects[1];
+    // interaction.near(this, this.target);
+    // interaction.touching(this, this.target);
+    // this.seperationSqrd = interaction.seperationSqrd;
+    // this.target = (gameObjects[2] === this || gameObjects[2] === this.parent) ? gameObjects [1] : gameObjects[2];
+    // interaction.near(this, this.target);
+    // interaction.touching(this, this.target);
+    // if (interaction.seperationSqrd > this.seperationSqrd) {
+    //     this.target = gameObjects[1];
+    // }
     return this; // chainable
 };
 Baddy.prototype.resolveTarget   = function(){
