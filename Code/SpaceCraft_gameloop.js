@@ -38,8 +38,28 @@ function iteratePhysics(){
 function animate(){
     timeStep('animate');
     gameArea.width = gameArea.width;
-    // GlobalParams.cameraPos1 = gameObjects[0];
-    // GlobalParams.cameraPos2 = gameObjects[1];
+
+    if (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1 && GlobalParams.camera.Blender[0] === 0) {
+        GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
+        GlobalParams.camera.Blender[0] = 100;
+        // GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
+        for (var target of gameObjects) {
+            if (target === GlobalParams.camera.Targets[1]) continue;
+            GlobalParams.camera.Targets[0] = target;
+            if (target instanceof Ship) break;
+        }
+    }
+    if (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1 && GlobalParams.camera.Blender[1] === 0) {
+        GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
+        GlobalParams.camera.Blender[1] = 100;
+        // GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
+        for (var target of gameObjects) {
+            if (target === GlobalParams.camera.Targets[0]) continue;
+            GlobalParams.camera.Targets[1] = target;
+            if (target instanceof Ship) break;
+        }
+    }
+
     if (GlobalParams.camera.Blender[0] > 0) GlobalParams.camera.Blender[0]--;
     if (GlobalParams.camera.Blender[1] > 0) GlobalParams.camera.Blender[1]--;
     var camera1 = {

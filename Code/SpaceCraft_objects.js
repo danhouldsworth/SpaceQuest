@@ -61,7 +61,6 @@ Particle.prototype.collide      = function(that){
     if (this === that) return false;
 
     if (interaction.near(this, that) && interaction.touching()){
-
         interaction.resolve();
 
         var e = restitution(this,that);
@@ -152,46 +151,46 @@ Particle.prototype.boundary     = function() {
     var w = gameArea.width,
         h = gameArea.height;
 
-    if (this.boundary_flag === -1){
-        if (this.x < -4*w){
+    if (this.boundary_flag === -1){                 // BOUNCE
+        if ((this.x - this.size) < -4*w){
             wall.clear();
             wall.y      = this.y;
             wall.x      = -4*w-wall.size;
             this.collide(wall);
         }
-        if (this.x > 4*w){
+        if ((this.x + this.size) > 4*w){
             wall.clear();
             wall.y      = this.y;
             wall.x      = 4*w + wall.size;
             this.collide(wall);
         }
-        if (this.y < -4*h){
+        if ((this.y - this.size) < -4*h){
             wall.clear();
             wall.x = this.x;
             wall.y = -4*h-wall.size;
             this.collide(wall);
         }
-        if (this.y > 4*h){
+        if ((this.y + this.size) > 4*h){
             wall.clear();
             wall.x      = this.x;
             wall.y      = 4*h + wall.size;
             this.collide(wall);
         }
-
-    } else if (this.boundary_flag == 1){
-        while (this.x < -4*w){
+    } else if (this.boundary_flag == 1){            // WRAP
+        while ((this.x - this.size) < -4*w){
             this.x += 8*w;
         }
-        while (this.x > (4*w)){
+        while ((this.x + this.size) > 4*w){
             this.x -= 8*w;
         }
-        while (this.y < -4*h){
+        while ((this.y - this.size) < -4*h){
             this.y += 8*h;
         }
-        while (this.y > 4*h){
+        while ((this.y + this.size) > 4*h){
             this.y -= 8*h;
         }
-    } else {
+    } else {                                        // DEFAULT?
+        console.log(this);
         if (this.x < -4*w || this.x > 4*w){
             this.vx = 0;
         }
@@ -208,38 +207,7 @@ Particle.prototype.draw         = function(){
 };
 Particle.prototype.explode = function(){
     var index = gameObjects.indexOf(this);
-    if (index === -1) {console.log(this);}
-    else {
-        gameObjects.splice(index,1);
-    }
-    //     if (index === 0 ){
-    //         GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
-    //         GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
-    //         GlobalParams.camera.Blender[0] = 100;
-    //     }
-    //     if (index === 1 ){
-    //         GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
-    //         GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
-    //         GlobalParams.camera.Blender[1] = 100;
-    //     }
-    // }
-    if (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1) {
-        if (GlobalParams.camera.Blender[0] === 0){
-            GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
-            GlobalParams.camera.Blender[0] = 100;
-        }
-        GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
-        // GlobalParams.camera.Targets[0] = gameObjects[0];
-    }
-    if (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1) {
-        if (GlobalParams.camera.Blender[1] === 0){
-            GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
-            GlobalParams.camera.Blender[1] = 100;
-        }
-        GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
-        // GlobalParams.camera.Blender[1] = 100;
-        // GlobalParams.camera.Targets[1] = gameObjects[1];
-    }
+    if (index !== -1) {gameObjects.splice(index,1);}
 };
 Particle.prototype.getPilotCommand = function(deltaT){
     return this; // chainable
@@ -721,6 +689,7 @@ Interaction.prototype.clear     = function(){
 var Wall                = function(){
     this.base = Particle;
     this.base(0,0,0,0,200,0);
+    this.density = 10000;
     this.calcMass();
     this.restitution = 0.4;
     this.friction = 0;
