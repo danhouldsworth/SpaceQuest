@@ -45,8 +45,13 @@ function animate(){
         // GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
         for (var target of gameObjects) {
             if (target === GlobalParams.camera.Targets[1]) continue;
-            GlobalParams.camera.Targets[0] = target;
-            if (target instanceof Ship) break;
+
+            if (target instanceof Ship) {
+                GlobalParams.camera.Targets[0] = target;
+                break;
+            } else if (target.mass > GlobalParams.camera.Targets[0].mass) {
+                GlobalParams.camera.Targets[0] = target;
+            }
         }
     }
     if (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1 && GlobalParams.camera.Blender[1] === 0) {
@@ -55,8 +60,13 @@ function animate(){
         // GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
         for (var target of gameObjects) {
             if (target === GlobalParams.camera.Targets[0]) continue;
-            GlobalParams.camera.Targets[1] = target;
-            if (target instanceof Ship) break;
+
+            if (target instanceof Ship) {
+                GlobalParams.camera.Targets[1] = target;
+                break;
+            } else if (target.mass > GlobalParams.camera.Targets[1].mass) {
+                GlobalParams.camera.Targets[1] = target;
+            }
         }
     }
 
