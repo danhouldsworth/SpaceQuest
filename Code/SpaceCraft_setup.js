@@ -20,14 +20,16 @@ var gameArea    = document.createElement('canvas'),
     stars           = [],
     keyState        = {},
     lastTime = {
-        iteratePhysics      : Date.now(),
-        animate             : Date.now(),
-        updateScoreStars    : Date.now()
+        physics             : Date.now(),
+        animation           : Date.now(),
+        starsAndScores      : Date.now(),
+        pilotInput          : Date.now(),
     },
     deltaT = {
-        iteratePhysics      : 0,
-        animate             : 0,
-        updateScoreStars    : 0
+        physics             : 0,
+        animation           : 0,
+        starsAndScores      : 0,
+        pilotInput          : 0
     },
     GlobalParams = {
         rotatingFrame   : true,
@@ -42,7 +44,8 @@ var gameArea    = document.createElement('canvas'),
         refreshInterval : {
             physics         : 1,
             animation       : 20,
-            starsAndScores  : 50
+            starsAndScores  : 50,
+            pilotInput      : 100
         }
     };
 

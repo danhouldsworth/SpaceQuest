@@ -481,8 +481,8 @@ Ship.prototype.fireCanonBall   = function(){
     this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:250));})(this);
     var cannonBallSpeed = 1;
     var cannonBall = new Fireball(
-        this.x + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.cos(this.angle),
-        this.y + (1.6 + this.speed()*deltaT.iteratePhysics/10) * this.size * Math.sin(this.angle),
+        this.x + (1.6 + this.speed()) * this.size * Math.cos(this.angle),
+        this.y + (1.6 + this.speed()) * this.size * Math.sin(this.angle),
         this.vx + cannonBallSpeed * Math.cos(this.angle),
         this.vy + cannonBallSpeed * Math.sin(this.angle),
         this

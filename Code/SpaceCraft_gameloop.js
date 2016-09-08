@@ -10,7 +10,7 @@ function timeStep(timer){
 }
 
 function iteratePhysics(){
-    timeStep("iteratePhysics");
+    timeStep("physics");
 
     for (var p1 of gameObjects){
 
@@ -23,20 +23,20 @@ function iteratePhysics(){
             case 'thrust'   :
             case 'bomb'     :
             case 'bullet'   :
-                var evaporationRate = 1 - deltaT.iteratePhysics * deltaT.iteratePhysics / 2000;
+                var evaporationRate = 1 - deltaT.physics * deltaT.physics / 2000;
                 p1.size *= evaporationRate;
         }
 
         if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}
 
-        p1.boundary().stabilise().update(deltaT.iteratePhysics);
+        p1.boundary().stabilise().update(deltaT.physics);
     }
 
     setTimeout(iteratePhysics, GlobalParams.refreshInterval.physics);
 }
 
 function animate(){
-    timeStep('animate');
+    timeStep('animation');
     gameArea.width = gameArea.width;
 
     if (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1 && GlobalParams.camera.Blender[0] === 0) {
@@ -96,17 +96,23 @@ function animate(){
     ctx.scale( GlobalParams.scale, GlobalParams.scale);
     // Move viewport to centre on midpoint between ships
     ctx.translate(GlobalParams.centreX, GlobalParams.centreY);
-    for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animate);
+    for (var gameObject of gameObjects) gameObject.draw();
+    // for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animation);
 
-    // window.requestAnimationFrame(animate);
     setTimeout(animate, GlobalParams.refreshInterval.animation);
 }
 
-function updateScoreStars(){
-    timeStep("updateScoreStars");
+function getPilotInput(){
+    timeStep('pilotInput');
+    for (var gameObject of gameObjects) gameObject.getPilotCommand(deltaT.pilotInput);
+    setTimeout(getPilotInput, GlobalParams.refreshInterval.pilotInput);
+}
 
-    GlobalParams.FPS        = 1000 / deltaT.animate;
-    GlobalParams.CPS        = 1000 / deltaT.iteratePhysics;
+function updateScoreStars(){
+    timeStep("starsAndScores");
+
+    GlobalParams.FPS        = 1000 / deltaT.animation;
+    GlobalParams.CPS        = 1000 / deltaT.physics;
 
     starfield.width = starfield.width;
 
@@ -127,7 +133,7 @@ function updateScoreStars(){
     ctxStars.lineWidth = 5;
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
-    for (var star of stars) star.boundary().update(deltaT.updateScoreStars).draw();
+    for (var star of stars) star.boundary().update(deltaT.starsAndScores).draw();
 
     setTimeout(updateScoreStars, GlobalParams.refreshInterval.starsAndScores);
 }
@@ -136,4 +142,5 @@ function launch(){
     iteratePhysics();
     animate();
     updateScoreStars();
+    getPilotInput();
 }
