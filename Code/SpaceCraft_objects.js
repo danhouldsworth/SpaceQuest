@@ -544,13 +544,13 @@ Baddy.prototype                 = new Ship();
 Baddy.prototype.getTarget       = function(){
     this.target = false;
     for (var threat of gameObjects){
-        if (!threat.team) {continue;}
-        if (this.target === false && threat instanceof Graphic) {this.target = threat; continue;}
-        if (this.target.team === this.team)                     {this.target = threat; continue;}
+        if (!threat.team) {continue;}                                                                       // Don't target bullets / thrust
+        if (this.target === false && threat instanceof Graphic)         {this.target = threat; continue;}   // Target the first graphic we come across if not yet targeted
+        if (this.target.team === this.team && threat.team !== this.team){this.target = threat; continue;}   // If we're targeting ourselves (from above), then target anyone else if poss
         switch (this.team){
             case 1:
-            case 2: if (threat.team === 3 && (this.target.team !==3 || (threat.mass > this.target.mass)))   {this.target = threat;} break;
-            case 3: if (threat.team !== 3 && (threat.mass > this.target.mass))                              {this.target = threat;} break;
+            case 2: if (threat.team === 3 && (this.target.team !==3 || (threat.mass > this.target.mass)))   {this.target = threat;} break; // Daddy&Finn Always target the baddies if we're not already. But don't detarget for smaller baddy
+            case 3: if (threat.team !== 3 && (threat.mass > this.target.mass))                              {this.target = threat;} break; // Baddies target the biggest Daddy/Finn they can
         }
     }
     return this; // chainable
