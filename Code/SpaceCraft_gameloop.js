@@ -22,14 +22,12 @@ function iteratePhysics(){
             case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'thrust'   :
             case 'bomb'     :
-            case 'bullet'   :
-                var evaporationRate = 1 - deltaT.physics * deltaT.physics / 2000;
-                p1.size *= evaporationRate;
+            case 'bullet'   :   p1.size *= (1 - deltaT.physics * deltaT.physics / 2000); // evaporationRate
         }
 
         if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}
 
-        p1.boundary().stabilise().update(deltaT.physics);
+        p1.boundary().stabilise().update(deltaT.physics).accelerate(deltaT.physics);
     }
 
     setTimeout(iteratePhysics, GlobalParams.refreshInterval.physics);
@@ -49,7 +47,7 @@ function animate(){
             if (target instanceof Ship) {
                 GlobalParams.camera.Targets[0] = target;
                 break;
-            } else if (target.mass > GlobalParams.camera.Targets[0].mass) {
+            } else if (target.mass > GlobalParams.camera.Targets[0].mass || (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1)) {
                 GlobalParams.camera.Targets[0] = target;
             }
         }
@@ -64,7 +62,7 @@ function animate(){
             if (target instanceof Ship) {
                 GlobalParams.camera.Targets[1] = target;
                 break;
-            } else if (target.mass > GlobalParams.camera.Targets[1].mass) {
+            } else if (target.mass > GlobalParams.camera.Targets[1].mass || (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1)) {
                 GlobalParams.camera.Targets[1] = target;
             }
         }

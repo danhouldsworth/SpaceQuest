@@ -10,25 +10,37 @@ var Primitive                   = function(x, y, vx, vy, size, angle, spin){
     this.vy     = vy || 0;
     this.ax     = 0;
     this.ay     = 0;
-    this.size   = size  || 0;
     this.angle  = angle || 0;
     this.spin   = spin  || 0;
+    this.spinDot= 0;
+    this.size   = size  || 0;
 };
 Primitive.prototype.speed    = function (){
     var speed = modulus(this.vx, this.vy);
     return speed;
 };
 Primitive.prototype.update   = function(deltaT){
-    // -- Modify speed due to gravity (& other field forces)
-    this.vx     += this.ax * deltaT;
-    this.vy     += (this.ay + this.gravity) * deltaT;
     // -- Update position based on speed
-    this.x      = this.x + this.vx * deltaT;
-    this.y      = this.y + this.vy * deltaT;
-    this.angle  = this.angle + this.spin * deltaT;
+    this.x      += this.vx      * deltaT;
+    this.y      += this.vy      * deltaT;
+    this.angle  += this.spin    * deltaT;
     // -- Normalise angle to 0<theta<2PI
     this.angle = (Math.PI * 2 + this.angle) % (Math.PI * 2);
     // --
+    return this;
+};
+Primitive.prototype.accelerate   = function(deltaT){
+    // -- Modify speed due to forces
+    if (this.ax || this.ay){
+        this.vx     += this.ax      * deltaT;
+        this.vy     += this.ay      * deltaT;
+        this.mainThrustExhaust();
+    }
+    if (this.spinDot){
+        this.spin   += this.spinDot * deltaT;
+        if (this.spinDot > 0)   this.spinThrustExhaust(1);
+        else                    this.spinThrustExhaust(-1);
+    }
     return this;
 };
 Primitive.prototype.stabilise= function() {
@@ -44,7 +56,6 @@ var Particle                = function(x, y, vx, vy, size, spin){
     this.base(x, y, vx, vy, size, Math.PI / 2, spin);
     this.gameClass      = 'particle';
     this.density = 1;
-    this.gravity        = GlobalParams.gravity;
     this.boundary_flag  = GlobalParams.boundary_flag;
     this.restitution    = 1;
     this.friction       = 20;
@@ -216,7 +227,6 @@ Particle.prototype.getPilotCommand = function(deltaT){
 var Star = function(){
     this.base = Particle;
     this.base( (Math.random()-0.5) * 8*w, (Math.random()-0.5) * 8*h, Math.random() / 5, 0, Math.random() * 10, 0);
-    this.gravity = 0;
     this.boundary_flag = 1;
 };
 Star.prototype = new Particle();
@@ -390,7 +400,6 @@ var Ship                        = function(x,y,version){
     this.restitution    = 0;
     this.friction       = 0;
     this.thrust         = 5;
-    this.thrustRate     = 3;
     this.sideThrust     = 2;
     this.fireRate       = 10;
 };
@@ -409,10 +418,9 @@ Ship.prototype.draw             = function(){
     }
     return this; // chainable
 };
-Ship.prototype.spinThrusters    = function(deltaT, direction){
+Ship.prototype.spinThrustExhaust = function(direction){
     var sideThrustSpeed = 0.1;
     var sideThrustMass  = Math.max(this.size / 15 - 1,1.5);
-    this.spin += deltaT * direction * this.sideThrust / (this.mass * this.size); // proxy for I
     gameObjects.push(new Thrust(
         this.x + direction * 0.95 * this.size * Math.sin(this.angle + direction * 1.3) + Math.random() - 0.5,
         this.y - direction * 0.95 * this.size * Math.cos(this.angle + direction * 1.3) + Math.random() - 0.5,
@@ -431,19 +439,17 @@ Ship.prototype.spinThrusters    = function(deltaT, direction){
     ));
     return this; // chainable
 };
-Ship.prototype.mainThrusters    = function(deltaT){
+Ship.prototype.mainThrustExhaust = function(){
     var thrustSpeed = 0.2;
     var thrustMass  = Math.max(this.size / 10 - 1,2);
-    this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
-    this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
-    for(var i = 0;i < this.thrustRate; i++) {gameObjects.push(new Thrust(
+    gameObjects.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
         -thrustSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
         -thrustSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
         thrustMass,
         this
-    ));}
+    ));
     return this; // chainable
 };
 Ship.prototype.fireGun          = function(deltaT){
@@ -502,9 +508,13 @@ Ship.prototype.getPilotCommand  = function(deltaT){
         missile : [null, 82, 40],   // r    Down Arrow
         cannon  : [null, 84, 77]    // t    m
     };
-    if (keyState[playerKeys.left[   this.player]])      {this.spinThrusters(deltaT, 1);}
-    if (keyState[playerKeys.right[  this.player]])      {this.spinThrusters(deltaT, -1);}
-    if (keyState[playerKeys.thrust[ this.player]])      {this.mainThrusters(deltaT);} else {this.ax = this.ay = 0;}
+    this.ax = this.ay = this.spinDot = 0;
+    if (keyState[playerKeys.left[   this.player]])      {this.spinDot = +this.sideThrust / (this.mass * this.size);}
+    if (keyState[playerKeys.right[  this.player]])      {this.spinDot = -this.sideThrust / (this.mass * this.size);}
+    if (keyState[playerKeys.thrust[ this.player]])      {
+        this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
+        this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
+    }
     if (keyState[playerKeys.fire[   this.player]])      {this.fireGun();}
     if (keyState[playerKeys.cannon[ this.player]])      {this.fireCanonBall();}
     if (keyState[playerKeys.missile[this.player]] && !this.missleLaunchersHot) {
@@ -534,8 +544,14 @@ Baddy.prototype                 = new Ship();
 Baddy.prototype.getTarget       = function(){
     this.target = false;
     for (var threat of gameObjects){
-        if (this.target === false && threat instanceof Graphic)                           {this.target = threat;}
-        if (threat.team && threat.team !== this.team && threat.mass > this.target.mass) {this.target = threat;}
+        if (!threat.team) {continue;}
+        if (this.target === false && threat instanceof Graphic) {this.target = threat; continue;}
+        if (this.target.team === this.team)                     {this.target = threat; continue;}
+        switch (this.team){
+            case 1:
+            case 2: if (threat.team === 3 && (this.target.team !==3 || (threat.mass > this.target.mass)))   {this.target = threat;} break;
+            case 3: if (threat.team !== 3 && (threat.mass > this.target.mass))                              {this.target = threat;} break;
+        }
     }
     return this; // chainable
 };
@@ -557,19 +573,19 @@ Baddy.prototype.resolveTarget   = function(){
     return this; // chainable
 };
 Baddy.prototype.getPilotCommand = function(deltaT){
+    this.ax = this.ay = this.spinDot = 0;
     this.getTarget();
     this.resolveTarget();
-    if      (this.angleToTarget <= Math.PI - 0.1){this.spinThrusters(deltaT,  1);}
-    else if (this.angleToTarget >= Math.PI + 0.1){this.spinThrusters(deltaT, -1);}
+    if      (this.angleToTarget <= Math.PI - 0.1){this.spinDot = +this.sideThrust / (this.mass * this.size);}
+    else if (this.angleToTarget >= Math.PI + 0.1){this.spinDot = -this.sideThrust / (this.mass * this.size);}
     var engagementDistance = this.target.size + this.size * 5;
     if (interaction.seperation > engagementDistance){
-        if (Math.random() < 0.3 * (interaction.seperation / engagementDistance) ) {this.mainThrusters(deltaT);}
-        if ((this.angleToTarget < 0.1) || (this.angleToTarget > (Math.PI * 2 - 0.1))) {
-            this.fireCanonBall();
+        if (Math.random() < 0.3 * (interaction.seperation / engagementDistance) ) {
+            this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
+            this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
         }
-    } else {
-        this.fireGun(deltaT);
-    }
+        if ((this.angleToTarget < 0.1) || (this.angleToTarget > (Math.PI * 2 - 0.1))) {this.fireCanonBall();}
+    } else {this.fireGun(deltaT);}
     return this; // chainable
 };
 
@@ -585,21 +601,24 @@ var Missile                     = function(x, y, parent){
     this.size           = parent.size / 3;
     this.sideThrust     *= 0.1;
     this.thrust         *= 2;
-    this.thrustRate     *= 4;
     this.density        *= 4;
     this.calcMass();
 };
 Missile.prototype                   = new Baddy();
 Missile.prototype.getPilotCommand   = function(deltaT){
+    this.ax = this.ay = this.spinDot = 0;
     if (gameObjects.indexOf(this.target) === -1) {this.getTarget();}
 
     interaction.near(       this, this.parent);
     interaction.touching();
     interaction.resolve();
     if (interaction.seperation > (this.parent.size * 2)){
-        this.resolveTarget().mainThrusters(deltaT);
-        if      (this.angleToTarget <= Math.PI - 0.1){this.spinThrusters(deltaT, 1);}
-        else if (this.angleToTarget >= Math.PI + 0.1){this.spinThrusters(deltaT,-1);}
+        this.resolveTarget();
+        this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
+        this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
+
+        if      (this.angleToTarget <= Math.PI - 0.1){this.spinDot = +this.sideThrust / (this.mass * this.size);}
+        else if (this.angleToTarget >= Math.PI + 0.1){this.spinDot = -this.sideThrust / (this.mass * this.size);}
     }
     return this; // chainable
 };

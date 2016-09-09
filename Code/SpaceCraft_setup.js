@@ -33,7 +33,6 @@ var gameArea    = document.createElement('canvas'),
     },
     GlobalParams = {
         rotatingFrame   : true,
-        gravity         : -0,
         boundary_flag   : -1,
         scores          : {1 : 0, 2 : 0, 3 : 0},
         camera          : {
