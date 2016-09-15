@@ -375,18 +375,7 @@ var Asteroid            = function(x, y, vx, vy, size, spin){
 };
 Asteroid.prototype      = new Graphic();
 
-var Fireball            = function(x, y, vx, vy, parent){
-    this.base = Graphic;
-    this.image = fireball;
-    this.parent = parent;
-    this.team   = parent.team;
-    this.base(x, y, vx, vy, parent.size / 3, 0);
-    this.damagePts      = 200;
-    this.density        *= 10;
-    this.calcMass();
-    this.gameClass      = 'fireball';
-};
-Fireball.prototype      = new Graphic();
+
 
 var Ship                        = function(x,y,version){
     this.base = Graphic;
@@ -441,7 +430,7 @@ Ship.prototype.spinThrustExhaust = function(direction){
 };
 Ship.prototype.mainThrustExhaust = function(){
     var thrustSpeed = 0.2;
-    var thrustMass  = Math.max(this.size / 10 - 1,2);
+    var thrustMass  = Math.max(this.size / 5 - 1,2);
     gameObjects.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
@@ -453,12 +442,12 @@ Ship.prototype.mainThrustExhaust = function(){
     return this; // chainable
 };
 Ship.prototype.fireGun          = function(deltaT){
-    var bulletSpeed = 0.5;
-    var bulletMass  = Math.max(this.size / 10 - 1, 2);
+    var bulletSpeed = 1;
+    var bulletMass  = Math.max(this.size / 4 - 1, 2);
     for(var i = 0;i < this.fireRate; i++){
         gameObjects.push(new Bullet(
-            this.x + 1.3 * this.size * Math.cos(this.angle) + 4 * Math.random() - 2,
-            this.y + 1.3 * this.size * Math.sin(this.angle) + 4 * Math.random() - 2,
+            this.x + 1.8 * this.size * Math.cos(this.angle) + .1 * Math.random() - 2,
+            this.y + 1.8 * this.size * Math.sin(this.angle) + .1 * Math.random() - 2,
             bulletSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
             bulletSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
             bulletMass,
@@ -487,16 +476,32 @@ Ship.prototype.fireCanonBall   = function(){
     this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:250));})(this);
     var cannonBallSpeed = 1;
     var cannonBall = new Fireball(
-        this.x + (1.6 + this.speed()) * this.size * Math.cos(this.angle),
-        this.y + (1.6 + this.speed()) * this.size * Math.sin(this.angle),
+        this.x - (1.6 + this.speed()) * this.size * Math.cos(this.angle),
+        this.y - (1.6 + this.speed()) * this.size * Math.sin(this.angle),
         this.vx + cannonBallSpeed * Math.cos(this.angle),
         this.vy + cannonBallSpeed * Math.sin(this.angle),
         this
     );
-    cannonBall.selfDestructTimer = setTimeout(function(){cannonBall.explode();}, 3000);
+    // cannonBall.selfDestructTimer = setTimeout(function(){cannonBall.explode();}, 3000);
     gameObjects.push(cannonBall);
     return this; // chainable
 };
+// Ship.prototype.fireCanonBall   = function(){
+//     if (this.longRangeGunHot === true) return;
+//     this.longRangeGunHot = true;
+//     this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:250));})(this);
+//     var cannonBallSpeed = 1;
+//     var cannonBall = new Fireball(
+//         this.x + (1.6 + this.speed()) * this.size * Math.cos(this.angle),
+//         this.y + (1.6 + this.speed()) * this.size * Math.sin(this.angle),
+//         this.vx + cannonBallSpeed * Math.cos(this.angle),
+//         this.vy + cannonBallSpeed * Math.sin(this.angle),
+//         this
+//     );
+//     // cannonBall.selfDestructTimer = setTimeout(function(){cannonBall.explode();}, 3000);
+//     gameObjects.push(cannonBall);
+//     return this; // chainable
+// };
 Ship.prototype.getPilotCommand  = function(deltaT){
     // Use http://keycode.info/ to get keycodes
     var playerKeys  = {
@@ -584,10 +589,44 @@ Baddy.prototype.getPilotCommand = function(deltaT){
             this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
             this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
         }
-        if ((this.angleToTarget < 0.1) || (this.angleToTarget > (Math.PI * 2 - 0.1))) {this.fireCanonBall();}
+        // if ((this.angleToTarget < 0.1) || (this.angleToTarget > (Math.PI * 2 - 0.1))) {this.fireCanonBall();}
     } else {this.fireGun(deltaT);}
     return this; // chainable
 };
+
+var Fireball            = function(x, y, vx, vy, parent){
+    this.base = Baddy;
+    this.base(x, y, vx, vy, parent.size / 3, 0);
+    this.image = fireball;
+    this.parent = parent;
+    this.team   = parent.team;
+    this.showEnergyBar  = false;
+    this.damagePts      = 200;
+    this.thrust         *= 10;
+    this.density        *= 10;
+    this.calcMass();
+    this.gameClass      = 'fireball';
+};
+Fireball.prototype      = new Baddy();
+Fireball.prototype.getPilotCommand   = function(deltaT){
+    this.ax = this.ay = this.spinDot = 0;
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();}
+
+    interaction.near(       this, this.parent);
+    interaction.touching();
+    interaction.resolve();
+    if (interaction.seperation > (this.parent.size * 2)){
+        this.resolveTarget();
+        this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
+        this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
+        this.angle += this.angleToTarget;
+        // this.spinDot = 0;
+        // if      (this.angleToTarget <= Math.PI - 0.1){this.spinDot = +this.sideThrust / (this.mass * this.size);}
+        // else if (this.angleToTarget >= Math.PI + 0.1){this.spinDot = -this.sideThrust / (this.mass * this.size);}
+    }
+    return this; // chainable
+};
+
 
 var Missile                     = function(x, y, parent){
     this.base = Baddy;
