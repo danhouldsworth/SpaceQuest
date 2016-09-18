@@ -1,10 +1,10 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
 
 function impossible(){
-    gameObjects.push(new Ship(      w * 0.1, h * 0.5, 1));
-    gameObjects.push(new Ship(      w * 0.9, h * 0.5, 2));
-    gameObjects.push(new BossBaddy( w * 0.5, h * 0.75));
-    gameObjects.push(new BossBaddy( w * 0.5, h * 0.25));
+    gameObjects.push(new Ship(      w * 0.4, h * 0.5, 1));
+    gameObjects.push(new Ship(      w * 0.6, h * 0.5, 2));
+    gameObjects.push(new BossBaddy( w * 0.5, h * 0.6));
+    gameObjects.push(new BossBaddy( w * 0.5, h * 0.4));
 
     for (var count = 0; count < 50; count++)
         gameObjects.push(new Asteroid( (Math.random()-0.5) * 8*w, (Math.random()-0.5) * 8*h, 0.2 * (Math.random() - 0.5), 0.2 * (Math.random() - 0.5), 200 * Math.random(), 0.01 * (Math.random() - 0.5)));
