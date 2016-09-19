@@ -41,12 +41,15 @@ Primitive.prototype.accelerate   = function(deltaT){
         if (this.spinDot > 0)   this.spinThrustExhaust(1);
         else                    this.spinThrustExhaust(-1);
     }
+    if (this.firing){
+        this.fireGun();
+    }
     return this;
 };
 Primitive.prototype.stabilise= function() {
-    this.vx     *= 0.999;
-    this.vy     *= 0.999;
-    this.spin   *= 0.99;
+    this.vx     *= 0.98;
+    this.vy     *= 0.98;
+    this.spin   *= 0.95;
     return this; // chainable
 };
 
@@ -141,13 +144,15 @@ Particle.prototype.collide      = function(that){
         }
 
         switch (that.gameClass){
-            case 'bullet'   : if (this.gameClass !== 'bullet') {this.energy -= that.damagePts / this.mass;}                 break;
-            case 'bomb'     : if (this.gameClass !== 'bomb')   {this.energy -= that.damagePts / this.mass;}                 break;
+            case 'asteroid' : if (this.gameClass === 'ship')    {this.explode();}                               break;
+            case 'bullet'   : if (this.gameClass !== 'bullet')  {this.energy -= that.damagePts / this.mass;}    break;
+            case 'bomb'     : if (this.gameClass !== 'bomb')    {this.energy -= that.damagePts / this.mass;}    break;
             case 'fireball' :
             case 'missile'  : if (this instanceof Graphic || this.gameClass === 'wall')     {this.energy -= that.damagePts / this.mass; that.explode();} break;
         }
         // Is the only reason we explain the counter side - because we skip particles that haven't collided in a while?
         switch (this.gameClass){
+            case 'asteroid' : if (that.gameClass === 'ship') {that.explode();}                                              break;
             case 'bullet'   : if (that.gameClass !== 'bullet') {that.energy -= this.damagePts / that.mass;}                 break;
             case 'bomb'     : if (that.gameClass !== 'bomb')   {that.energy -= this.damagePts / that.mass;}                 break;
             case 'fireball' :
@@ -283,7 +288,7 @@ var Bomb                = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'bomb';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = 40;
+    this.damagePts      = 100;
     this.restitution    = 0;
     this.friction       = 100;
     this.calcColour = function(){
@@ -368,9 +373,10 @@ Graphic.prototype.explode = function(){
 // Game objects - based on Graphics. Have active controls and specific actions
 var Asteroid            = function(x, y, vx, vy, size, spin){
     this.base = Graphic;
-    this.image = asteroid;
     this.base(x, y, vx, vy, size, spin);
-    this.energy /=100;
+    this.gameClass           = 'asteroid';
+    this.image = asteroid;
+    // this.energy /=100;
     this.density *= 10;
 };
 Asteroid.prototype      = new Graphic();
@@ -388,9 +394,8 @@ var Ship                        = function(x,y,version){
     this.team           = version;
     this.restitution    = 0;
     this.friction       = 0;
-    this.thrust         = 5;
-    this.sideThrust     = 2;
-    this.fireRate       = 10;
+    this.thrust         = 10;
+    this.sideThrust     = 3;
 };
 Ship.prototype                  = new Graphic();
 Ship.prototype.draw             = function(){
@@ -444,16 +449,14 @@ Ship.prototype.mainThrustExhaust = function(){
 Ship.prototype.fireGun          = function(deltaT){
     var bulletSpeed = 1;
     var bulletMass  = Math.max(this.size / 4 - 1, 2);
-    for(var i = 0;i < this.fireRate; i++){
-        gameObjects.push(new Bullet(
-            this.x + 1.8 * this.size * Math.cos(this.angle) + .1 * Math.random() - 2,
-            this.y + 1.8 * this.size * Math.sin(this.angle) + .1 * Math.random() - 2,
-            bulletSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
-            bulletSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
-            bulletMass,
-            this
-        ));
-    }
+    gameObjects.push(new Bullet(
+        this.x + 1.8 * this.size * Math.cos(this.angle) + .1 * Math.random() - 2,
+        this.y + 1.8 * this.size * Math.sin(this.angle) + .1 * Math.random() - 2,
+        bulletSpeed * Math.cos(this.angle + 0.1 * Math.random() - 0.05),
+        bulletSpeed * Math.sin(this.angle + 0.1 * Math.random() - 0.05),
+        bulletMass,
+        this
+    ));
     return this; // chainable
 };
 Ship.prototype.fireMissile      = function(side){
@@ -520,7 +523,7 @@ Ship.prototype.getPilotCommand  = function(deltaT){
         this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
         this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
     }
-    if (keyState[playerKeys.fire[   this.player]])      {this.fireGun();}
+    if (keyState[playerKeys.fire[   this.player]])      {this.firing = true;} else {this.firing = false;}
     if (keyState[playerKeys.cannon[ this.player]])      {this.fireCanonBall();}
     if (keyState[playerKeys.missile[this.player]] && !this.missleLaunchersHot) {
         this.missleLaunchersHot = true;
@@ -534,16 +537,14 @@ Ship.prototype.getPilotCommand  = function(deltaT){
 var Baddy                       = function(x,y){
     this.base = Ship;
     this.base(x, y);
-    this.image      = bombBaddy;
-    this.offSet     = bombBaddy.drawingOffsetAngle;
+    this.image          = bombBaddy;
+    this.offSet         = bombBaddy.drawingOffsetAngle;
     this.gameClass      = 'baddy';
     this.team           = 3;
     this.angle          = 3 * Math.PI/2;
-    this.fireRate       = 3;
     this.size           *= 0.7;
     this.calcMass();
-    this.thrust         *= 0.25;
-    // this.sideThrust = 25;
+    this.thrust         *= 0.5;
 };
 Baddy.prototype                 = new Ship();
 Baddy.prototype.getTarget       = function(){
@@ -579,6 +580,7 @@ Baddy.prototype.resolveTarget   = function(){
 };
 Baddy.prototype.getPilotCommand = function(deltaT){
     this.ax = this.ay = this.spinDot = 0;
+    this.firing = false;
     this.getTarget();
     this.resolveTarget();
     if      (this.angleToTarget <= Math.PI - 0.1){this.spinDot = +this.sideThrust / (this.mass * this.size);}
@@ -590,7 +592,7 @@ Baddy.prototype.getPilotCommand = function(deltaT){
             this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
         }
         // if ((this.angleToTarget < 0.1) || (this.angleToTarget > (Math.PI * 2 - 0.1))) {this.fireCanonBall();}
-    } else {this.fireGun(deltaT);}
+    } else {this.firing = true;}
     return this; // chainable
 };
 
@@ -692,8 +694,6 @@ var BossBaddy                       = function(x,y){
     this.image      = bossBaddy;
     this.offSet     = bossBaddy.drawingOffsetAngle;
     this.angle      = Math.PI / 2;
-    // this.fireRate   = 5;
-    // this.thrust     = 100;
     this.size       = 60;
     this.calcMass();
     (function(parentBaddy){

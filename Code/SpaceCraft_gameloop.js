@@ -22,7 +22,7 @@ function iteratePhysics(){
             case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'thrust'   :
             case 'bomb'     :
-            case 'bullet'   :   p1.size *= (1 - deltaT.physics * deltaT.physics / 2000); // evaporationRate
+            case 'bullet'   :   p1.size *= (1 - deltaT.physics * deltaT.physics / 3000); // evaporationRate
         }
 
         if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}
