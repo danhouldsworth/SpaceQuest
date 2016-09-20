@@ -390,7 +390,7 @@ var Asteroid            = function(x, y, vx, vy, size, spin){
     this.base(x, y, vx, vy, size, spin);
     this.gameClass           = 'asteroid';
     this.image = asteroid;
-    // this.energy /=100;
+    // this.showEnergyBar = true;
     this.density *= 10;
 };
 Asteroid.prototype      = new Graphic();
@@ -580,9 +580,9 @@ Baddy.prototype.getPilotCommand = function(deltaT){
     return this; // chainable
 };
 Baddy.prototype.stabilise   = function(deltaT) {
-    this.vx     *= 0.99;
-    this.vy     *= 0.99;
-    this.spin   *= 0.99;
+    this.vx     *= 0.9;
+    this.vy     *= 0.9;
+    this.spin   *= 0.9;
     return this; // chainable
 };
 
@@ -642,8 +642,26 @@ Missile.prototype.getPilotCommand   = function(deltaT){
     if (interaction.seperation > (this.parent.size * 2)){
         this.resolveTarget();
         this.thrusting = true;
-        if      (this.angleToTarget <= Math.PI - 0.1)       {this.thrustLeft = true;}
-        else if (this.angleToTarget >= Math.PI + 0.1)       {this.thrustRight = true;}
+
+        this.trajectory = Math.atan(this.vy / this.vx);
+        if (this.vy >= 0){
+            if (this.vx >= 0) this.trajectory += 0;
+            if (this.vx < 0)  this.trajectory += Math.PI;
+        } else if (this.vy < 0){
+            if (this.vx < 0)  this.trajectory += Math.PI;
+            if (this.vx >= 0) this.trajectory += Math.PI * 2;
+        }
+
+        // this.trajectory = (Math.PI * 2 + this.trajectory) % (Math.PI * 2);
+        this.angleToTarget = interaction.angle - this.trajectory;
+        this.angleToTarget = (Math.PI * 2 + this.angleToTarget) % (Math.PI * 2);
+
+        // !!!!!!!!!!!
+        // if (this.angleToTarget > Math.PI / 2){
+            if      (this.angleToTarget >= Math.PI / 2)       {this.thrustLeft = true;}
+            else if (this.angleToTarget <= Math.PI / 2)       {this.thrustRight= true;}
+        // }
+        // !!!!!!!!!!±
     }
     return this; // chainable
 };
