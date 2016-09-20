@@ -145,6 +145,10 @@ Particle.prototype.collide      = function(that){
             this.y += -thisAcc * sin_theta;
             that.x +=  thatAcc * cos_theta;
             that.y +=  thatAcc * sin_theta;
+            if (this instanceof Graphic && that instanceof Graphic){
+                that.energy -= thatAcc / 100;
+                this.energy -= thisAcc / 100;
+            }
         }
 
         return true;
@@ -344,7 +348,16 @@ Graphic.prototype.draw  = function(){
         ctx.lineTo(this.target.x, this.target.y);
         ctx.stroke();
     }
-
+    if (this.showEnergyBar) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        if (GlobalParams.rotatingFrame) {ctx.rotate(GlobalParams.theta);}
+        ctx.fillStyle = "rgb(0,0,0)";
+        ctx.fillRect( - this.size - 1,  - this.size - 1, 2 * this.size + 2, 10);
+        ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
+        ctx.fillRect( - this.size,  - this.size, 2 * this.size * this.energy, 8);
+        ctx.restore();
+    }
     return this; // chainable
 };
 Graphic.prototype.explode = function(){
@@ -381,6 +394,12 @@ var Asteroid            = function(x, y, vx, vy, size, spin){
     this.density *= 10;
 };
 Asteroid.prototype      = new Graphic();
+Asteroid.prototype.stabilise   = function(deltaT) {
+    this.vx     *= 0.98;
+    this.vy     *= 0.98;
+    this.spin   *= 0.95;
+    return this; // chainable
+};
 
 var Ship                        = function(x,y,team){
     this.base = Graphic;
@@ -397,20 +416,6 @@ var Ship                        = function(x,y,team){
     this.thrustSpeed    = 1;
 };
 Ship.prototype                  = new Graphic();
-Ship.prototype.draw             = function(){
-    Graphic.prototype.draw.call(this);
-    if (this.showEnergyBar) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        if (GlobalParams.rotatingFrame) {ctx.rotate(GlobalParams.theta);}
-        ctx.fillStyle = "rgb(0,0,0)";
-        ctx.fillRect( - this.size - 1,  - this.size - 1, 2 * this.size + 2, 10);
-        ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
-        ctx.fillRect( - this.size,  - this.size, 2 * this.size * this.energy, 8);
-        ctx.restore();
-    }
-    return this; // chainable
-};
 Ship.prototype.spinThrustExhaust = function(direction){
     var thrustParticle1 = new Thrust(
         this.x + direction * 0.95 * this.size * Math.sin(this.angle + direction * 1.3),
@@ -516,7 +521,6 @@ Ship.prototype.stabilise   = function(deltaT) {
     this.spin   *= 0.95;
     return this; // chainable
 };
-
 
 var Baddy                       = function(x,y){
     this.base = Ship;
@@ -650,7 +654,6 @@ Missile.prototype.orientate         = function(side){
     return this; // chainable
 };
 Missile.prototype.draw = function(){
-    if (!this.ax || ! this.ay) return this;
     var maxTimeSteps = 1000;
     var grad = ctx.createLinearGradient(this.x, this.y, this.x + (this.vx + 0.5 * this.ax * maxTimeSteps) * maxTimeSteps, this.y + (this.vy + 0.5 * this.ay * maxTimeSteps) * maxTimeSteps);
     grad.addColorStop(0, "red");
