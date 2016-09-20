@@ -15,11 +15,11 @@ var Primitive                   = function(x, y, vx, vy, size, angle, spin){
     this.spinDot= 0;
     this.size   = size  || 0;
 };
-Primitive.prototype.speed    = function (){
+Primitive.prototype.speed       = function (){
     var speed = modulus(this.vx, this.vy);
     return speed;
 };
-Primitive.prototype.update   = function(deltaT){
+Primitive.prototype.update      = function(deltaT){
     // -- Update position based on speed
     this.x      += this.vx      * deltaT;
     this.y      += this.vy      * deltaT;
@@ -29,24 +29,30 @@ Primitive.prototype.update   = function(deltaT){
     // --
     return this;
 };
-Primitive.prototype.accelerate   = function(deltaT){
+Primitive.prototype.accelerate  = function(deltaT){
     // -- Modify speed due to forces
-    if (this.ax || this.ay){
-        this.vx     += this.ax      * deltaT;
-        this.vy     += this.ay      * deltaT;
+    if (this.thrusting){
+        this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
+        this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
         this.mainThrustExhaust();
     }
-    if (this.spinDot){
-        this.spin   += this.spinDot * deltaT;
-        if (this.spinDot > 0)   this.spinThrustExhaust(1);
-        else                    this.spinThrustExhaust(-1);
+    if (this.thrustLeft) {
+        this.spinDot = +this.sideThrust / (this.mass * this.size);
+        this.spinThrustExhaust(-1);
     }
-    if (this.firing){
-        this.fireGun();
+    if (this.thrustRight) {
+        this.spinDot = -this.sideThrust / (this.mass * this.size);
+        this.spinThrustExhaust(1);
     }
+    if (this.firing) this.fireGun();
+
+    this.vx     += this.ax * deltaT;
+    this.vy     += this.ay * deltaT;
+    this.spin   += this.spinDot * deltaT;
+
     return this;
 };
-Primitive.prototype.stabilise= function() {
+Primitive.prototype.stabilise   = function(deltaT) {
     this.vx     *= 0.98;
     this.vy     *= 0.98;
     this.spin   *= 0.95;
@@ -135,31 +141,25 @@ Particle.prototype.collide      = function(that){
         if (interaction.seperation < 0.99 * interaction.size){ // Try and save some cycles
             // !!! NOTE : This compressability parameter is HARD CODED !!
             var antiSqueezeForce = 0.5 * (interaction.size - interaction.seperation);
-            var thatAcc = antiSqueezeForce * this.mass / (this.mass + that.mass);
-            var thisAcc = antiSqueezeForce - thatAcc;
+            var thatAcc = Math.max(1, antiSqueezeForce * this.mass / (this.mass + that.mass));
+            var thisAcc = Math.max(1, antiSqueezeForce - thatAcc);
             this.x += -thisAcc * cos_theta;
             this.y += -thisAcc * sin_theta;
             that.x +=  thatAcc * cos_theta;
             that.y +=  thatAcc * sin_theta;
         }
 
-        switch (that.gameClass){
-            case 'asteroid' : if (this.gameClass === 'ship')    {this.explode();}                               break;
-            case 'bullet'   : if (this.gameClass !== 'bullet')  {this.energy -= that.damagePts / this.mass;}    break;
-            case 'bomb'     : if (this.gameClass !== 'bomb')    {this.energy -= that.damagePts / this.mass;}    break;
-            case 'fireball' :
-            case 'missile'  : if (this instanceof Graphic || this.gameClass === 'wall')     {this.energy -= that.damagePts / this.mass; that.explode();} break;
-        }
-        // Is the only reason we explain the counter side - because we skip particles that haven't collided in a while?
-        switch (this.gameClass){
-            case 'asteroid' : if (that.gameClass === 'ship') {that.explode();}                                              break;
-            case 'bullet'   : if (that.gameClass !== 'bullet') {that.energy -= this.damagePts / that.mass;}                 break;
-            case 'bomb'     : if (that.gameClass !== 'bomb')   {that.energy -= this.damagePts / that.mass;}                 break;
-            case 'fireball' :
-            case 'missile'  : if (that instanceof Graphic || that.gameClass === 'wall')     {that.energy -= this.damagePts / that.mass; this.explode();} break;
-        }
-
         return true;
+    }
+    else if (this instanceof Asteroid || that instanceof Asteroid) {
+    // else {
+        interaction.touching(this,that);
+        interaction.resolve(this,that);
+        var gravityFactor = 0.00005;
+        this.ax += gravityFactor * interaction.vector.x * that.mass / interaction.seperationSqrd;
+        this.ay += gravityFactor * interaction.vector.y * that.mass / interaction.seperationSqrd;
+        that.ax -= gravityFactor * interaction.vector.x * this.mass / interaction.seperationSqrd;
+        that.ay -= gravityFactor * interaction.vector.y * this.mass / interaction.seperationSqrd;
     }
     return false;
 };
@@ -172,25 +172,25 @@ Particle.prototype.boundary     = function() {
             wall.clear();
             wall.y      = this.y;
             wall.x      = -4*w-wall.size;
-            this.collide(wall);
+            this.collide(wall);applyCollisionRules(this, wall)
         }
         if ((this.x + this.size) > 4*w){
             wall.clear();
             wall.y      = this.y;
             wall.x      = 4*w + wall.size;
-            this.collide(wall);
+            this.collide(wall);applyCollisionRules(this, wall)
         }
         if ((this.y - this.size) < -4*h){
             wall.clear();
             wall.x = this.x;
             wall.y = -4*h-wall.size;
-            this.collide(wall);
+            this.collide(wall);applyCollisionRules(this, wall)
         }
         if ((this.y + this.size) > 4*h){
             wall.clear();
             wall.x      = this.x;
             wall.y      = 4*h + wall.size;
-            this.collide(wall);
+            this.collide(wall);applyCollisionRules(this, wall)
         }
     } else if (this.boundary_flag == 1){            // WRAP
         while ((this.x - this.size) < -4*w){
@@ -226,6 +226,7 @@ Particle.prototype.explode = function(){
     if (index !== -1) {gameObjects.splice(index,1);}
 };
 Particle.prototype.getPilotCommand = function(deltaT){
+    this.ax = this.ay = this.spinDot = 0;
     return this; // chainable
 };
 
@@ -434,8 +435,9 @@ Ship.prototype.spinThrustExhaust = function(direction){
     return this; // chainable
 };
 Ship.prototype.mainThrustExhaust = function(){
-    var thrustSpeed = 0.2;
-    var thrustMass  = Math.max(this.size / 5 - 1,2);
+    var thrustSpeed = this.thrust * 0.1;
+    // var thrustMass  = Math.max(this.size / 5 - 1,2);
+    var thrustMass  = this.thrust * this.size / 50;
     gameObjects.push(new Thrust(
         this.x - 1.1* this.size * Math.cos(this.angle) + Math.random() - 0.5,
         this.y - 1.1* this.size * Math.sin(this.angle) + Math.random() - 0.5,
@@ -461,8 +463,8 @@ Ship.prototype.fireGun          = function(deltaT){
 };
 Ship.prototype.fireMissile      = function(side){
     var missile = new Missile(
-        this.x + (1.4 + this.speed()) * side * this.size * Math.sin(this.angle),
-        this.y - (1.4 + this.speed()) * side * this.size * Math.cos(this.angle),
+        this.x + 1.4 * side * this.size * Math.sin(this.angle),
+        this.y - 1.4 * side * this.size * Math.cos(this.angle),
         this
     );
     missile.target = gameObjects[2];
@@ -479,8 +481,8 @@ Ship.prototype.fireCanonBall   = function(){
     this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:250));})(this);
     var cannonBallSpeed = 1;
     var cannonBall = new Fireball(
-        this.x - (1.6 + this.speed()) * this.size * Math.cos(this.angle),
-        this.y - (1.6 + this.speed()) * this.size * Math.sin(this.angle),
+        this.x - 2.0 * this.size * Math.cos(this.angle),
+        this.y - 2.0 * this.size * Math.sin(this.angle),
         this.vx + cannonBallSpeed * Math.cos(this.angle),
         this.vy + cannonBallSpeed * Math.sin(this.angle),
         this
@@ -489,22 +491,6 @@ Ship.prototype.fireCanonBall   = function(){
     gameObjects.push(cannonBall);
     return this; // chainable
 };
-// Ship.prototype.fireCanonBall   = function(){
-//     if (this.longRangeGunHot === true) return;
-//     this.longRangeGunHot = true;
-//     this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, ((thisShip.team === 1)?250:250));})(this);
-//     var cannonBallSpeed = 1;
-//     var cannonBall = new Fireball(
-//         this.x + (1.6 + this.speed()) * this.size * Math.cos(this.angle),
-//         this.y + (1.6 + this.speed()) * this.size * Math.sin(this.angle),
-//         this.vx + cannonBallSpeed * Math.cos(this.angle),
-//         this.vy + cannonBallSpeed * Math.sin(this.angle),
-//         this
-//     );
-//     // cannonBall.selfDestructTimer = setTimeout(function(){cannonBall.explode();}, 3000);
-//     gameObjects.push(cannonBall);
-//     return this; // chainable
-// };
 Ship.prototype.getPilotCommand  = function(deltaT){
     // Use http://keycode.info/ to get keycodes
     var playerKeys  = {
@@ -517,13 +503,10 @@ Ship.prototype.getPilotCommand  = function(deltaT){
         cannon  : [null, 84, 77]    // t    m
     };
     this.ax = this.ay = this.spinDot = 0;
-    if (keyState[playerKeys.left[   this.player]])      {this.spinDot = +this.sideThrust / (this.mass * this.size);}
-    if (keyState[playerKeys.right[  this.player]])      {this.spinDot = -this.sideThrust / (this.mass * this.size);}
-    if (keyState[playerKeys.thrust[ this.player]])      {
-        this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
-        this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
-    }
-    if (keyState[playerKeys.fire[   this.player]])      {this.firing = true;} else {this.firing = false;}
+    if (keyState[playerKeys.left[   this.player]])      {this.thrustLeft    = true;}    else {this.thrustLeft   = false;}
+    if (keyState[playerKeys.right[  this.player]])      {this.thrustRight   = true;}    else {this.thrustRight  = false;}
+    if (keyState[playerKeys.thrust[ this.player]])      {this.thrusting     = true;}    else {this.thrusting    = false;}
+    if (keyState[playerKeys.fire[   this.player]])      {this.firing        = true;}    else {this.firing       = false;}
     if (keyState[playerKeys.cannon[ this.player]])      {this.fireCanonBall();}
     if (keyState[playerKeys.missile[this.player]] && !this.missleLaunchersHot) {
         this.missleLaunchersHot = true;
@@ -580,19 +563,15 @@ Baddy.prototype.resolveTarget   = function(){
 };
 Baddy.prototype.getPilotCommand = function(deltaT){
     this.ax = this.ay = this.spinDot = 0;
-    this.firing = false;
+    this.firing = this.thrusting = this.thrustLeft = this.thrustRight = false;
     this.getTarget();
     this.resolveTarget();
-    if      (this.angleToTarget <= Math.PI - 0.1){this.spinDot = +this.sideThrust / (this.mass * this.size);}
-    else if (this.angleToTarget >= Math.PI + 0.1){this.spinDot = -this.sideThrust / (this.mass * this.size);}
+    if      (this.angleToTarget <= Math.PI - 0.1)                                   {this.thrustLeft = true;}
+    else if (this.angleToTarget >= Math.PI + 0.1)                                   {this.thrustRight = true;}
     var engagementDistance = this.target.size + this.size * 5;
     if (interaction.seperation > engagementDistance){
-        if (Math.random() < 0.3 * (interaction.seperation / engagementDistance) ) {
-            this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
-            this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
-        }
-        // if ((this.angleToTarget < 0.1) || (this.angleToTarget > (Math.PI * 2 - 0.1))) {this.fireCanonBall();}
-    } else {this.firing = true;}
+        if (Math.random() < 0.3 * (interaction.seperation / engagementDistance) )   {this.thrusting = true;}
+    } else                                                                          {this.firing = true;}
     return this; // chainable
 };
 
@@ -619,12 +598,8 @@ Fireball.prototype.getPilotCommand   = function(deltaT){
     interaction.resolve();
     if (interaction.seperation > (this.parent.size * 2)){
         this.resolveTarget();
-        this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
-        this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
+        this.thrusting = true;
         this.angle += this.angleToTarget;
-        // this.spinDot = 0;
-        // if      (this.angleToTarget <= Math.PI - 0.1){this.spinDot = +this.sideThrust / (this.mass * this.size);}
-        // else if (this.angleToTarget >= Math.PI + 0.1){this.spinDot = -this.sideThrust / (this.mass * this.size);}
     }
     return this; // chainable
 };
@@ -648,6 +623,7 @@ var Missile                     = function(x, y, parent){
 Missile.prototype                   = new Baddy();
 Missile.prototype.getPilotCommand   = function(deltaT){
     this.ax = this.ay = this.spinDot = 0;
+    this.firing = this.thrusting = this.thrustLeft = this.thrustRight = false;
     if (gameObjects.indexOf(this.target) === -1) {this.getTarget();}
 
     interaction.near(       this, this.parent);
@@ -655,11 +631,9 @@ Missile.prototype.getPilotCommand   = function(deltaT){
     interaction.resolve();
     if (interaction.seperation > (this.parent.size * 2)){
         this.resolveTarget();
-        this.ax = (this.thrust / this.mass) * Math.cos(this.angle);
-        this.ay = (this.thrust / this.mass) * Math.sin(this.angle);
-
-        if      (this.angleToTarget <= Math.PI - 0.1){this.spinDot = +this.sideThrust / (this.mass * this.size);}
-        else if (this.angleToTarget >= Math.PI + 0.1){this.spinDot = -this.sideThrust / (this.mass * this.size);}
+        this.thrusting = true;
+        if      (this.angleToTarget <= Math.PI - 0.1)       {this.thrustLeft = true;}
+        else if (this.angleToTarget >= Math.PI + 0.1)       {this.thrustRight = true;}
     }
     return this; // chainable
 };

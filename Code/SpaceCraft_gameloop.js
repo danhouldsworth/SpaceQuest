@@ -8,14 +8,31 @@ function timeStep(timer){
     deltaT[timer]   = Date.now() - lastTime[timer];
     lastTime[timer] = Date.now();
 }
+function applyCollisionRules(obj1, obj2){
+    switch (obj1.gameClass){
+        case 'asteroid' : if (obj2 instanceof Ship)         {obj2.explode();}                               break;
+        case 'bullet'   : if (obj2.gameClass !== 'bullet')  {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+        case 'bomb'     : if (obj2.gameClass !== 'bomb')    {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+        case 'fireball' :
+        case 'missile'  : if (obj2 instanceof Graphic || obj2.gameClass === 'wall')     {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
+    }
 
+    if (obj1 instanceof Ship){ // Includes baddies & missiles
+        if (obj2.damagePts && obj1.team !== obj2.team) GlobalParams.scores[obj2.team] += obj2.damagePts;
+    }
+}
 function iteratePhysics(){
     timeStep("physics");
 
-    for (var p1 of gameObjects){
-
-        for (var p2 of gameObjects)
-            if (p1.collide(p2) && p1 instanceof Ship && p2.damagePts && p1 !== p2.parent) GlobalParams.scores[p2.team] += p2.damagePts;
+    for (var i = 0; i < gameObjects.length; i++){
+        var p1 = gameObjects[i];
+        for (var j = i + 1; j < gameObjects.length; j++){
+            var p2 = gameObjects[j];
+            if (p1.collide(p2)) {
+                applyCollisionRules(p1,p2);
+                applyCollisionRules(p2,p1);
+            }
+        }
 
         switch (p1.gameClass){
             case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
