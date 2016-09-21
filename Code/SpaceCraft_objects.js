@@ -329,6 +329,7 @@ var Graphic             = function(x, y, vx, vy, size, spin){
     this.base = Particle;
     this.offSet = 0;
     this.base(x, y, vx, vy, size, spin);
+    this.laserSights    = true;
 };
 Graphic.prototype       = new Particle();
 Graphic.prototype.draw  = function(){
@@ -357,6 +358,20 @@ Graphic.prototype.draw  = function(){
         ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
         ctx.fillRect( - this.size,  - this.size, 2 * this.size * this.energy, 8);
         ctx.restore();
+    }
+    if (this.laserSights) {
+        var maxTimeSteps = 1000;
+        var grad = ctx.createLinearGradient(this.x, this.y, this.x + (this.vx + 0.5 * this.ax * maxTimeSteps) * maxTimeSteps, this.y + (this.vy + 0.5 * this.ay * maxTimeSteps) * maxTimeSteps);
+        grad.addColorStop(0, "red");
+        grad.addColorStop(1, "transparent");
+        ctx.beginPath();
+        ctx.moveTo(this.x, this.y);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth=4;
+        for (var dT = 1; dT < maxTimeSteps; dT = dT+50){
+            ctx.lineTo(this.x + (this.vx + 0.5 * this.ax * dT) * dT, this.y + (this.vy + 0.5 * this.ay * dT) * dT);
+        }
+        ctx.stroke();
     }
     return this; // chainable
 };
@@ -521,6 +536,17 @@ Ship.prototype.stabilise   = function(deltaT) {
     this.spin   *= 0.95;
     return this; // chainable
 };
+Ship.prototype.getAngleHelper = function(x, y){
+    var angle = Math.atan(y / x);
+    if (y >= 0){
+        if (x >= 0) angle += 0;
+        if (x < 0)  angle += Math.PI;
+    } else if (y < 0){
+        if (x < 0)  angle += Math.PI;
+        if (x >= 0) angle += Math.PI * 2;
+    }
+    return angle;
+};
 
 var Baddy                       = function(x,y){
     this.base = Ship;
@@ -532,7 +558,6 @@ var Baddy                       = function(x,y){
     this.angle          = 3 * Math.PI/2;
     this.size           *= 0.7;
     this.calcMass();
-    this.thrust         *= 0.5;
 };
 Baddy.prototype                 = new Ship();
 Baddy.prototype.getTarget       = function(){
@@ -553,17 +578,8 @@ Baddy.prototype.resolveTarget   = function(){
     interaction.near(this, this.target);
     interaction.touching();
     interaction.resolve();
-    interaction.angle = Math.atan(interaction.vector.y / interaction.vector.x);
-    if (interaction.vector.y >= 0){
-        if (interaction.vector.x >= 0) interaction.angle += 0;
-        if (interaction.vector.x < 0)  interaction.angle += Math.PI;
-    } else if (interaction.vector.y < 0){
-        if (interaction.vector.x < 0)  interaction.angle += Math.PI;
-        if (interaction.vector.x >= 0) interaction.angle += Math.PI * 2;
-    }
-    this.angleToTarget = interaction.angle - this.angle;
+    this.angleToTarget = this.getAngleHelper(interaction.vector.x, interaction.vector.y) - this.angle;
     this.angleToTarget = (Math.PI * 2 + this.angleToTarget) % (Math.PI * 2);
-    // this.angleToTarget = interaction.angle(this, this.target);
     return this; // chainable
 };
 Baddy.prototype.getPilotCommand = function(deltaT){
@@ -594,8 +610,7 @@ var Fireball            = function(x, y, vx, vy, parent){
     this.team   = parent.team;
     this.showEnergyBar  = false;
     this.damagePts      = 200;
-    this.thrust         *= 10;
-    this.density        *= 10;
+    this.density        *= 5;
     this.calcMass();
     this.gameClass      = 'fireball';
 };
@@ -622,12 +637,10 @@ var Missile                     = function(x, y, parent){
     this.parent         = parent;
     this.team           = parent.team;
     this.showEnergyBar  = false;
-
+    this.laserSights    = true;
     this.damagePts      = 200;
     this.size           = parent.size / 3;
-    this.sideThrust     *= 0.1;
-    this.thrust         *= 2;
-    this.density        *= 4;
+    this.density        *= 10;
     this.calcMass();
 };
 Missile.prototype                   = new Baddy();
@@ -643,24 +656,21 @@ Missile.prototype.getPilotCommand   = function(deltaT){
         this.resolveTarget();
         this.thrusting = true;
 
-        this.trajectory = Math.atan(this.vy / this.vx);
-        if (this.vy >= 0){
-            if (this.vx >= 0) this.trajectory += 0;
-            if (this.vx < 0)  this.trajectory += Math.PI;
-        } else if (this.vy < 0){
-            if (this.vx < 0)  this.trajectory += Math.PI;
-            if (this.vx >= 0) this.trajectory += Math.PI * 2;
-        }
-
+        interaction.angle   = this.getAngleHelper(interaction.vector.x, interaction.vector.y)
+        this.trajectory     = this.getAngleHelper(this.vx, this.vy);
         // this.trajectory = (Math.PI * 2 + this.trajectory) % (Math.PI * 2);
         this.angleToTarget = interaction.angle - this.trajectory;
         this.angleToTarget = (Math.PI * 2 + this.angleToTarget) % (Math.PI * 2);
 
         // !!!!!!!!!!!
-        // if (this.angleToTarget > Math.PI / 2){
-            if      (this.angleToTarget >= Math.PI / 2)       {this.thrustLeft = true;}
-            else if (this.angleToTarget <= Math.PI / 2)       {this.thrustRight= true;}
-        // }
+        if (this.angleToTarget > 0.25 && this.angleToTarget < 2 * Math.PI - 0.25){
+            // if      (this.angleToTarget >= Math.PI / 2)       {this.thrustLeft = true;}
+            // else if (this.angleToTarget <= Math.PI / 2)       {this.thrustRight= true;}
+
+            if (this.angleToTarget <= Math.PI)     {this.thrustLeft = true;}
+            if (this.angleToTarget >= Math.PI)     {this.thrustRight = true;}
+
+        }
         // !!!!!!!!!!±
     }
     return this; // chainable
@@ -671,23 +681,13 @@ Missile.prototype.orientate         = function(side){
     this.vy = this.parent.vy - side * Math.cos(this.parent.angle);
     return this; // chainable
 };
-Missile.prototype.draw = function(){
-    var maxTimeSteps = 1000;
-    var grad = ctx.createLinearGradient(this.x, this.y, this.x + (this.vx + 0.5 * this.ax * maxTimeSteps) * maxTimeSteps, this.y + (this.vy + 0.5 * this.ay * maxTimeSteps) * maxTimeSteps);
-    grad.addColorStop(0, "red");
-    grad.addColorStop(1, "transparent");
-    ctx.beginPath();
-    ctx.moveTo(this.x, this.y);
-    ctx.strokeStyle = grad;
-    ctx.lineWidth=4;
-    for (var dT = 1; dT < maxTimeSteps; dT = dT+50){
-        ctx.lineTo(this.x + (this.vx + 0.5 * this.ax * dT) * dT, this.y + (this.vy + 0.5 * this.ay * dT) * dT);
-    }
-    ctx.stroke();
-
-    Graphic.prototype.draw.call(this);
-    return this;
+Missile.prototype.stabilise   = function(deltaT) {
+    this.vx     *= 0.95;
+    this.vy     *= 0.95;
+    this.spin   *= 0.85;
+    return this; // chainable
 };
+
 
 var BossBaddy                       = function(x,y){
     this.base   = Baddy;
