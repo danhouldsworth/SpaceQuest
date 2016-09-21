@@ -1,9 +1,9 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
 
 function impossible(){
-    gameObjects.push(new Ship(      -w, h * 0.6, 1));
-    gameObjects.push(new Ship(      +w, h * 0.4, 2));
-    gameObjects.push(new BossBaddy( w, h * 0.6));
+    gameObjects.push(new PlayerShip(      -w, h * 0.6, 1));
+    gameObjects.push(new PlayerShip(      +w, h * 0.4, 2));
+    // gameObjects.push(new BossBaddy( w, h * 0.6));
     // gameObjects.push(new BossBaddy( w, h * 0.4));
 
     // for (var count = 0; count < 100; count++)

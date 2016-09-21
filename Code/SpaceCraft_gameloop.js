@@ -11,18 +11,17 @@ function timeStep(timer){
 function applyCollisionRules(obj1, obj2){
     switch (obj1.gameClass){
         case 'asteroid' : if (obj2 instanceof Ship)         {obj2.explode();}                               break;
-        case 'bullet'   : if (obj2.gameClass !== 'bullet')  {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
-        case 'bomb'     : if (obj2.gameClass !== 'bomb')    {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+        case 'bullet'   : if (obj2 instanceof Graphic)      {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+        case 'bomb'     : if (!obj2 instanceof Bomb)        {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
         case 'fireball' :
-        case 'missile'  : if (obj2 instanceof Graphic || obj2.gameClass === 'wall')     {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
+        case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)     {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
     }
-
-    if (obj1 instanceof Ship){ // Includes baddies & missiles
-        if (obj2.damagePts && obj1.team !== obj2.team) GlobalParams.scores[obj2.team] += obj2.damagePts;
-    }
+    if (obj1 instanceof Ship && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
 }
 function iteratePhysics(){
     timeStep("physics");
+    var evaporationRateBullet   = (1 - Math.min(1,deltaT.physics * deltaT.physics / 3000));
+    var evaporationRateVolatile = (1 - Math.min(1,deltaT.physics * deltaT.physics / 1000));
 
     for (var i = 0; i < gameObjects.length; i++){
         var p1 = gameObjects[i];
@@ -34,17 +33,20 @@ function iteratePhysics(){
             }
         }
 
+        // Attrition & recharge
         switch (p1.gameClass){
-            case 'ship'     :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
+            case 'player'   :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            case 'thrust'   :
+            case 'thrust'   :   p1.size *= evaporationRateVolatile        ; break;
             case 'bomb'     :
-            case 'bullet'   :   p1.size *= (1 - deltaT.physics * deltaT.physics / 3000); // evaporationRate
+            case 'bullet'   :   p1.size *= evaporationRateBullet;
         }
 
-        if (p1.size <= 1.1 || p1.energy <= 0) {p1.explode();}
-
-        p1.boundary().stabilise().update(deltaT.physics).accelerate(deltaT.physics);
+        if (p1.size > 1.1 && p1.energy > 0) {
+            p1.updatePosition(deltaT.physics).accelerate(deltaT.physics).stabilise().boundaryConstraint();
+        } else {
+            p1.explode();
+        }
     }
 
     setTimeout(iteratePhysics, GlobalParams.refreshInterval.physics);
@@ -121,15 +123,18 @@ function animate(){
     ctx.scale( GlobalParams.scale, GlobalParams.scale);
     // Move viewport to centre on midpoint between ships
     ctx.translate(GlobalParams.centreX, GlobalParams.centreY);
-    for (var gameObject of gameObjects) gameObject.draw();
-    // for (var gameObject of gameObjects) gameObject.draw().getPilotCommand(deltaT.animation);
+
+    for (var gameObject of gameObjects)
+        gameObject.draw();
 
     setTimeout(animate, GlobalParams.refreshInterval.animation);
 }
 
 function getPilotInput(){
     timeStep('pilotInput');
-    for (var gameObject of gameObjects) gameObject.getPilotCommand(deltaT.pilotInput);
+    for (var gameObject of gameObjects)
+        if (gameObject instanceof Ship)
+            gameObject.getPilotCommand(deltaT.pilotInput);
     setTimeout(getPilotInput, GlobalParams.refreshInterval.pilotInput);
 }
 
@@ -158,7 +163,8 @@ function updateScoreStars(){
     ctxStars.lineWidth = 5;
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
-    for (var star of stars) star.boundary().update(deltaT.starsAndScores).draw();
+    for (var star of stars)
+        star.updatePosition(deltaT.starsAndScores).boundaryConstraint().draw();
 
     setTimeout(updateScoreStars, GlobalParams.refreshInterval.starsAndScores);
 }

@@ -5,6 +5,7 @@ var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";
 var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
 var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png"; bossBaddy.drawingOffsetAngle = 0;
 var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = Math.PI;
+var missile     = bombBaddy;
 var spaceShip   = [];
 spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;
 spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/ChaseBaddy_cutout.png";spaceShip[2].drawingOffsetAngle = -Math.PI/2;
@@ -51,9 +52,23 @@ var gameArea    = document.createElement('canvas'),
 // --
 
 // -- Maths / Shortcuts
-function modulus(x, y)      {return Math.sqrt(x * x + y * y);}
-function restitution(P1,P2) {return (P1.restitution + P2.restitution) / 2;}
-function friction(P1, P2)   {return (P1.friction + P2.friction) / 2;}
+function modulus(x, y)                      {return Math.sqrt(x * x + y * y);}
+function restitution(P1,P2)                 {return (P1.restitution + P2.restitution) / 2;}
+function friction(P1, P2)                   {return (P1.friction + P2.friction) / 2;}
+function normaliseAngle0to2PI (grossAngle)  {return (2 * Math.PI + grossAngle) % (2 * Math.PI);}
+function normaliseAnglePItoMinusPI (grossAngle)  {return (2 * Math.PI + grossAngle) % (2 * Math.PI);}
+function getAngle(x, y) {
+    var angle = Math.atan(y / x);
+    if (y >= 0){
+        if (x >= 0) angle += 0;
+        if (x < 0)  angle += Math.PI;
+    } else if (y < 0){
+        if (x < 0)  angle += Math.PI;
+        if (x >= 0) angle += Math.PI * 2;
+    }
+    return angle;
+}
+
 // -- Setup & initialisation
 function initGameArea(){
     w = gameArea.width = starfield.width = window.innerWidth;
