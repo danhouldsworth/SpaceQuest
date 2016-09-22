@@ -42,7 +42,7 @@ var gameArea    = document.createElement('canvas'),
             Blender         : [100, 100]
         },
         refreshInterval : {
-            physics         : 5,    // 200 Hz
+            physics         : 0,    // 200 Hz
             animation       : 20,   //  50 Hz
             starsAndScores  : 50,   //  20 Hz
             pilotInput      :100    //  10 Hz

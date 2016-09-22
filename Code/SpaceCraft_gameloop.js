@@ -19,12 +19,12 @@ function applyCollisionRules(obj1, obj2){
     if (obj1 instanceof Ship && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
 }
 function iteratePhysics(){
-    timeStep("physics");
-    var evaporationRateBullet   = (1 - Math.min(1,deltaT.physics * deltaT.physics / 3000));
-    var evaporationRateVolatile = (1 - Math.min(1,deltaT.physics * deltaT.physics / 1000));
+    timeStep("physics"); var dT = deltaT.physics;
+    var evaporationRateBullet   = (1 - Math.min(1,dT * dT / 3000));
+    var evaporationRateVolatile = (1 - Math.min(1,dT * dT / 1000));
 
     for (var i = 0; i < gameObjects.length; i++){
-        var p1 = gameObjects[i];
+        var p1 = gameObjects[i].clearAccelerations();
         for (var j = i + 1; j < gameObjects.length; j++){
             var p2 = gameObjects[j];
             if (p1.collide(p2)) {
@@ -43,7 +43,7 @@ function iteratePhysics(){
         }
 
         if (p1.size > 1.1 && p1.energy > 0) {
-            p1.updatePosition(deltaT.physics).accelerate(deltaT.physics).stabilise(deltaT.physics).boundaryConstraint();
+            p1.updateForces(dT).updateVelocities(dT).updatePosition(dT).sanitiseSingularities(dT).boundaryConstraint();
         } else {
             p1.explode();
         }

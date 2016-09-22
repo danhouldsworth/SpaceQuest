@@ -1,6 +1,8 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
-/*global interaction, wall, restitution, friction , gameObjects, gameObjects, GlobalParams, deltaT, draw_ball, gameArea, ctx*/
+/*global getAngle, console, normaliseAnglePItoMinusPI, normaliseAngle0to2PI, keyState, interaction, wall, restitution, friction , gameObjects, gameObjects, GlobalParams, deltaT, draw_ball, gameArea, ctx, ctxStars, w, h,  modulus, applyCollisionRules, asteroid, fireball, bomb, bossBaddy, bombBaddy, missile, spaceShip*/
+
+
 
 // -- Basic Primitive Object has size and 6DoF in state space
 var Primitive                   = function(x, y, vx, vy, size, angle, spin){
@@ -19,27 +21,39 @@ Primitive.prototype.speed       = function (){
     var speed = modulus(this.vx, this.vy);
     return speed;
 };
-Primitive.prototype.updatePosition = function(deltaT){
-    // -- Update position based on speed
-    this.x      += this.vx      * deltaT;
-    this.y      += this.vy      * deltaT;
-    this.angle  += this.spin    * deltaT;
-    // -- Normalise angle to 0<theta<2PI
-    this.angle = normaliseAngle0to2PI(this.angle);
-    // --
+Primitive.prototype.clearAccelerations = function (){
+    this.ax = 0;
+    this.ay = 0;
+    this.spinDot = 0;
     return this;
 };
-Primitive.prototype.accelerate  = function(deltaT){
-    // -- Modify speed due to forces
+Primitive.prototype.updateForces = function(deltaT){
+    // These are cleared at the start of each physics iterations, and before collisions detected
+    return this;
+};
+Primitive.prototype.updateVelocities  = function(deltaT){
+    // Assume dT small, as we're about to move, based on the acceleration we've just calced
     this.vx     += this.ax      * deltaT;
     this.vy     += this.ay      * deltaT;
     this.spin   += this.spinDot * deltaT;
     return this;
 };
-Primitive.prototype.stabilise   = function(deltaT) {
-    this.vx     = Math.min(2,  this.vx);
-    this.vy     = Math.min(2,  this.vy);
-    this.spin   = Math.min(0.1, this.spin);
+Primitive.prototype.updatePosition = function(deltaT){
+    // Likewise, assume dT small
+    this.x      += this.vx      * deltaT;
+    this.y      += this.vy      * deltaT;
+    this.angle  += this.spin    * deltaT;
+    // -- Normalise angle to 0<theta<2PI
+    this.angle = normaliseAngle0to2PI(this.angle);
+    return this;
+};
+Primitive.prototype.sanitiseSingularities   = function(deltaT) {
+    // this.vx     = Math.min(1,  this.vx);
+    // this.vy     = Math.min(1,  this.vy);
+    // this.spin   = Math.min(0.1, this.spin);
+    // this.vx     *= (1 - deltaT / 10000);
+    // this.vy     *= (1 - deltaT / 10000);
+    // this.spin   *= (1 - deltaT / 10000);
     return this; // chainable
 };
 
@@ -55,7 +69,7 @@ var Particle                    = function(x, y, vx, vy, size, angle, spin, dens
     this.density        = density;
     this.energy         = 1; // Consider it adhesion
     this.mass           = Math.PI   * this.size * this.size * this.density; // NOTE: mass is not recalculated during attrition!!
-    this.inertia        = 0.5       * this.size * this.size * this.mass;
+    this.inertiaRot     = 0.5       * this.size * this.size * this.mass;
 };
 Particle.prototype              = new Primitive();
 Particle.prototype.momentum     = function(){
@@ -123,7 +137,7 @@ Particle.prototype.collide      = function(that){
             that.spin   = v_spin2;
         }
 
-        if (interaction.seperation < 0.99 * interaction.size){ // Try and save some cycles
+        if ( (interaction.seperation < (0.99 * interaction.size) ) && ( (this instanceof Graphic && that instanceof Graphic) || (!(this instanceof Graphic) && !(that instanceof Graphic)) ) ){ // Try and save some cycles
             // !!! NOTE : This compressability parameter is HARD CODED !!
             var antiSqueezeForce = 0.5 * (interaction.size - interaction.seperation);
             var thatDisplacement = Math.max(1, antiSqueezeForce * this.mass / (this.mass + that.mass));
@@ -143,7 +157,7 @@ Particle.prototype.collide      = function(that){
     else if (this instanceof Asteroid || that instanceof Asteroid) {
         interaction.touching(this,that);
         interaction.resolve(this,that);
-        var gravityFactor = 0.0001;
+        var gravityFactor = 0.00001;
         this.ax += gravityFactor * interaction.vector.x * that.mass / interaction.seperationSqrd;
         this.ay += gravityFactor * interaction.vector.y * that.mass / interaction.seperationSqrd;
         that.ax -= gravityFactor * interaction.vector.x * this.mass / interaction.seperationSqrd;
@@ -247,7 +261,7 @@ Bullet.prototype.constructor    = Particle;
 
 var Thrust                      = function(x, y, vx, vy, size, parent){
     this.base = Particle;
-    this.base(x, y, vx, vy, size, 0, 0, 0.1);
+    this.base(x, y, vx, vy, size, 0, 0, 0.5);
     this.gameClass      = 'thrust';
     this.parent         = parent;
     this.team           = parent.team;
@@ -276,13 +290,11 @@ var Bomb                        = function(x, y, vx, vy, size, parent){
 Bomb.prototype                  = Object.create(Particle.prototype);
 Bomb.prototype.constructor      = Particle;
 Bomb.prototype.detonate         = function(){
-    var numberOfBombs   = 5 * this.speed() + this.mass;
-    var bombSpeed       = 1 * this.speed() + this.mass * 0.0001;
-    if (numberOfBombs > 100) numberOfBombs = 100;
+    var numberOfBombs   = Math.min(100, 5 * this.speed() + this.mass);
+    var bombSpeed       = Math.min(2,   1 * this.speed() + this.mass * 0.0001);
     for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
-        var fragSize = Math.random() * this.size;
+        var fragSize = Math.min(20, Math.random() * this.size);
         var throwAngle = 2 * Math.PI * numberOfBombs / bombPiece;
-        if (fragSize > 20) fragSize = 20;
         gameObjects.push(new Bomb(
             this.x + this.size * Math.random() * Math.cos(throwAngle),
             this.y + this.size * Math.random() * Math.sin(throwAngle),
@@ -292,9 +304,9 @@ Bomb.prototype.detonate         = function(){
             this
         ));
     }
-}
-Bomb.prototype.stabilise        = function(){
-    Primitive.prototype.stabilise.call(this);
+};
+Bomb.prototype.sanitiseSingularities        = function(deltaT){
+    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
     if (Math.random() < (this.mass / 1000000) ) this.detonate();
     return this;
 };
@@ -304,12 +316,13 @@ Bomb.prototype.stabilise        = function(){
 var Graphic                     = function(x, y, vx, vy, size, angle, spin, density){
     this.base = Particle;
     this.offSet = 0;
-    this.base(x, y, vx, vy, size, spin, 0, 1);
+    this.base(x, y, vx, vy, size, spin, 0, density);
     this.showPath = true;
 };
 Graphic.prototype               = Object.create(Particle.prototype);
 Graphic.prototype.constructor   = Particle;
 Graphic.prototype.draw          = function(){
+    var grad;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.offSet + this.angle);
@@ -317,7 +330,7 @@ Graphic.prototype.draw          = function(){
     ctx.restore();
     if (this.target){
         ctx.beginPath();
-        var grad = ctx.createLinearGradient(this.x, this.y, this.target.x, this.target.y);
+        grad = ctx.createLinearGradient(this.x, this.y, this.target.x, this.target.y);
         grad.addColorStop(1, "cyan");
         grad.addColorStop(0, "transparent");
         ctx.moveTo(this.x, this.y);
@@ -338,7 +351,7 @@ Graphic.prototype.draw          = function(){
     }
     if (this.showPath) {
         var maxTimeSteps = 1000;
-        var grad = ctx.createLinearGradient(
+        grad = ctx.createLinearGradient(
             this.x,
             this.y,
             this.x + (this.vx + 0.5 * this.ax * maxTimeSteps) * maxTimeSteps,
@@ -373,13 +386,17 @@ var Asteroid                    = function(x, y, vx, vy, size, spin){
     this.gameClass  = 'asteroid';
     this.image      = asteroid;
     this.showPath   = false;
-    this.restitution= .25;
+    this.restitution= 0.25;
+    // this.energy *= 10; // Fudge to stop all exploding
 };
 Asteroid.prototype              = Object.create(Graphic.prototype);
 Asteroid.prototype.constructor  = Graphic;
-Asteroid.prototype.stabilise      = function(deltaT) {
-    Primitive.prototype.stabilise.call(this);
-    this.ax = this.ay = 0; // Dont let gravity linger
+Asteroid.prototype.sanitiseSingularities      = function(deltaT) {
+    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
+    // Over large times we don't want energy to build up through trunaction errors & antisqueeze etc so we apply pseudo drag
+    this.vx     *= (1 - deltaT / 1000);
+    this.vy     *= (1 - deltaT / 1000);
+    this.spin   *= (1 - deltaT / 1000);
     return this; // chainable
 };
 
@@ -394,16 +411,18 @@ var Ship                        = function(x, y, size, density, image){
     this.friction       = 0;
     this.projectileEngines        = {
     // NOTE: All projectileEngines assumed to start on the circumference of the circle
-        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 4,     projectileSpeed :  1,    projectilePosition : Math.PI,           projectileAngle : Math.PI},
-        frontLeft   : {projectileType : Thrust,     projectileSize : this.size /20,     projectileSpeed :0.3,    projectilePosition : 0,                 projectileAngle : Math.PI / 2},
-        frontRight  : {projectileType : Thrust,     projectileSize : this.size /20,     projectileSpeed :0.3,    projectilePosition : 0,                 projectileAngle : Math.PI * 3 / 2},
-        backLeft    : {projectileType : Thrust,     projectileSize : this.size /20,     projectileSpeed :0.3,    projectilePosition : Math.PI * 2 / 3,   projectileAngle : Math.PI / 2},
-        backRight   : {projectileType : Thrust,     projectileSize : this.size /20,     projectileSpeed :0.3,    projectilePosition : Math.PI * 4 / 3,   projectileAngle : Math.PI * 3 / 2},
-        hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,     projectileSpeed :  1,    projectilePosition : 0,                 projectileAngle : 0},
-        cannonBay   : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI,           projectileAngle : Math.PI},
-        missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI / 2,       projectileAngle : Math.PI / 2},
-        missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,   projectileAngle : Math.PI * 3 / 2}
+        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 4,     projectileSpeed :  1,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
+        frontLeft   : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : 0,                projectileAngle : Math.PI / 2},
+        frontRight  : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : 0,                projectileAngle : Math.PI * 3 / 2},
+        backLeft    : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : Math.PI,          projectileAngle : Math.PI / 2},
+        backRight   : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
+        hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,     projectileSpeed :  1,    projectilePosition : 0,                projectileAngle : 0},
+        // *Bay* need getPilotCommand to reconfirm
+        cannonBay   : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
+        missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
+        missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
     };
+    this.enginesActive = [];
     this.missileLaunchSide = 1;
 };
 Ship.prototype                  = Object.create(Graphic.prototype);
@@ -420,67 +439,48 @@ Ship.prototype.fireProjectiles       = function(engine){
         this
     );
     gameObjects.push(projectile);
-    return projectile;
+    return {
+        x       : -projectile.vx * projectile.mass,
+        y       : -projectile.vy * projectile.mass,
+        torque  : -projectile.momentum() * this.size * Math.sin(engineFiring.projectileAngle - engineFiring.projectilePosition)
+    };
 };
-Ship.prototype.fireMissile      = function(){
+Ship.prototype.launchMissileWhenReady       = function(){
     if (this.missleLaunchersHot === true) return;
     this.missleLaunchersHot = true;
     this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
-    this.missileLaunchSide = -this.missileLaunchSide
-    this.fireProjectiles((this.missileLaunchSide === 1)? "missileBayL" : "missileBayR");
+    this.missileLaunchSide = -this.missileLaunchSide;
+    this.enginesActive[((this.missileLaunchSide === 1)? "missileBayL" : "missileBayR")] = true;
     return this; // chainable
 };
-Ship.prototype.fireCanonBall    = function(){
+Ship.prototype.launchCannonWhenReady        = function(){
     if (this.longRangeGunHot === true) return;
     this.longRangeGunHot = true;
     this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, 250);})(this);
-    this.fireProjectiles("cannonBay");
+    this.enginesActive.cannonBay = true;
     return this; // chainable
 };
-Ship.prototype.accelerate       = function(deltaT){
+Ship.prototype.updateForces                 = function(deltaT){
     // NOTE : Thrust acceleration (deltaV) will be independent of CPS / deltaT, and is correctly calculated on the momentum impulse of the thrust particle
     // However, the actual number of particles injected for animation and game purposes IS CPS / deltaT dependent.
-    // TODO : Return an impulse in ax, ax, spindot components, based on engine config
-    // this.ax = this.ay = this.spinDot = 0;
-    var impulse, forcePerDeltaT, torque;
-    if (this.firing) {
-        impulse = this.fireProjectiles("hoseGun").momentum();
-        forcePerDeltaT = impulse / deltaT;
-        this.ax -= (forcePerDeltaT / this.mass) * Math.cos(this.angle);
-        this.ay -= (forcePerDeltaT / this.mass) * Math.sin(this.angle);
+    for (var engine in this.enginesActive) if (this.enginesActive[engine]){
+        var impulse = this.fireProjectiles(engine);
+        this.ax     += (impulse.x      / this.mass)         / deltaT;
+        this.ay     += (impulse.y      / this.mass)         / deltaT;
+        this.spinDot+= (impulse.torque / this.inertiaRot)   / deltaT;
+        if (engine.indexOf("Bay") !== -1) this.enginesActive[engine] = false; // Wait to be reactivated
     }
-    if (this.thrusting){
-        impulse = this.fireProjectiles("mainJet").momentum();
-        forcePerDeltaT = impulse / deltaT;
-        this.ax += (forcePerDeltaT / this.mass) * Math.cos(this.angle);
-        this.ay += (forcePerDeltaT / this.mass) * Math.sin(this.angle);
-    }
-    if (this.thrustLeft) {
-        impulse = this.fireProjectiles("frontRight").momentum() + this.fireProjectiles("backLeft").momentum();
-        forcePerDeltaT = impulse / deltaT;
-        torque = impulse * this.size;
-        this.spinDot += torque / this.inertia;
-    }
-    if (this.thrustRight) {
-        impulse = this.fireProjectiles("frontLeft").momentum() + this.fireProjectiles("backRight").momentum();
-        forcePerDeltaT = impulse / deltaT;
-        torque = impulse * this.size;
-        this.spinDot -= torque / this.inertia;
-    }
-
-    Particle.prototype.accelerate.call(this, deltaT);
     return this;
 };
-Ship.prototype.getPilotCommand = function(){
-    this.ax = this.ay = this.spinDot = 0;
-    this.firing = this.thrusting = this.thrustLeft = this.thrustRight = false;
+Ship.prototype.getPilotCommand              = function(){
+    this.enginesActive = [];
     return this; // chainable
 };
-Ship.prototype.stabilise      = function(deltaT) {
-    Primitive.prototype.stabilise.call(this);
-    this.vx     *= (1 - deltaT / 1000);
-    this.vy     *= (1 - deltaT / 1000);
-    this.spin   *= (1 - deltaT / 100);
+Ship.prototype.sanitiseSingularities        = function(deltaT) {
+    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
+    // this.vx     *= (1 - deltaT / 1000);
+    // this.vy     *= (1 - deltaT / 1000);
+    // this.spin   *= (1 - deltaT / 100);
     return this; // chainable
 };
 
@@ -493,7 +493,7 @@ var PlayerShip                      = function(x, y, team){
 };
 PlayerShip.prototype                = Object.create(Ship.prototype);
 PlayerShip.prototype.constructor    = Ship;
-PlayerShip.prototype.getPilotCommand= function(deltaT){
+PlayerShip.prototype.getPilotCommand= function(){
     Ship.prototype.getPilotCommand.call(this);
     var playerKeys  = {
                                     // Daddy / Finn     // Use http://keycode.info/ to get keycodes
@@ -504,16 +504,16 @@ PlayerShip.prototype.getPilotCommand= function(deltaT){
         missile : [null, 82, 40],   // r    Down Arrow
         cannon  : [null, 84, 77]    // t    m
     };
-    if (keyState[playerKeys.left[   this.team]])      {this.thrustLeft    = true;}
-    if (keyState[playerKeys.right[  this.team]])      {this.thrustRight   = true;}
-    if (keyState[playerKeys.thrust[ this.team]])      {this.thrusting     = true;}
-    if (keyState[playerKeys.fire[   this.team]])      {this.firing        = true;}
-    if (keyState[playerKeys.cannon[ this.team]])      {this.fireCanonBall();}
-    if (keyState[playerKeys.missile[this.team]])      {this.fireMissile();}
+    if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = true;}
+    if (keyState[playerKeys.right[  this.team]])      {this.enginesActive.frontLeft = this.enginesActive.backRight = true;}
+    if (keyState[playerKeys.thrust[ this.team]])      {this.enginesActive.mainJet   = true;}
+    if (keyState[playerKeys.fire[   this.team]])      {this.enginesActive.hoseGun   = true;}
+    if (keyState[playerKeys.cannon[ this.team]])      {this.launchCannonWhenReady();}
+    if (keyState[playerKeys.missile[this.team]])      {this.launchMissileWhenReady();}
     return this; // chainable
 };
-PlayerShip.prototype.stabilise      = function(deltaT) {
-    Primitive.prototype.stabilise.call(this);
+PlayerShip.prototype.sanitiseSingularities      = function(deltaT) {
+    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
     this.vx     *= (1 - deltaT / 500);
     this.vy     *= (1 - deltaT / 500);
     this.spin   *= (1 - deltaT / 100);
@@ -565,27 +565,76 @@ RobotShip.prototype.activateWhenClearOf = function(clearTarget){
         interaction.near(this, clearTarget);
         interaction.touching();
         interaction.resolve();
-        if (interaction.seperation < 2 * clearTarget.size) return false;
+        if (interaction.seperation < 2 * interaction.size) return false;
     }
     return true; // Return true is EITHER already has target OR now clear of parent
 };
 RobotShip.prototype.basicSeekByPointAndThrust = function(){
     this.resolveTarget();
     this.angle = this.absoluteAngleToTarget;
-    this.thrusting = true;
+    this.enginesActive.mainJet = true;
 };
 RobotShip.prototype.seekBySteerAndThrust = function(){
     this.resolveTarget();
-    this.thrusting = true;
+    this.enginesActive.mainJet = true;
 
     if (Math.abs(this.orientationAgleToTarget) < Math.PI / 16) return; // Cruise if on target
-    if (this.orientationAgleToTarget > 0)     {this.thrustLeft  = true;}
-    if (this.orientationAgleToTarget < 0)     {this.thrustRight = true;}
+
+    if (this.orientationAgleToTarget > 0)     {this.enginesActive.frontRight= true;this.enginesActive.backLeft= true;}
+    if (this.orientationAgleToTarget < 0)     {this.enginesActive.frontLeft = true;this.enginesActive.backRight= true;}
+};
+RobotShip.prototype.basicSeekByOrthoganalThrust = function(){
+    // Predict he will get lost when tilted
+    this.resolveTarget();
+    if (interaction.seperation < 5 * interaction.size) return false;
+    if (interaction.x > 0) {this.enginesActive.goLeft   = true;}
+    if (interaction.x < 0) {this.enginesActive.goRight  = true;}
+    if (interaction.y > 0) {this.enginesActive.goUp     = true;}
+    if (interaction.y < 0) {this.enginesActive.goDown   = true;}
+    this.angle = Math.PI / 2; this.spin = 0;
+};
+RobotShip.prototype.PSeekByOrthoganalThrust = function(){
+    // Predict he will get lost when tilted
+    this.resolveTarget();
+    var kP, kD, kI;
+    kP = Math.abs(interaction.x) / (5 * interaction.size); // Full thrust from 5x away
+    if (Math.random() < kP){
+        if (interaction.x > 0) {this.enginesActive.goLeft   = true;}
+        if (interaction.x < 0) {this.enginesActive.goRight  = true;}
+    }
+    kP = Math.abs(interaction.y) / (5 * interaction.size); // Full thrust from 3x away
+    if (Math.random() < kP){
+        if (interaction.y > 0) {this.enginesActive.goUp     = true;}
+        if (interaction.y < 0) {this.enginesActive.goDown   = true;}
+    }
+    this.angle = Math.PI / 2; this.spin = 0;
+};
+
+var Drone                       = function(x,y){
+    this.base = RobotShip;
+    this.base(x, y, 100, 1, bossBaddy);
+    this.team = 3;
+    this.angle = Math.PI / 2;
+    this.projectileEngines        = {
+    // NOTE: All projectileEngines assumed to start on the circumference of the circle
+        goUp    : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI,           projectileAngle : Math.PI},
+        goDown  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : 0,                 projectileAngle : 0},
+        goLeft  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI * 1 / 2,   projectileAngle : Math.PI * 1 / 2},
+        goRight : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI * 3 / 2,   projectileAngle : Math.PI * 3 / 2}
+    };
+};
+Drone.prototype                 = Object.create(RobotShip.prototype);
+Drone.prototype.constructor     = RobotShip;
+Drone.prototype.getPilotCommand = function(deltaT){
+    this.canclePreviousControl();
+    this.PSeekByOrthoganalThrust(deltaT);
+    return this; // chainable
 };
 
 var Fireball                        = function(x, y, vx, vy, size, parent){
     this.base = RobotShip;
-    this.base(x, y, size, 5, fireball);
+    this.base(x, y, size, 5, bomb);
+    // this.base(x, y, size, 5, fireball);
     this.gameClass      = 'fireball';
     this.parent         = parent;
     this.team           = parent.team;
@@ -598,7 +647,7 @@ var Fireball                        = function(x, y, vx, vy, size, parent){
 };
 Fireball.prototype                  = Object.create(RobotShip.prototype);
 Fireball.prototype.constructor      = RobotShip;
-Fireball.prototype.getPilotCommand  = function(deltaT){
+Fireball.prototype.getPilotCommand  = function(){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) this.basicSeekByPointAndThrust();
 
@@ -619,7 +668,7 @@ var Missile                         = function(x, y, vx, vy, size, parent){
 };
 Missile.prototype                   = Object.create(RobotShip.prototype);
 Missile.prototype.constructor       = RobotShip;
-Missile.prototype.getPilotCommand   = function(deltaT){
+Missile.prototype.getPilotCommand   = function(){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) this.seekBySteerAndThrust();
     return this; // chainable
@@ -632,7 +681,7 @@ var Baddy                           = function(x, y){
 };
 Baddy.prototype                     = Object.create(RobotShip.prototype);
 Baddy.prototype.constructor         = RobotShip;
-Baddy.prototype.getPilotCommand     = function(deltaT){
+Baddy.prototype.getPilotCommand     = function(){
     this.ax = this.ay = this.spinDot = 0;
     this.firing = this.thrusting = this.thrustLeft = this.thrustRight = false;
 
@@ -648,11 +697,19 @@ Baddy.prototype.getPilotCommand     = function(deltaT){
 
 
 var BossBaddy                       = function(x,y){
-    this.base   = RobotShip;
-    this.base(x, y, 60, 1, bossBaddy);
-    this.team               = 3;
+    this.base = RobotShip;
+    this.base(x, y, 100, 1, bossBaddy);
+    this.team = 3;
     this.baddySpawnReady    = false;
     this.baddySpawnTimer    = (function(parent){setInterval(function(){parent.baddySpawnReady = true;}, 2000);})(this);
+    this.angle = Math.PI / 2;
+    this.projectileEngines        = {
+    // NOTE: All projectileEngines assumed to start on the circumference of the circle
+        goUp    : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI,           projectileAngle : Math.PI},
+        goDown  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : 0,                 projectileAngle : 0},
+        goLeft  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI * 1 / 2,   projectileAngle : Math.PI * 1 / 2},
+        goRight : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI * 3 / 2,   projectileAngle : Math.PI * 3 / 2}
+    };
 };
 BossBaddy.prototype                 = Object.create(RobotShip.prototype);
 BossBaddy.prototype.constructor     = RobotShip;
@@ -667,7 +724,8 @@ BossBaddy.prototype.getPilotCommand = function(deltaT){
         childBaddy.size = this.size / 2;
         gameObjects.push(childBaddy);
     }
-    Baddy.prototype.getPilotCommand.call(this, deltaT);
+    this.canclePreviousControl();
+    this.basicSeekByOrthoganalThrust(deltaT);
 };
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
@@ -707,7 +765,7 @@ Interaction.prototype.clear         = function(){
 var Wall                            = function(){
     this.base = Particle;
     this.base(0,0,0,0,200,0, 0, 10000);
-    this.restitution    = 0.4;
+    this.restitution    = 0;
     this.friction       = 0;
     this.gameClass      = 'wall';
 };
