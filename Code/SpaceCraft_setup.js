@@ -33,7 +33,7 @@ var gameArea    = document.createElement('canvas'),
         pilotInput          : 0
     },
     GlobalParams = {
-        rotatingFrame   : true,
+        rotatingFrame   : false,
         boundary_flag   : -1,
         scores          : {1 : 0, 2 : 0, 3 : 0},
         camera          : {
@@ -42,10 +42,10 @@ var gameArea    = document.createElement('canvas'),
             Blender         : [100, 100]
         },
         refreshInterval : {
-            physics         : 1,
-            animation       : 20,
-            starsAndScores  : 50,
-            pilotInput      : 100
+            physics         : 5,    // 200 Hz
+            animation       : 20,   //  50 Hz
+            starsAndScores  : 50,   //  20 Hz
+            pilotInput      :100    //  10 Hz
         }
     };
 
@@ -55,8 +55,12 @@ var gameArea    = document.createElement('canvas'),
 function modulus(x, y)                      {return Math.sqrt(x * x + y * y);}
 function restitution(P1,P2)                 {return (P1.restitution + P2.restitution) / 2;}
 function friction(P1, P2)                   {return (P1.friction + P2.friction) / 2;}
-function normaliseAngle0to2PI (grossAngle)  {return (2 * Math.PI + grossAngle) % (2 * Math.PI);}
-function normaliseAnglePItoMinusPI (grossAngle)  {return (2 * Math.PI + grossAngle) % (2 * Math.PI);}
+function normaliseAngle0to2PI (grossAngle)  {return (10 * Math.PI + grossAngle) % (2 * Math.PI);}
+function normaliseAnglePItoMinusPI (grossAngle)  {
+    var posiAngle = normaliseAngle0to2PI(grossAngle);
+    if (posiAngle > Math.PI) return posiAngle - 2 * Math.PI;
+    return posiAngle;
+}
 function getAngle(x, y) {
     var angle = Math.atan(y / x);
     if (y >= 0){

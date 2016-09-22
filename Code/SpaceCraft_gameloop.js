@@ -43,7 +43,7 @@ function iteratePhysics(){
         }
 
         if (p1.size > 1.1 && p1.energy > 0) {
-            p1.updatePosition(deltaT.physics).accelerate(deltaT.physics).stabilise().boundaryConstraint();
+            p1.updatePosition(deltaT.physics).accelerate(deltaT.physics).stabilise(deltaT.physics).boundaryConstraint();
         } else {
             p1.explode();
         }
