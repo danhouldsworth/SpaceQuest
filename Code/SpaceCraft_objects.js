@@ -86,8 +86,8 @@ Particle.prototype.collide      = function(that){
         var f = friction(this,that);
 
         // theta = angle from x-axis to line P1P2 (anticlockwise)
-        var cos_theta   = interaction.vector.x;
-        var sin_theta   = interaction.vector.y;
+        var cos_theta   = interaction.unitVector.x;
+        var sin_theta   = interaction.unitVector.y;
         var u_spin1     = this.spin;
         var u_spin2     = that.spin;
         var mu1         = 1 + this.mass / that.mass;
@@ -96,7 +96,7 @@ Particle.prototype.collide      = function(that){
         var r2          = that.size;
         var alpha       = 2 / 5;
 
-        // calculate P1 vector for first transform
+        // calculate P1 unitVector for first transform
         var u1x = this.vx;
         var u1y = this.vy;
 
@@ -158,10 +158,10 @@ Particle.prototype.collide      = function(that){
         interaction.touching(this,that);
         interaction.resolve(this,that);
         var gravityFactor = 0.00001;
-        this.ax += gravityFactor * interaction.vector.x * that.mass / interaction.seperationSqrd;
-        this.ay += gravityFactor * interaction.vector.y * that.mass / interaction.seperationSqrd;
-        that.ax -= gravityFactor * interaction.vector.x * this.mass / interaction.seperationSqrd;
-        that.ay -= gravityFactor * interaction.vector.y * this.mass / interaction.seperationSqrd;
+        this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
+        this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
+        that.ax -= gravityFactor * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
+        that.ay -= gravityFactor * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
     }
     return false;
 };
@@ -407,7 +407,6 @@ var Ship                        = function(x, y, size, density, image){
     this.showEnergyBar  = true;
     this.image          = image;
     this.offSet         = image.drawingOffsetAngle;
-    // this.restitution    = 0;
     this.friction       = 0;
     this.projectileEngines        = {
     // NOTE: All projectileEngines assumed to start on the circumference of the circle
@@ -524,6 +523,8 @@ var RobotShip                       = function(x, y, size, density, image){
     this.base = Ship;
     this.base(x, y, size, density, image);
     this.showEnergyBar  = true;
+    // this.lastInteraction    = {x:0, y:0};
+    this.interaction        = new Interaction();
 };
 RobotShip.prototype                 = Object.create(Ship.prototype);
 RobotShip.prototype.constructor     = Ship;
@@ -550,8 +551,9 @@ RobotShip.prototype.resolveTarget   = function(){
     interaction.touching();
     interaction.resolve();
 
-    this.trajectory     = getAngle(this.vx, this.vy);
-    this.absoluteAngleToTarget      = getAngle(interaction.vector.x, interaction.vector.y);
+    this.interaction                = interaction.copy(); // Store for derivatives AND NOT A POINTER
+    this.trajectory                 = getAngle(this.vx, this.vy);
+    this.absoluteAngleToTarget      = getAngle(interaction.unitVector.x, interaction.unitVector.y);
     this.deflectionAngleToTarget    = normaliseAnglePItoMinusPI(this.absoluteAngleToTarget - this.trajectory);
     this.orientationAgleToTarget    = normaliseAnglePItoMinusPI(this.absoluteAngleToTarget - this.angle);
 
@@ -593,19 +595,23 @@ RobotShip.prototype.basicSeekByOrthoganalThrust = function(){
     if (interaction.y < 0) {this.enginesActive.goDown   = true;}
     this.angle = Math.PI / 2; this.spin = 0;
 };
-RobotShip.prototype.PSeekByOrthoganalThrust = function(){
-    // Predict he will get lost when tilted
+RobotShip.prototype.PDSeekByOrthoganalThrust = function(deltaT){
+    this.lastInteraction = this.interaction.copy();
     this.resolveTarget();
-    var kP, kD, kI;
-    kP = Math.abs(interaction.x) / (5 * interaction.size); // Full thrust from 5x away
-    if (Math.random() < kP){
-        if (interaction.x > 0) {this.enginesActive.goLeft   = true;}
-        if (interaction.x < 0) {this.enginesActive.goRight  = true;}
+    var k, kP, kD;
+    kP = interaction.x / (5 * interaction.size); // Full thrust from 5x away
+    kD = (this.interaction.x - this.lastInteraction.x) / deltaT;
+    k = kP + 3 * kD;
+    if (Math.random() < Math.abs(k) ){
+        if (k > 0) {this.enginesActive.goLeft   = true;}
+        if (k < 0) {this.enginesActive.goRight  = true;}
     }
-    kP = Math.abs(interaction.y) / (5 * interaction.size); // Full thrust from 3x away
-    if (Math.random() < kP){
-        if (interaction.y > 0) {this.enginesActive.goUp     = true;}
-        if (interaction.y < 0) {this.enginesActive.goDown   = true;}
+    kP = interaction.y / (5 * interaction.size); // Full thrust from 5x away
+    kD = (this.interaction.y - this.lastInteraction.y) / deltaT;
+    k = kP + 3 * kD;
+    if (Math.random() < Math.abs(k) ){
+        if (k > 0) {this.enginesActive.goUp   = true;}
+        if (k < 0) {this.enginesActive.goDown  = true;}
     }
     this.angle = Math.PI / 2; this.spin = 0;
 };
@@ -627,7 +633,7 @@ Drone.prototype                 = Object.create(RobotShip.prototype);
 Drone.prototype.constructor     = RobotShip;
 Drone.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
-    this.PSeekByOrthoganalThrust(deltaT);
+    this.PDSeekByOrthoganalThrust(deltaT);
     return this; // chainable
 };
 
@@ -725,7 +731,7 @@ BossBaddy.prototype.getPilotCommand = function(deltaT){
         gameObjects.push(childBaddy);
     }
     this.canclePreviousControl();
-    this.basicSeekByOrthoganalThrust(deltaT);
+    this.PDSeekByOrthoganalThrust(deltaT);
 };
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
@@ -734,8 +740,14 @@ var Interaction                     = function(){
 };
 Interaction.prototype               = Object.create(Primitive.prototype);
 Interaction.prototype.constructor   = Primitive;
+Interaction.prototype.copy          = function(){
+    var copy = new Interaction();
+    copy.x = this.x;
+    copy.y = this.y;
+    return copy;
+};
 Interaction.prototype.near          = function(P1, P2){
-    this.x = P2.x - P1.x;           // Contact Vector
+    this.x = P2.x - P1.x;           // Contact vector
     this.y = P2.y - P1.y;
     this.size = P2.size + P1.size;  // Interaction distance at point of contact
     return ((Math.abs(this.x) <= this.size) && (Math.abs(this.y) <= this.size));
@@ -746,11 +758,10 @@ Interaction.prototype.touching      = function(){
     return ( this.seperationSqrd <= this.sizeSqrd );
 };
 Interaction.prototype.resolve       = function(){
-
     // Hard coded stability!!! Only 2 1/2px gameObjects colliding could have a sep < 1
     this.seperation = (this.seperationSqrd < 1) ? 1 : Math.sqrt(this.seperationSqrd);
 
-    this.vector = {
+    this.unitVector = {
         x : this.x / this.seperation,
         y : this.y / this.seperation
     };

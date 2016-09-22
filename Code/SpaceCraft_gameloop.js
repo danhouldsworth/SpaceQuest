@@ -103,8 +103,8 @@ function animate(){
     interaction.near(camera1, camera2);
     interaction.touching();
     interaction.resolve();
-    var cos_theta   = interaction.vector.x;
-    var sin_theta   = interaction.vector.y;
+    var cos_theta   = interaction.unitVector.x;
+    var sin_theta   = interaction.unitVector.y;
     GlobalParams.theta = Math.atan(sin_theta/cos_theta);
     if (cos_theta < 0) GlobalParams.theta+= Math.PI;
 
