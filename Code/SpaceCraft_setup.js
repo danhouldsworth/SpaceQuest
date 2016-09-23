@@ -45,7 +45,7 @@ var gameArea    = document.createElement('canvas'),
             physics         : 0,    // 200 Hz
             animation       : 20,   //  50 Hz
             starsAndScores  : 50,   //  20 Hz
-            pilotInput      : 50    //  10 Hz
+            pilotInput      : 20    //  10 Hz
         }
     };
 
