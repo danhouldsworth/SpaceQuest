@@ -6,7 +6,7 @@ function impossible(){
     // gameObjects.push(new BossBaddy( w, h * 0.9));
     // gameObjects.push(new BossBaddy( -w, h * 1.0));
 
-    // gameObjects.push(new Drone( -w, h * 1));
+    gameObjects.push(new Drone( -w, h * 1));
     // gameObjects.push(new Baddy( -w, h * 1));
 
     // for (var count = 0; count < 100; count++)

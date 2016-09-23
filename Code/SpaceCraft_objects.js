@@ -550,6 +550,10 @@ RobotShip.prototype.resolveTarget   = function(){
     interaction.resolve();
 
     this.trajectory                     = getAngle(this.vx, this.vy);
+    interaction.current_x  = this.x;
+    interaction.target_x   = this.target.x;
+    interaction.current_y  = this.y;
+    interaction.target_y   = this.target.y;
     interaction.current_vx  = this.vx;
     interaction.target_vx   = this.target.vx;
     interaction.current_vy  = this.vy;
@@ -575,65 +579,40 @@ RobotShip.prototype.activateWhenClearOf = function(clearTarget){
     }
     return true; // Return true is EITHER already has target OR now clear of parent
 };
-RobotShip.prototype.basicSeekByPointAndThrust = function(){
-    this.resolveTarget();
-    this.angle = this.interaction.absoluteAngleToTarget;
-    this.enginesActive.mainJet = 1;
-};
-RobotShip.prototype.seekBySteerAndThrust = function(){
-    this.resolveTarget();
-    this.enginesActive.mainJet = 1;
-
-    if (Math.abs(this.orientationAgleToTarget) < Math.PI / 16) return; // Cruise if on target
-
-    if (this.orientationAgleToTarget > 0)     {this.enginesActive.frontRight    = this.enginesActive.backLeft   = 1;}
-    if (this.orientationAgleToTarget < 0)     {this.enginesActive.frontLeft     = this.enginesActive.backRight  = 1;}
-};
-RobotShip.prototype.PDcontrolPositionByOrthoganalThrust = function(deltaT){
+RobotShip.prototype.PDcontrolPositionByVectoredThrust = function(deltaT){
     this.lastInteraction = this.interaction.copy();
     this.resolveTarget();
-    var k, kP, kD;
-    kP = this.interaction.x / (5 * this.interaction.size); // Full thrust from 5x away
-    kD = (this.interaction.x - this.lastInteraction.x) / deltaT;
-    k = kP + 3 * kD;
-    if (Math.random() < Math.abs(k) ){
-        if (k > 0) {this.enginesActive.goLeft       = 1;}
-        if (k < 0) {this.enginesActive.goRight      = 1;}
-    }
-    kP = this.interaction.y / (5 * this.interaction.size); // Full thrust from 5x away
-    kD = (this.interaction.y - this.lastInteraction.y) / deltaT;
-    k = kP + 3 * kD;
-    if (Math.random() < Math.abs(k) ){
-        if (k > 0) {this.enginesActive.goUp     = 1;}
-        if (k < 0) {this.enginesActive.goDown   = 1;}
-    }
-    this.angle = Math.PI / 2; this.spin = 0;
+    var err_x, err_y, errDot_x, errDot_y, response_x, response_y;
+    var kP = 1, kD = 0, kI = 0;
+    err_x       = (this.interaction.target_x - this.interaction.current_x);
+    err_y       = (this.interaction.target_y - this.interaction.current_y);
+    errDot_x    = (err_x - this.lastInteraction.err_x) / deltaT;
+    errDot_y    = (err_y - this.lastInteraction.err_y) / deltaT;
+    response_x    = kP * err_x + kD * errDot_x + kI * this.errIntegral_x;
+    response_y    = kP * err_y + kD * errDot_y + kI * this.errIntegral_y;
+    console.log("err_x = " + err_x + "\t err_y = " + err_y + "\t deltaT = " + deltaT);
+    this.angle = getAngle(response_x, response_y); console.log(this.angle);
+    this.interaction.err_x = err_x;
+    this.interaction.err_y = err_y;
 };
-RobotShip.prototype.PDcontrolSpeedByOrthoganalThrust = function(deltaT){
+RobotShip.prototype.PDcontrolSpeedWithoutDerivative = function(deltaT){
     this.lastInteraction = this.interaction.copy();
     this.resolveTarget();
-    var err_vx, err_vy, errDot_vx, errDot_vy, response_x, response_y;
-    var kP = 5, kD = 5;
+    var err_vx, err_vy, response_x, response_y;
+    var kP = 5;
     err_vx       = (this.interaction.target_vx - this.interaction.current_vx);
-    errDot_vx    = (err_vx - this.lastInteraction.err_vx) / deltaT;
-    response_x  = kP * err_vx + kD * errDot_vx;
     err_vy       = (this.interaction.target_vy - this.interaction.current_vy);
-    errDot_vy    = (err_vy - this.lastInteraction.err_vy) / deltaT;
-    response_y  = kP * err_vy + kD * errDot_vy;
-    // console.log("err_vx = " + err_vx + "\t errDot_vx = " + errDot_vx + "\t lastInteraction.err_vx = " + this.lastInteraction.err_vx);
-
-    this.interaction.err_vx = err_vx;// || 0;
-    this.interaction.err_vy = err_vy;// || 0;
+    response_x  = kP * err_vx;
+    response_y  = kP * err_vy;
     if (response_x > 0) {this.enginesActive.goLeft  = Math.min(1, +response_x);}
     if (response_x < 0) {this.enginesActive.goRight = Math.min(1, -response_x);}
     if (response_y > 0) {this.enginesActive.goUp    = Math.min(1, +response_y);}
     if (response_y < 0) {this.enginesActive.goDown  = Math.min(1, -response_y);}
     this.angle = Math.PI / 2; this.spin = 0;
 };
-RobotShip.prototype.PDcontrolOrientationByVectorThrust = function(deltaT){
+RobotShip.prototype.PDcontrolOrientationBySideThrust = function(deltaT){
     var err, errDot, response;
     var kP = 1, kD = 500, kI = 0.01;
-    var errIntegral = this.interaction.errIntegral;
     this.lastInteraction = this.interaction.copy();
     this.resolveTarget(); this.interaction.target_angle = this.interaction.absoluteAngleToTarget;
     err    = normaliseAnglePItoMinusPI(this.interaction.target_angle - this.interaction.current_angle);
@@ -711,7 +690,7 @@ Drone.prototype                 = Object.create(RobotShip.prototype);
 Drone.prototype.constructor     = RobotShip;
 Drone.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
-    this.PDcontrolSpeedByOrthoganalThrust(deltaT);
+    this.PDcontrolSpeedWithoutDerivative(deltaT);
     return this; // chainable
 };
 
@@ -728,13 +707,16 @@ var Fireball                        = function(x, y, vx, vy, size, parent){
     this.showEnergyBar  = false;
     this.showPath       = false;
     this.damagePts      = 3000;
+    this.projectileEngines.mainJet.projectileSize *= 2;
 };
 Fireball.prototype                  = Object.create(RobotShip.prototype);
 Fireball.prototype.constructor      = RobotShip;
 Fireball.prototype.getPilotCommand  = function(deltaT){
     this.canclePreviousControl();
-    if (this.activateWhenClearOf(this.parent)) this.PDAngleSeekByPointAndThrust(deltaT);
-    // if (this.activateWhenClearOf(this.parent)) this.basicSeekByPointAndThrust();
+    // if (this.activateWhenClearOf(this.parent)) {
+    this.PDcontrolPositionByVectoredThrust(deltaT);
+    // }
+    this.enginesActive.mainJet = 1;
     return this; // chainable
 };
 
@@ -760,7 +742,7 @@ Missile.prototype.constructor       = RobotShip;
 Missile.prototype.getPilotCommand   = function(deltaT){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) {
-        this.PDcontrolOrientationByVectorThrust(deltaT);
+        this.PDcontrolOrientationBySideThrust(deltaT);
         this.enginesActive.mainJet = 1;
     }
     return this; // chainable
@@ -776,7 +758,7 @@ Baddy.prototype                     = Object.create(RobotShip.prototype);
 Baddy.prototype.constructor         = RobotShip;
 Baddy.prototype.getPilotCommand     = function(deltaT){
     this.canclePreviousControl();
-    this.PDcontrolOrientationByVectorThrust(deltaT);
+    this.PDcontrolOrientationBySideThrust(deltaT);
     this.enginesActive.mainJet = 1;
 };
 
@@ -810,7 +792,7 @@ BossBaddy.prototype.getPilotCommand = function(deltaT){
         gameObjects.push(childBaddy);
     }
     this.canclePreviousControl();
-    this.PDcontrolSpeedByOrthoganalThrust(deltaT);
+    this.PDcontrolSpeedWithoutDerivative(deltaT);
 };
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
@@ -823,14 +805,21 @@ Interaction.prototype.copy          = function(){
     var copy = new Interaction();
     copy.x          = this.x;
     copy.y          = this.y;
+    copy.current_x = this.current_x;
+    copy.current_y = this.current_y;
+    copy.target_x  = this.target_x;
+    copy.target_y  = this.target_y;
     copy.current_vx = this.current_vx;
     copy.current_vy = this.current_vy;
-    copy.current_angle = this.current_angle;
     copy.target_vx  = this.target_vx;
     copy.target_vy  = this.target_vy;
+    copy.current_angle = this.current_angle;
     copy.target_angle  = this.target_angle;
 
     copy.err      = this.err;
+    copy.err_x      = this.err_x;
+    copy.err_y      = this.err_y;
+
     copy.err_vx      = this.err_vx;
     copy.err_vy      = this.err_vy;
     copy.seperation = this.seperation;
