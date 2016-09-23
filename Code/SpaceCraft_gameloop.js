@@ -10,7 +10,7 @@ function timeStep(timer){
 }
 function applyCollisionRules(obj1, obj2){
     switch (obj1.gameClass){
-        case 'asteroid' : if (obj2 instanceof Ship)         {obj2.explode();}                               break;
+        case 'asteroid' : if (obj2 instanceof PlayerShip)         {obj2.explode();}                               break;
         case 'bullet'   : if (obj2 instanceof Graphic)      {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
         case 'bomb'     : if (!obj2 instanceof Bomb)        {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
         case 'fireball' :

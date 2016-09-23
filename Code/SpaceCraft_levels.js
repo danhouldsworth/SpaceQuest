@@ -3,8 +3,8 @@
 function impossible(){
     gameObjects.push(new PlayerShip(      -w, h * 0.6, 1));
     gameObjects.push(new PlayerShip(      +w, h * 0.4, 2));
-    // gameObjects.push(new BossBaddy( w, h * 0.6));
-    // gameObjects.push(new BossBaddy( w, h * 0.4));
+    gameObjects.push(new BossBaddy( w, h * 0.9));
+    gameObjects.push(new BossBaddy( -w, h * 1.0));
 
     // gameObjects.push(new Drone( w, h * 0.6));
 
@@ -14,8 +14,12 @@ function impossible(){
 
     GlobalParams.camera.Targets[0] = gameObjects[0];
     GlobalParams.camera.Targets[1] = gameObjects[1];
-    GlobalParams.camera.OldTargets[0] = {x : -w*6, y : 0, size : 1};
-    GlobalParams.camera.OldTargets[1] = {x : w*6, y : 0, size : 1};
+
+    GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
+    GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
+
+    // GlobalParams.camera.OldTargets[0] = {x : -w*6, y : 0, size : 1};
+    // GlobalParams.camera.OldTargets[1] = {x : w*6, y : 0, size : 1};
 }
 // --
 initGameArea();

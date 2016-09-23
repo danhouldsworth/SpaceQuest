@@ -524,12 +524,15 @@ var RobotShip                       = function(x, y, size, density, image){
     this.base(x, y, size, density, image);
     this.showEnergyBar  = true;
     this.interaction        = new Interaction();
+    this.interaction.speedDiff = {
+        x : 0,
+        y : 0
+    };
+
 };
 RobotShip.prototype                 = Object.create(Ship.prototype);
 RobotShip.prototype.constructor     = Ship;
 RobotShip.prototype.getTarget       = function(){
-    console.log(this);
-    console.log("getTarget");
     this.target = false;
     for (var threat of gameObjects){
         if (!threat.team) {continue;}                                                                       // Don't target bullets / thrust
@@ -551,6 +554,10 @@ RobotShip.prototype.resolveTarget   = function(){
     interaction.resolve();
 
     this.trajectory                     = getAngle(this.vx, this.vy);
+    interaction.speedDiff = {
+        x : this.target.vx - this.vx,
+        y : this.target.vy - this.vy
+    };
     interaction.absoluteAngleToTarget   = getAngle(interaction.unitVector.x, interaction.unitVector.y);
     interaction.deflectionAngleToTarget = normaliseAnglePItoMinusPI(interaction.absoluteAngleToTarget - this.trajectory);
     interaction.orientationAgleToTarget = normaliseAnglePItoMinusPI(interaction.absoluteAngleToTarget - this.angle);
@@ -584,7 +591,7 @@ RobotShip.prototype.seekBySteerAndThrust = function(){
     if (this.orientationAgleToTarget > 0)     {this.enginesActive.frontRight= true;this.enginesActive.backLeft= true;}
     if (this.orientationAgleToTarget < 0)     {this.enginesActive.frontLeft = true;this.enginesActive.backRight= true;}
 };
-RobotShip.prototype.PDSeekByOrthoganalThrust = function(deltaT){
+RobotShip.prototype.PDcontrolPositionByOrthoganalThrust = function(deltaT){
     this.lastInteraction = this.interaction.copy();
     this.resolveTarget();
     var k, kP, kD;
@@ -598,6 +605,26 @@ RobotShip.prototype.PDSeekByOrthoganalThrust = function(deltaT){
     kP = this.interaction.y / (5 * this.interaction.size); // Full thrust from 5x away
     kD = (this.interaction.y - this.lastInteraction.y) / deltaT;
     k = kP + 3 * kD;
+    if (Math.random() < Math.abs(k) ){
+        if (k > 0) {this.enginesActive.goUp   = true;}
+        if (k < 0) {this.enginesActive.goDown  = true;}
+    }
+    this.angle = Math.PI / 2; this.spin = 0;
+};
+RobotShip.prototype.PDcontrolSpeedByOrthoganalThrust = function(deltaT){
+    this.lastInteraction = this.interaction.copy();
+    this.resolveTarget();
+    var k, kP, kD;
+    kP = (this.interaction.speedDiff.x);
+    kD = (this.interaction.speedDiff.x - this.lastInteraction.speedDiff.x) / deltaT;
+    k = 10 * kP + 10 * kD;
+    if (Math.random() < Math.abs(k) ){
+        if (k > 0) {this.enginesActive.goLeft   = true;}
+        if (k < 0) {this.enginesActive.goRight  = true;}
+    }
+    kP = (this.interaction.speedDiff.y);
+    kD = (this.interaction.speedDiff.y - this.lastInteraction.speedDiff.y) / deltaT;
+    k = 10 * kP + 10 * kD;
     if (Math.random() < Math.abs(k) ){
         if (k > 0) {this.enginesActive.goUp   = true;}
         if (k < 0) {this.enginesActive.goDown  = true;}
@@ -641,12 +668,13 @@ RobotShip.prototype.PDAngleSeekByPointAndThrust = function(deltaT){
     kP = this.interaction.seperation / (5 * this.interaction.size); // Full thrust from 5x away
     kD = (this.interaction.seperation - this.lastInteraction.seperation) / deltaT;
     Ksep = kP + 1 * kD;
-    kP = this.interaction.deflectionAngleToTarget / Math.PI;                   // Full thrust from right angle
+    kP = Math.sin(this.interaction.deflectionAngleToTarget);
     kD = (this.interaction.deflectionAngleToTarget - this.lastInteraction.deflectionAngleToTarget) / deltaT;
-    Kdef = kP + 3 * kD;
+    Kdef = 100 * (kP + 3 * kD);
+    // console.log("Deviation " + normaliseAnglePItoMinusPI(getAngle(Ksep, Kdef)));
     // console.log("deflectionAngleToTarget = " + this.interaction.deflectionAngleToTarget);
     // console.log("kP = " + kP + "\t kD = " + kD + "\t K = " + K);
-    this.angle = getAngle(Ksep, Kdef) + this.interaction.absoluteAngleToTarget;
+    this.angle = 0.5 * normaliseAnglePItoMinusPI(getAngle(Ksep, Kdef)) + this.interaction.absoluteAngleToTarget;
     this.spin = 0;
     this.enginesActive.mainJet = true;
 };
@@ -668,7 +696,7 @@ Drone.prototype                 = Object.create(RobotShip.prototype);
 Drone.prototype.constructor     = RobotShip;
 Drone.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
-    this.PDSeekByOrthoganalThrust(deltaT);
+    this.PDcontrolSpeedByOrthoganalThrust(deltaT);
     return this; // chainable
 };
 
@@ -719,21 +747,20 @@ var Baddy                           = function(x, y){
     this.base = RobotShip;
     this.base(x, y, 30, 1, bombBaddy);
     this.team = 3;
+    this.angle = Math.PI / 2;
+    this.projectileEngines        = {
+    // NOTE: All projectileEngines assumed to start on the circumference of the circle
+        goUp    : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI,           projectileAngle : Math.PI},
+        goDown  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : 0,                 projectileAngle : 0},
+        goLeft  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI * 1 / 2,   projectileAngle : Math.PI * 1 / 2},
+        goRight : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : .5,    projectilePosition : Math.PI * 3 / 2,   projectileAngle : Math.PI * 3 / 2}
+    };
 };
 Baddy.prototype                     = Object.create(RobotShip.prototype);
 Baddy.prototype.constructor         = RobotShip;
-Baddy.prototype.getPilotCommand     = function(){
-    this.ax = this.ay = this.spinDot = 0;
-    this.firing = this.thrusting = this.thrustLeft = this.thrustRight = false;
-
-    this.resolveTarget();
-    if      (this.angleToTarget <= Math.PI - 0.1)                                   {this.thrustLeft = true;}
-    else if (this.angleToTarget >= Math.PI + 0.1)                                   {this.thrustRight = true;}
-    var engagementDistance = this.target.size + this.size * 5;
-    if (interaction.seperation > engagementDistance){
-        if (Math.random() < 0.3 * (interaction.seperation / engagementDistance) )   {this.thrusting = true;}
-    } else                                                                          {this.firing = true;}
-    return this; // chainable
+Baddy.prototype.getPilotCommand     = function(deltaT){
+    this.canclePreviousControl();
+    this.PDcontrolPositionByOrthoganalThrust(deltaT);
 };
 
 
@@ -766,7 +793,7 @@ BossBaddy.prototype.getPilotCommand = function(deltaT){
         gameObjects.push(childBaddy);
     }
     this.canclePreviousControl();
-    this.PDSeekByOrthoganalThrust(deltaT);
+    this.PDcontrolSpeedByOrthoganalThrust(deltaT);
 };
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
@@ -781,6 +808,10 @@ Interaction.prototype.copy          = function(){
     copy.y          = this.y;
     copy.seperation = this.seperation;
     copy.size       = this.size;
+    copy.speedDiff  = {
+        x : this.speedDiff.x,
+        y : this.speedDiff.y
+    };
     copy.absoluteAngleToTarget      = this.absoluteAngleToTarget;
     copy.deflectionAngleToTarget    = this.deflectionAngleToTarget;
     copy.orientationAgleToTarget    = this.orientationAgleToTarget;
