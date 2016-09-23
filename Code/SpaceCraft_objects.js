@@ -583,16 +583,14 @@ RobotShip.prototype.PDcontrolPositionByVectoredThrust = function(deltaT){
     this.lastInteraction = this.interaction.copy();
     this.resolveTarget();
     var err_x, err_y, errDot_x, errDot_y, response_x, response_y;
-    var kP = 1, kD = 0, kI = 0;
+    var kP = 1, kD = 250;
     err_x       = (this.interaction.target_x - this.interaction.current_x);
     err_y       = (this.interaction.target_y - this.interaction.current_y);
     errDot_x    = (err_x - this.lastInteraction.err_x) / deltaT;
     errDot_y    = (err_y - this.lastInteraction.err_y) / deltaT;
-    response_x    = kP * err_x + kD * errDot_x;// + kI * this.errIntegral_x;
-    response_y    = kP * err_y + kD * errDot_y;// + kI * this.errIntegral_y;
-    // console.log("err_x = " + err_x + "\t err_y = " + err_y + "\t deltaT = " + deltaT);
-    console.log("response_x = " + response_x + "\t response_y = " + response_y);
-    this.angle = getAngle(response_x, response_y); console.log(this.angle);
+    response_x    = kP * err_x + kD * errDot_x;
+    response_y    = kP * err_y + kD * errDot_y;
+    this.angle = getAngle(response_x, response_y);
     this.interaction.err_x = err_x;
     this.interaction.err_y = err_y;
 };
@@ -714,10 +712,11 @@ Fireball.prototype                  = Object.create(RobotShip.prototype);
 Fireball.prototype.constructor      = RobotShip;
 Fireball.prototype.getPilotCommand  = function(deltaT){
     this.canclePreviousControl();
-    // if (this.activateWhenClearOf(this.parent)) {
-    this.PDcontrolPositionByVectoredThrust(deltaT);
-    // }
-    this.enginesActive.mainJet = 1;
+    if (this.activateWhenClearOf(this.parent)) {
+        this.PDcontrolPositionByVectoredThrust(deltaT);
+        // if interaction.seperation > 5 * this.target.size
+        this.enginesActive.mainJet = 1;
+    }
     return this; // chainable
 };
 
