@@ -588,9 +588,10 @@ RobotShip.prototype.PDcontrolPositionByVectoredThrust = function(deltaT){
     err_y       = (this.interaction.target_y - this.interaction.current_y);
     errDot_x    = (err_x - this.lastInteraction.err_x) / deltaT;
     errDot_y    = (err_y - this.lastInteraction.err_y) / deltaT;
-    response_x    = kP * err_x + kD * errDot_x + kI * this.errIntegral_x;
-    response_y    = kP * err_y + kD * errDot_y + kI * this.errIntegral_y;
-    console.log("err_x = " + err_x + "\t err_y = " + err_y + "\t deltaT = " + deltaT);
+    response_x    = kP * err_x + kD * errDot_x;// + kI * this.errIntegral_x;
+    response_y    = kP * err_y + kD * errDot_y;// + kI * this.errIntegral_y;
+    // console.log("err_x = " + err_x + "\t err_y = " + err_y + "\t deltaT = " + deltaT);
+    console.log("response_x = " + response_x + "\t response_y = " + response_y);
     this.angle = getAngle(response_x, response_y); console.log(this.angle);
     this.interaction.err_x = err_x;
     this.interaction.err_y = err_y;
