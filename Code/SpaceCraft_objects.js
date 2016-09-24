@@ -549,6 +549,9 @@ RobotShip.prototype.resolveTarget   = function(){
     interaction.touching();
     interaction.resolve();
 
+    // TODO - add an anticiation about where the target will be in the approximate time it will take to close.
+    // Calc minimum flypast distance?
+
     this.trajectory                     = getAngle(this.vx, this.vy);
     interaction.current_x  = this.x;
     interaction.target_x   = this.target.x;
@@ -588,8 +591,8 @@ RobotShip.prototype.PDcontrolPositionByVectoredThrust = function(deltaT){
     err_y       = (this.interaction.target_y - this.interaction.current_y);
     errDot_x    = (err_x - this.lastInteraction.err_x) / deltaT;
     errDot_y    = (err_y - this.lastInteraction.err_y) / deltaT;
-    response_x    = kP * err_x + kD * errDot_x;
-    response_y    = kP * err_y + kD * errDot_y;
+    response_x  = kP * err_x + kD * errDot_x;
+    response_y  = kP * err_y + kD * errDot_y;
     this.angle = getAngle(response_x, response_y);
     this.interaction.err_x = err_x;
     this.interaction.err_y = err_y;
@@ -753,13 +756,15 @@ var Baddy                           = function(x, y){
     this.base(x, y, 30, 1, bombBaddy);
     this.team = 3;
     this.angle = Math.PI / 2;
+    // this.projectileEngines.hoseGun.projectileSize *= 4;
 };
 Baddy.prototype                     = Object.create(RobotShip.prototype);
 Baddy.prototype.constructor         = RobotShip;
 Baddy.prototype.getPilotCommand     = function(deltaT){
     this.canclePreviousControl();
     this.PDcontrolOrientationBySideThrust(deltaT);
-    this.enginesActive.mainJet = 1;
+    if (interaction.seperation < 5 * interaction.size) {this.enginesActive.hoseGun = 1;}
+    else {this.enginesActive.mainJet = 1;}
 };
 
 
