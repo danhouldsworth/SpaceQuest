@@ -598,6 +598,7 @@ RobotShip.prototype.PDcontrolPositionByVectoredThrust = function(deltaT){
     this.interaction.err_y = err_y;
 };
 RobotShip.prototype.PDcontrolSpeedWithoutDerivative = function(deltaT){
+    // Consider an integral term if we have a bias (like gravity)
     this.lastInteraction = this.interaction.copy();
     this.resolveTarget();
     var err_vx, err_vy, response_x, response_y;
@@ -613,6 +614,7 @@ RobotShip.prototype.PDcontrolSpeedWithoutDerivative = function(deltaT){
     this.angle = Math.PI / 2; this.spin = 0;
 };
 RobotShip.prototype.PDcontrolOrientationBySideThrust = function(deltaT){
+    // Don't need this integral term unless we feel we might have biased rotation force (like thrust drag) acting for long time frame
     var err, errDot, response;
     var kP = 1, kD = 500, kI = 0.01;
     this.lastInteraction = this.interaction.copy();
@@ -626,53 +628,6 @@ RobotShip.prototype.PDcontrolOrientationBySideThrust = function(deltaT){
     this.interaction.err = err;
     if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft   = Math.min(1, +response);}
     if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight  = Math.min(1, -response);}
-};
-RobotShip.prototype.PDVectorSeekByPointAndThrust = function(deltaT){
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget();
-    var Kx, Ky, kP, kD;
-    kP = this.interaction.x / (5 * this.interaction.size); // Full thrust from 5x away
-    kD = (this.interaction.x - this.lastInteraction.x) / deltaT;
-    Kx = kP + 1 * kD;
-    kP = this.interaction.y / (5 * this.interaction.size); // Full thrust from 5x away
-    kD = (this.interaction.y - this.lastInteraction.y) / deltaT;
-    Ky = kP + 1 * kD;
-    this.angle = getAngle(Kx, Ky);
-    this.spin = 0;
-    this.enginesActive.mainJet = 1;
-};
-RobotShip.prototype.PDSeperationSeekByPointAndThrust = function(deltaT){
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget();
-    var k, kP, kD;
-    kP = this.interaction.seperation / (5 * this.interaction.size); // Full thrust from 5x away
-    kD = (this.interaction.seperation - this.lastInteraction.seperation) / deltaT;
-    Ksep = kP + 3 * kD;
-    // console.log("interaction.seperation : " + this.interaction.seperation + "\t this.lastInteraction.seperation : " + this.lastInteraction.seperation + ", \t kD : " + kD);
-    // console.log("kP = " + kP + "\t kD = " + kD);
-    if (Math.random() < Math.abs(k) ){
-        if (k > 0) {this.angle = this.interaction.absoluteAngleToTarget;}
-        if (k < 0) {this.angle = normaliseAngle0to2PI(this.interaction.absoluteAngleToTarget + Math.PI);}
-    }
-    this.spin = 0;
-    this.enginesActive.mainJet = 1;
-};
-RobotShip.prototype.PDAngleSeekByPointAndThrust = function(deltaT){
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget();
-    var Ksep, Kdef, k, kP, kD;
-    kP = this.interaction.seperation / (5 * this.interaction.size); // Full thrust from 5x away
-    kD = (this.interaction.seperation - this.lastInteraction.seperation) / deltaT;
-    Ksep = kP + 1 * kD;
-    kP = Math.sin(this.interaction.deflectionAngleToTarget);
-    kD = (this.interaction.deflectionAngleToTarget - this.lastInteraction.deflectionAngleToTarget) / deltaT;
-    Kdef = 100 * (kP + 3 * kD);
-    // console.log("Deviation " + normaliseAnglePItoMinusPI(getAngle(Ksep, Kdef)));
-    // console.log("deflectionAngleToTarget = " + this.interaction.deflectionAngleToTarget);
-    // console.log("kP = " + kP + "\t kD = " + kD + "\t K = " + K);
-    this.angle = 0.5 * normaliseAnglePItoMinusPI(getAngle(Ksep, Kdef)) + this.interaction.absoluteAngleToTarget;
-    this.spin = 0;
-    this.enginesActive.mainJet = 1;
 };
 
 var Drone                       = function(x,y){
