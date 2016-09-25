@@ -417,6 +417,7 @@ var Ship                        = function(x, y, size, density, image){
         backRight   : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
         hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,     projectileSpeed :  1,    projectilePosition : 0,                projectileAngle : 0},
         // *Bay* need getPilotCommand to reconfirm
+        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size ,        projectileSpeed :  0,    projectilePosition : 0,                projectileAngle : 0},
         cannonBay   : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
         missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
         missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
@@ -450,6 +451,13 @@ Ship.prototype.launchMissileWhenReady       = function(){
     this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
     this.missileLaunchSide = -this.missileLaunchSide;
     this.enginesActive[((this.missileLaunchSide === 1)? "missileBayL" : "missileBayR")] = 1;
+    return this; // chainable
+};
+Ship.prototype.launchRocketWhenReady       = function(){
+    if (this.rocketLaunchersHot === true) return;
+    this.rocketLaunchersHot = true;
+    this.rocketCoolTimer = (function(thisShip){setTimeout(function(){thisShip.rocketLaunchersHot = false;}, 2000);})(this);
+    this.enginesActive.rocketBay = 1;
     return this; // chainable
 };
 Ship.prototype.launchCannonWhenReady        = function(){
@@ -495,13 +503,14 @@ PlayerShip.prototype.constructor    = Ship;
 PlayerShip.prototype.getPilotCommand= function(){
     Ship.prototype.getPilotCommand.call(this);
     var playerKeys  = {
-                                    // Daddy / Finn     // Use http://keycode.info/ to get keycodes
-        left    : [null, 81, 37],   // q    Arrow
-        right   : [null, 87, 39],   // w    Arrow
-        thrust  : [null, 69, 38],   // e    Arrow
-        fire    : [null, 83, 32],   // s    Space
-        missile : [null, 82, 40],   // r    Down Arrow
-        cannon  : [null, 84, 77]    // t    m
+                                         // Daddy / Finn     // Use http://keycode.info/ to get keycodes
+        left        : [null, 81, 37],   // q    Arrow
+        right       : [null, 87, 39],   // w    Arrow
+        thrust      : [null, 69, 38],   // e    Arrow
+        fire        : [null, 83, 32],   // s    Space
+        missile     : [null, 82, null],   // r    Down Arrow
+        bigRocket   : [null, null, 40],   // r    Down Arrow
+        cannon      : [null, 84, 77]    // t    m
     };
     if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = 1;}
     if (keyState[playerKeys.right[  this.team]])      {this.enginesActive.frontLeft = this.enginesActive.backRight = 1;}
@@ -509,6 +518,7 @@ PlayerShip.prototype.getPilotCommand= function(){
     if (keyState[playerKeys.fire[   this.team]])      {this.enginesActive.hoseGun   = 1;}
     if (keyState[playerKeys.cannon[ this.team]])      {this.launchCannonWhenReady();}
     if (keyState[playerKeys.missile[this.team]])      {this.launchMissileWhenReady();}
+    if (keyState[playerKeys.bigRocket[this.team]])    {this.launchRocketWhenReady();}
     return this; // chainable
 };
 PlayerShip.prototype.sanitiseSingularities      = function(deltaT) {
@@ -549,14 +559,25 @@ RobotShip.prototype.resolveTarget   = function(){
     interaction.touching();
     interaction.resolve();
 
+    var roughTimeToIntercept = interaction.seperation / this.speed();
+    var estimatedLocationInInterceptTime = {
+        x : this.target.x + this.target.vx * roughTimeToIntercept,
+        y : this.target.y + this.target.vy * roughTimeToIntercept,
+        size : this.target.size
+    };
+
+    interaction.near(this, estimatedLocationInInterceptTime);
+    interaction.touching();
+    interaction.resolve();
+
     // TODO - add an anticiation about where the target will be in the approximate time it will take to close.
     // Calc minimum flypast distance?
 
     this.trajectory                     = getAngle(this.vx, this.vy);
     interaction.current_x  = this.x;
-    interaction.target_x   = this.target.x;
+    interaction.target_x   = estimatedLocationInInterceptTime.x;
     interaction.current_y  = this.y;
-    interaction.target_y   = this.target.y;
+    interaction.target_y   = estimatedLocationInInterceptTime.y;
     interaction.current_vx  = this.vx;
     interaction.target_vx   = this.target.vx;
     interaction.current_vy  = this.vy;
@@ -596,6 +617,26 @@ RobotShip.prototype.PDcontrolPositionByVectoredThrust = function(deltaT){
     this.angle = getAngle(response_x, response_y);
     this.interaction.err_x = err_x;
     this.interaction.err_y = err_y;
+};
+RobotShip.prototype.PDcontrolInterceptByVectoredThrust = function(deltaT){
+    this.lastInteraction = this.interaction.copy();
+    this.resolveTarget();
+    var theta   = this.interaction.deflectionAngleToTarget;
+    var sep     = this.interaction.seperation;
+    var v       = this.speed();
+    if(theta >  Math.PI/2) theta = +Math.PI - theta;
+    if(theta < -Math.PI/2) theta = -Math.PI - theta;
+
+    var kP = 1, kD = 1;
+    var err         = v * Math.tan(theta);
+    var errDot      = (err - this.lastInteraction.err) / deltaT;
+    var response    = kP * err + kD * errDot;
+    if (response > +1)  response = +1;
+    if (response < -1)  response = -1;
+    this.angle = this.interaction.absoluteAngleToTarget + response * Math.PI / 2;
+    this.spin = 0;
+    // if going to overshoot (err > max ability to close) then response uncap to 2.
+    this.interaction.err = err;
 };
 RobotShip.prototype.PDcontrolSpeedWithoutDerivative = function(deltaT){
     // Consider an integral term if we have a bias (like gravity)
@@ -671,11 +712,33 @@ Fireball.prototype.constructor      = RobotShip;
 Fireball.prototype.getPilotCommand  = function(deltaT){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) {
-        this.PDcontrolPositionByVectoredThrust(deltaT);
-        // if interaction.seperation > 5 * this.target.size
+        this.PDcontrolInterceptByVectoredThrust(deltaT);
         this.enginesActive.mainJet = 1;
     }
     return this; // chainable
+};
+
+var BigRocket = function(x, y, vx, vy, size, parent){
+    this.base = RobotShip;
+    this.base(x, y, size, 40, missile);
+    this.gameClass      = 'missile';
+    this.parent         = parent;
+    this.team           = parent.team;
+    this.angle          = this.parent.angle;
+    this.vx             = vx;
+    this.vy             = vy;
+    this.showEnergyBar  = false;
+    this.damagePts      = 10000;
+    this.projectileEngines.mainJet.projectileSize       *= 4;
+    this.projectileEngines.frontLeft.projectileSize     *= 4;
+    this.projectileEngines.frontRight.projectileSize    *= 4;
+    this.projectileEngines.backLeft.projectileSize      *= 4;
+    this.projectileEngines.backRight.projectileSize     *= 4;
+};
+BigRocket.prototype                   = Object.create(RobotShip.prototype);
+BigRocket.prototype.constructor       = RobotShip;
+BigRocket.prototype.getPilotCommand   = function(deltaT){
+    this.enginesActive.mainJet = 1;
 };
 
 var Missile                         = function(x, y, vx, vy, size, parent){
