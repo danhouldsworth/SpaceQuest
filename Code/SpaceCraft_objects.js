@@ -508,8 +508,8 @@ PlayerShip.prototype.getPilotCommand= function(){
         right       : [null, 87, 39],   // w    Arrow
         thrust      : [null, 69, 38],   // e    Arrow
         fire        : [null, 83, 32],   // s    Space
-        missile     : [null, 82, null],   // r    Down Arrow
-        bigRocket   : [null, null, 40],   // r    Down Arrow
+        missile     : [null, 82, 40],   // r    Down Arrow
+        bigRocket   : [null, null, null],   // r    Down Arrow
         cannon      : [null, 84, 77]    // t    m
     };
     if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = 1;}
@@ -559,7 +559,7 @@ RobotShip.prototype.resolveTarget   = function(){
     interaction.touching();
     interaction.resolve();
 
-    var roughTimeToIntercept = interaction.seperation / this.speed();
+    var roughTimeToIntercept = Math.min(500, interaction.seperation / this.speed());
     var estimatedLocationInInterceptTime = {
         x : this.target.x + this.target.vx * roughTimeToIntercept,
         y : this.target.y + this.target.vy * roughTimeToIntercept,
@@ -583,7 +583,7 @@ RobotShip.prototype.resolveTarget   = function(){
     interaction.current_vy  = this.vy;
     interaction.target_vy   = this.target.vy;
     interaction.current_angle   = this.angle;
-    interaction.target_angle    = this.target.angle;
+    // interaction.target_angle    = this.target.angle;
     interaction.absoluteAngleToTarget   = getAngle(interaction.unitVector.x, interaction.unitVector.y);
     interaction.deflectionAngleToTarget = normaliseAnglePItoMinusPI(interaction.absoluteAngleToTarget - this.trajectory);
     interaction.orientationAgleToTarget = normaliseAnglePItoMinusPI(interaction.absoluteAngleToTarget - this.angle);
@@ -637,6 +637,33 @@ RobotShip.prototype.PDcontrolInterceptByVectoredThrust = function(deltaT){
     this.spin = 0;
     // if going to overshoot (err > max ability to close) then response uncap to 2.
     this.interaction.err = err;
+};
+RobotShip.prototype.PDnestedControlInterceptBySpinThrust = function(deltaT){
+    this.lastInteraction = this.interaction.copy();
+    this.resolveTarget();
+    var theta   = this.interaction.deflectionAngleToTarget;
+    var sep     = this.interaction.seperation;
+    var v       = this.speed();
+    if(theta >  Math.PI/2) theta = +Math.PI - theta;
+    if(theta < -Math.PI/2) theta = -Math.PI - theta;
+
+    var kP = 1, kD = 1;
+    var err         = v * Math.tan(theta);
+    var errDot      = (err - this.lastInteraction.err) / deltaT;
+    var response    = kP * err + kD * errDot;
+    if (response > +1)  response = +1;
+    if (response < -1)  response = -1;
+    this.interaction.target_angle = this.interaction.absoluteAngleToTarget + response * Math.PI / 2;
+    this.interaction.err = err;
+
+    kP = 1, kD = 500;
+    var err_angle    = normaliseAnglePItoMinusPI(this.interaction.target_angle - this.interaction.current_angle);
+    var errDot_angle = (err_angle - this.lastInteraction.err_angle) / deltaT;
+    response    = kP * err_angle + kD * errDot_angle;
+    // console.log("err = " + err + "\t errDot = " + errDot + "\t lastInteraction.err = " + this.lastInteraction.err);
+    this.interaction.err_angle = err_angle;
+    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft   = Math.min(1, +response);}
+    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight  = Math.min(1, -response);}
 };
 RobotShip.prototype.PDcontrolSpeedWithoutDerivative = function(deltaT){
     // Consider an integral term if we have a bias (like gravity)
@@ -763,7 +790,7 @@ Missile.prototype.constructor       = RobotShip;
 Missile.prototype.getPilotCommand   = function(deltaT){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) {
-        this.PDcontrolOrientationBySideThrust(deltaT);
+        this.PDnestedControlInterceptBySpinThrust(deltaT);
         this.enginesActive.mainJet = 1;
     }
     return this; // chainable
@@ -774,13 +801,17 @@ var Baddy                           = function(x, y){
     this.base(x, y, 30, 1, bombBaddy);
     this.team = 3;
     this.angle = Math.PI / 2;
-    // this.projectileEngines.hoseGun.projectileSize *= 4;
+    this.projectileEngines.mainJet.projectileSize       *= 0.5;
+    // this.projectileEngines.frontLeft.projectileSize     *= 0.5;
+    // this.projectileEngines.frontRight.projectileSize    *= 0.5;
+    // this.projectileEngines.backLeft.projectileSize      *= 0.5;
+    // this.projectileEngines.backRight.projectileSize     *= 0.5;
 };
 Baddy.prototype                     = Object.create(RobotShip.prototype);
 Baddy.prototype.constructor         = RobotShip;
 Baddy.prototype.getPilotCommand     = function(deltaT){
     this.canclePreviousControl();
-    this.PDcontrolOrientationBySideThrust(deltaT);
+    this.PDnestedControlInterceptBySpinThrust(deltaT);
     if (interaction.seperation < 5 * interaction.size) {this.enginesActive.hoseGun = 1;}
     else {this.enginesActive.mainJet = 1;}
 };
@@ -842,6 +873,7 @@ Interaction.prototype.copy          = function(){
     copy.err      = this.err;
     copy.err_x      = this.err_x;
     copy.err_y      = this.err_y;
+    copy.err_angle  = this.err_angle;
 
     copy.err_vx      = this.err_vx;
     copy.err_vy      = this.err_vy;
