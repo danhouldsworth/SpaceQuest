@@ -12,8 +12,6 @@ function fullGame(){
 
     for (var count = 0; count < 100; count++)
         gameObjects.push(new Asteroid( (Math.random()-0.5) * w, (Math.random()-0.5) * 8*h, 0.2 * (Math.random() - 0.5), 0.2 * (Math.random() - 0.5), 200 * Math.random(), 0.01 * (Math.random() - 0.5)));
-        // gameObjects.push(new Asteroid( (Math.random()-0.5) * 8*w, (Math.random()-0.5) * 8*h, 0.2 * (Math.random() - 0.5), 0.2 * (Math.random() - 0.5), 200 * Math.random(), 0.01 * (Math.random() - 0.5)));
-
 
 }
 function targetPractice(){
@@ -40,8 +38,8 @@ function setCameras(){
 }
 // --
 initGameArea();
-fullGame();
+// fullGame();
 // pvp();
-// targetPractice()
+targetPractice()
 setCameras();
 launch();
