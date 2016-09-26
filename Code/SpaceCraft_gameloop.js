@@ -10,11 +10,11 @@ function timeStep(timer){
 }
 function applyCollisionRules(obj1, obj2){
     switch (obj1.gameClass){
-        case 'asteroid' : if (obj2 instanceof PlayerShip)         {obj2.explode();}                               break;
-        case 'bullet'   : if (obj2 instanceof Graphic)      {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
-        case 'bomb'     : if (!obj2 instanceof Bomb)        {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+        case 'asteroid' : if (obj2 instanceof PlayerShip)                       {obj2.explode();}                               break;
+        case 'bullet'   : if (obj2 instanceof Graphic && obj2 !== obj1.parent)  {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+        case 'bomb'     : if (!obj2 instanceof Bomb)                            {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
         case 'fireball' :
-        case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)     {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
+        case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)         {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
     }
     if (obj1 instanceof Ship && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
 }

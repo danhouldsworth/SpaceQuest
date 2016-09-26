@@ -155,8 +155,8 @@ Particle.prototype.collide      = function(that){
         return true;
     }
     else if (this instanceof Asteroid || that instanceof Asteroid) {
-        interaction.touching(this,that);
-        interaction.resolve(this,that);
+        interaction.touching();
+        interaction.resolve();
         var gravityFactor = 0.00001;
         this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
         this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
@@ -382,12 +382,12 @@ Graphic.prototype.explode       = function(){
 // Game objects - based on Graphics. Have active controls and specific actions
 var Asteroid                    = function(x, y, vx, vy, size, spin){
     this.base = Graphic;
-    this.base(x, y, vx, vy, size, 0, spin, 10);
+    this.base(x, y, vx, vy, size || 100, 0, spin, 10);
     this.gameClass  = 'asteroid';
     this.image      = asteroid;
     this.showPath   = false;
     this.restitution= 0.25;
-    // this.energy *= 10; // Fudge to stop all exploding
+    if (!size) this.energy = 0.01;// this.energy *= 10; // Fudge to stop all exploding
 };
 Asteroid.prototype              = Object.create(Graphic.prototype);
 Asteroid.prototype.constructor  = Graphic;
@@ -448,7 +448,7 @@ Ship.prototype.fireProjectiles       = function(engine){
 Ship.prototype.launchMissileWhenReady       = function(){
     if (this.missleLaunchersHot === true) return;
     this.missleLaunchersHot = true;
-    this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 500);})(this);
+    this.missleCoolTimer = (function(thisShip){setTimeout(function(){thisShip.missleLaunchersHot = false;}, 750);})(this);
     this.missileLaunchSide = -this.missileLaunchSide;
     this.enginesActive[((this.missileLaunchSide === 1)? "missileBayL" : "missileBayR")] = 1;
     return this; // chainable
@@ -463,7 +463,7 @@ Ship.prototype.launchRocketWhenReady       = function(){
 Ship.prototype.launchCannonWhenReady        = function(){
     if (this.longRangeGunHot === true) return;
     this.longRangeGunHot = true;
-    this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, 250);})(this);
+    this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, 750);})(this);
     this.enginesActive.cannonBay = 1;
     return this; // chainable
 };
@@ -533,169 +533,132 @@ var RobotShip                       = function(x, y, size, density, image){
     this.base = Ship;
     this.base(x, y, size, density, image);
     this.showEnergyBar  = true;
-    this.errIntegral = 0;
-    this.interaction        = new Interaction();
+    this.sampleData = new Interaction();
 };
 RobotShip.prototype                 = Object.create(Ship.prototype);
 RobotShip.prototype.constructor     = Ship;
-RobotShip.prototype.getTarget       = function(){
+RobotShip.prototype.canclePreviousControl = function(){
+    Ship.prototype.getPilotCommand.call(this);
+};
+RobotShip.prototype.getTarget                   = function(){
     this.target = false;
     for (var threat of gameObjects){
-        if (!threat.team) {continue;}                                                                       // Don't target bullets / thrust
-        if (this.target === false && threat instanceof Graphic)         {this.target = threat; continue;}   // Target the first graphic we come across if not yet targeted
+        if (!(threat instanceof Graphic))                                 {continue;}                         // Don't target bullets / thrust
+        if (this.target === false)                                      {this.target = threat; continue;}   // Target the first graphic we come across if not yet targeted
         if (this.target.team === this.team && threat.team !== this.team){this.target = threat; continue;}   // If we're targeting ourselves (from above), then target anyone else if poss
+        // Target valid threats that not yet targeted?
         switch (this.team){
             case 1:
-            case 2: if (threat.team === 3 && (this.target.team !==3 || (threat.mass > this.target.mass)))   {this.target = threat;} break; // Daddy&Finn Always target the baddies if we're not already. But don't detarget for smaller RobotShip
-            case 3: if (threat.team !== 3 && (threat.mass > this.target.mass))                              {this.target = threat;} break; // Baddies target the biggest Daddy/Finn they can
+            case 2:
+                if (threat.team === 3 && this.target.team !==3)                                                                   {this.target = threat;}
+                if (threat.team === 3 && interaction.getSeperation(this, threat) < interaction.getSeperation(this, this.target))  {this.target = threat;}
+                if (threat instanceof Asteroid && this.target instanceof Asteroid && threat.mass > this.target.mass)              {this.target = threat;}
+                break; // Daddy&Finn Always target the baddies if we're not already. Only retarget for closer baddies
+            case 3: if (threat.team < 3 && (threat.mass > this.target.mass))                              {this.target = threat;} break; // Baddies target the biggest Daddy/Finn they can
         }
     }
     return this; // chainable
 };
-RobotShip.prototype.resolveTarget   = function(){
-    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();}
+RobotShip.prototype.anticipateTargetLocation    = function(){
+    // Based on our closing speed to target, estimate a crude time-to-intercept
+    // Return a revised TARGET based on where our actual target will be
+    // Ignores ours and their acceleration for this crude excercise
+    var target = this.target;
+    interaction.full(this, target);
+    var closingSpeedSqrd = (this.vx - target.vx) * (this.vx - target.vx) + (this.vy - target.vy) * (this.vy - target.vy);
+    var roughTimeToIntercept = Math.min(250, interaction.seperationSqrd / closingSpeedSqrd); // ***
 
-    interaction.near(this, this.target);
-    interaction.touching();
-    interaction.resolve();
-
-    var roughTimeToIntercept = Math.min(500, interaction.seperation / this.speed());
-    var estimatedLocationInInterceptTime = {
-        x : this.target.x + this.target.vx * roughTimeToIntercept,
-        y : this.target.y + this.target.vy * roughTimeToIntercept,
-        size : this.target.size
-    };
-
-    interaction.near(this, estimatedLocationInInterceptTime);
-    interaction.touching();
-    interaction.resolve();
-
-    // TODO - add an anticiation about where the target will be in the approximate time it will take to close.
-    // Calc minimum flypast distance?
-
-    this.trajectory                     = getAngle(this.vx, this.vy);
-    interaction.current_x  = this.x;
-    interaction.target_x   = estimatedLocationInInterceptTime.x;
-    interaction.current_y  = this.y;
-    interaction.target_y   = estimatedLocationInInterceptTime.y;
-    interaction.current_vx  = this.vx;
-    interaction.target_vx   = this.target.vx;
-    interaction.current_vy  = this.vy;
-    interaction.target_vy   = this.target.vy;
-    interaction.current_angle   = this.angle;
-    // interaction.target_angle    = this.target.angle;
-    interaction.absoluteAngleToTarget   = getAngle(interaction.unitVector.x, interaction.unitVector.y);
-    interaction.deflectionAngleToTarget = normaliseAnglePItoMinusPI(interaction.absoluteAngleToTarget - this.trajectory);
-    interaction.orientationAgleToTarget = normaliseAnglePItoMinusPI(interaction.absoluteAngleToTarget - this.angle);
-    this.interaction                    = interaction.copy(); // Store for derivatives AND NOT A POINTER
-
-    return this; // chainable
+    var revisedTarget = new Particle(
+        target.x + target.vx * roughTimeToIntercept,
+        target.y + target.vy * roughTimeToIntercept,
+        target.vx,
+        target.vy,
+        target.size,
+        target.angle,
+        target.spin
+    );
+    // *** - Note : We ignore the effects of both OUR ACCELERATION on the time to intercept and also THE TARGETS ACCELERATION on the estimated position.
+    // *** - Given that we're capping the look ahead time of 500ms anyway (to reduce risk of circular argument from low speed ==> high time ==> target behind us ==> infinite time), this should be safe.
+    return revisedTarget;
 };
-RobotShip.prototype.canclePreviousControl = function(){
-    Ship.prototype.getPilotCommand.call(this);
+RobotShip.prototype.resolveToThisTarget         = function(target){
+
+    var sampleData = new Interaction(); // We want to keep this data
+    sampleData.full(this, target);
+
+    sampleData.ourOrientation           = this.angle;
+    sampleData.ourTrajectory            = getAngle(this.vx, this.vy);
+    sampleData.absoluteAngleToTarget    = getAngle(sampleData.unitVector.x, sampleData.unitVector.y);
+    sampleData.deflectionAngleToTarget  = normaliseAnglePItoMinusPI(sampleData.absoluteAngleToTarget - sampleData.ourTrajectory);
+    sampleData.orientationAgleToTarget  = normaliseAnglePItoMinusPI(sampleData.absoluteAngleToTarget - this.angle);
+    sampleData.desired_vx               = target.vx;
+    sampleData.desired_vy               = target.vy;
+
+    return sampleData;
 };
-RobotShip.prototype.activateWhenClearOf = function(clearTarget){
-    if (!this.target){
-        interaction.near(this, clearTarget);
-        interaction.touching();
-        interaction.resolve();
-        if (interaction.seperation < 2 * interaction.size) return false;
-    }
-    return true; // Return true is EITHER already has target OR now clear of parent
+RobotShip.prototype.activateWhenClearOf         = function(clearTarget){
+    // Return true is EITHER already has target OR now clear of parent
+    if (this.target) return true;
+    interaction.full(this, clearTarget);
+    if (interaction.seperation > 2 * interaction.size) return true;
 };
-RobotShip.prototype.PDcontrolPositionByVectoredThrust = function(deltaT){
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget();
-    var err_x, err_y, errDot_x, errDot_y, response_x, response_y;
-    var kP = 1, kD = 250;
-    err_x       = (this.interaction.target_x - this.interaction.current_x);
-    err_y       = (this.interaction.target_y - this.interaction.current_y);
-    errDot_x    = (err_x - this.lastInteraction.err_x) / deltaT;
-    errDot_y    = (err_y - this.lastInteraction.err_y) / deltaT;
-    response_x  = kP * err_x + kD * errDot_x;
-    response_y  = kP * err_y + kD * errDot_y;
-    this.angle = getAngle(response_x, response_y);
-    this.interaction.err_x = err_x;
-    this.interaction.err_y = err_y;
-};
-RobotShip.prototype.PDcontrolInterceptByVectoredThrust = function(deltaT){
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget();
-    var theta   = this.interaction.deflectionAngleToTarget;
-    var sep     = this.interaction.seperation;
-    var v       = this.speed();
+RobotShip.prototype.PDinnerLoop_getThrustAngleForInterceptToTarget  = function(deltaT){
+    this.lastSampleData = this.sampleData.copy();
+    this.sampleData     = this.resolveToThisTarget(this.anticipateTargetLocation());
+
+    // var thrustMass = Math.PI * 0.5 * this.projectileEngines.mainJet.projectileSize * this.projectileEngines.mainJet.projectileSize;
+    // var kP = 0.01 * this.mass / (thrustMass * this.projectileEngines.mainJet.projectileSpeed); // kP ~ main acceleration
+    var kP = 1;
+    var kD = 1.0 * kP; // NOT CLEAR HOW TO SET kD
+
+    var theta   = this.sampleData.deflectionAngleToTarget;
+    // Simple fudge if travelling away from target AND YET APPEARS TO ENABLE CORRECT REVERSE ORIENTATION FOR OVERSHOOT
     if(theta >  Math.PI/2) theta = +Math.PI - theta;
     if(theta < -Math.PI/2) theta = -Math.PI - theta;
+    // --
+    var lastErr     = this.lastSampleData.err_interceptQ;
 
-    var kP = 1, kD = 1;
-    var err         = v * Math.tan(theta);
-    var errDot      = (err - this.lastInteraction.err) / deltaT;
+    var err         = this.speed() * Math.tan(theta); // The quantiy we want to minimise to ensure a CONTROLLABLE intercept [closest approach of current trajectory / time to closest approach]
+    var errDot      = (err - lastErr || 0) / deltaT;
     var response    = kP * err + kD * errDot;
+
     if (response > +1)  response = +1;
     if (response < -1)  response = -1;
-    this.angle = this.interaction.absoluteAngleToTarget + response * Math.PI / 2;
-    this.spin = 0;
-    // if going to overshoot (err > max ability to close) then response uncap to 2.
-    this.interaction.err = err;
+    var desiredAngleForThrust = this.sampleData.absoluteAngleToTarget + response * Math.PI / 2;
+
+    this.sampleData.err_interceptQ = err;
+    return desiredAngleForThrust;
 };
-RobotShip.prototype.PDnestedControlInterceptBySpinThrust = function(deltaT){
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget();
-    var theta   = this.interaction.deflectionAngleToTarget;
-    var sep     = this.interaction.seperation;
-    var v       = this.speed();
-    if(theta >  Math.PI/2) theta = +Math.PI - theta;
-    if(theta < -Math.PI/2) theta = -Math.PI - theta;
+RobotShip.prototype.PDouterLoop_OrientationControlForDesiredAngle   = function(desiredOrientation, deltaT){
+    // lastSample copied as part of inner loop
+    var kP = 1;
+    var kD = 500;
 
-    var kP = 1, kD = 1;
-    var err         = v * Math.tan(theta);
-    var errDot      = (err - this.lastInteraction.err) / deltaT;
+    var lastErr = this.lastSampleData.err_orientation;
+
+    var err     = normaliseAnglePItoMinusPI(desiredOrientation - this.sampleData.ourOrientation);
+    var errDot  = (err - lastErr) / deltaT;
     var response    = kP * err + kD * errDot;
-    if (response > +1)  response = +1;
-    if (response < -1)  response = -1;
-    this.interaction.target_angle = this.interaction.absoluteAngleToTarget + response * Math.PI / 2;
-    this.interaction.err = err;
-
-    kP = 1, kD = 500;
-    var err_angle    = normaliseAnglePItoMinusPI(this.interaction.target_angle - this.interaction.current_angle);
-    var errDot_angle = (err_angle - this.lastInteraction.err_angle) / deltaT;
-    response    = kP * err_angle + kD * errDot_angle;
     // console.log("err = " + err + "\t errDot = " + errDot + "\t lastInteraction.err = " + this.lastInteraction.err);
-    this.interaction.err_angle = err_angle;
     if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft   = Math.min(1, +response);}
     if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight  = Math.min(1, -response);}
+    this.sampleData.err_orientation = err;
 };
-RobotShip.prototype.PDcontrolSpeedWithoutDerivative = function(deltaT){
+RobotShip.prototype.PDsingleLoop_controlSpeedWithoutDerivative      = function(deltaT){
     // Consider an integral term if we have a bias (like gravity)
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget();
-    var err_vx, err_vy, response_x, response_y;
+    this.lastSampleData = this.sampleData.copy();
+    this.sampleData     = this.resolveToThisTarget(this.anticipateTargetLocation());
+
     var kP = 5;
-    err_vx       = (this.interaction.target_vx - this.interaction.current_vx);
-    err_vy       = (this.interaction.target_vy - this.interaction.current_vy);
-    response_x  = kP * err_vx;
-    response_y  = kP * err_vy;
+    var err_vx       = (this.sampleData.desired_vx - this.vx);
+    var err_vy       = (this.sampleData.desired_vy - this.vy);
+    var response_x  = kP * err_vx;
+    var response_y  = kP * err_vy;
     if (response_x > 0) {this.enginesActive.goLeft  = Math.min(1, +response_x);}
     if (response_x < 0) {this.enginesActive.goRight = Math.min(1, -response_x);}
     if (response_y > 0) {this.enginesActive.goUp    = Math.min(1, +response_y);}
     if (response_y < 0) {this.enginesActive.goDown  = Math.min(1, -response_y);}
     this.angle = Math.PI / 2; this.spin = 0;
-};
-RobotShip.prototype.PDcontrolOrientationBySideThrust = function(deltaT){
-    // Don't need this integral term unless we feel we might have biased rotation force (like thrust drag) acting for long time frame
-    var err, errDot, response;
-    var kP = 1, kD = 500, kI = 0.01;
-    this.lastInteraction = this.interaction.copy();
-    this.resolveTarget(); this.interaction.target_angle = this.interaction.absoluteAngleToTarget;
-    err    = normaliseAnglePItoMinusPI(this.interaction.target_angle - this.interaction.current_angle);
-    errDot = (err - this.lastInteraction.err) / deltaT;
-    response    = kP * err + kD * errDot + kI * this.errIntegral;
-    // console.log("err = " + err + "\t errDot = " + errDot + "\t lastInteraction.err = " + this.lastInteraction.err);
-    this.errIntegral += err;
-    if (Math.abs(response) > 1) {this.errIntegral = 0;} // Only increment when saturated
-    this.interaction.err = err;
-    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft   = Math.min(1, +response);}
-    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight  = Math.min(1, -response);}
 };
 
 var Drone                       = function(x,y){
@@ -715,7 +678,8 @@ Drone.prototype                 = Object.create(RobotShip.prototype);
 Drone.prototype.constructor     = RobotShip;
 Drone.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
-    this.PDcontrolSpeedWithoutDerivative(deltaT);
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.PDsingleLoop_controlSpeedWithoutDerivative(deltaT);
     return this; // chainable
 };
 
@@ -739,7 +703,9 @@ Fireball.prototype.constructor      = RobotShip;
 Fireball.prototype.getPilotCommand  = function(deltaT){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) {
-        this.PDcontrolInterceptByVectoredThrust(deltaT);
+        if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+        this.angle = this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT);
+        this.spin = 0;
         this.enginesActive.mainJet = 1;
     }
     return this; // chainable
@@ -790,7 +756,8 @@ Missile.prototype.constructor       = RobotShip;
 Missile.prototype.getPilotCommand   = function(deltaT){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) {
-        this.PDnestedControlInterceptBySpinThrust(deltaT);
+        if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+        this.PDouterLoop_OrientationControlForDesiredAngle(this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT), deltaT);
         this.enginesActive.mainJet = 1;
     }
     return this; // chainable
@@ -811,7 +778,8 @@ Baddy.prototype                     = Object.create(RobotShip.prototype);
 Baddy.prototype.constructor         = RobotShip;
 Baddy.prototype.getPilotCommand     = function(deltaT){
     this.canclePreviousControl();
-    this.PDnestedControlInterceptBySpinThrust(deltaT);
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.PDouterLoop_OrientationControlForDesiredAngle(this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT), deltaT);
     if (interaction.seperation < 5 * interaction.size) {this.enginesActive.hoseGun = 1;}
     else {this.enginesActive.mainJet = 1;}
 };
@@ -846,7 +814,8 @@ BossBaddy.prototype.getPilotCommand = function(deltaT){
         gameObjects.push(childBaddy);
     }
     this.canclePreviousControl();
-    this.PDcontrolSpeedWithoutDerivative(deltaT);
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.PDsingleLoop_controlSpeedWithoutDerivative(deltaT);
 };
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
@@ -857,36 +826,11 @@ Interaction.prototype               = Object.create(Primitive.prototype);
 Interaction.prototype.constructor   = Primitive;
 Interaction.prototype.copy          = function(){
     var copy = new Interaction();
-    copy.x          = this.x;
-    copy.y          = this.y;
-    copy.current_x = this.current_x;
-    copy.current_y = this.current_y;
-    copy.target_x  = this.target_x;
-    copy.target_y  = this.target_y;
-    copy.current_vx = this.current_vx;
-    copy.current_vy = this.current_vy;
-    copy.target_vx  = this.target_vx;
-    copy.target_vy  = this.target_vy;
-    copy.current_angle = this.current_angle;
-    copy.target_angle  = this.target_angle;
-
-    copy.err      = this.err;
-    copy.err_x      = this.err_x;
-    copy.err_y      = this.err_y;
-    copy.err_angle  = this.err_angle;
-
-    copy.err_vx      = this.err_vx;
-    copy.err_vy      = this.err_vy;
-    copy.seperation = this.seperation;
-    copy.size       = this.size;
-    // copy.speedDiff  = {
-    //     x : this.speedDiff.x,
-    //     y : this.speedDiff.y
-    // };
-    copy.absoluteAngleToTarget      = this.absoluteAngleToTarget;
-    copy.deflectionAngleToTarget    = this.deflectionAngleToTarget;
-    copy.orientationAgleToTarget    = this.orientationAgleToTarget;
-
+    // copy.x          = this.x;
+    // copy.y          = this.y;
+    // copy.size       = this.size;
+    copy.err_interceptQ         = this.err_interceptQ;
+    copy.err_orientation        = this.err_orientation;
     return copy;
 };
 Interaction.prototype.near          = function(P1, P2){
@@ -909,6 +853,15 @@ Interaction.prototype.resolve       = function(){
         y : this.y / this.seperation
     };
     this.resolved = true;
+};
+Interaction.prototype.full       = function(P1, P2){
+    this.near(P1, P2);
+    this.touching();
+    this.resolve();
+};
+Interaction.prototype.getSeperation = function(P1, P2){
+    this.full(P1,P2);
+    return this.seperation;
 };
 Interaction.prototype.clear         = function(){
     this.resolved = false;

@@ -1,6 +1,10 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
 
-function impossible(){
+function pvp(){
+    gameObjects.push(new PlayerShip(-w, 0, 2));
+    gameObjects.push(new PlayerShip(w, 0, 1));
+}
+function fullGame(){
     gameObjects.push(new PlayerShip(-w, 0, 2));
     gameObjects.push(new PlayerShip(w, 0, 1));
     gameObjects.push(new BossBaddy( 2*w, 0));
@@ -14,13 +18,17 @@ function impossible(){
 }
 function targetPractice(){
     gameObjects.push(new PlayerShip(-3*w, 0, 2));
+    // gameObjects[0].angle = Math.PI/2;
 
-    gameObjects.push(new Baddy( +3 * w, h * 1));
-    gameObjects.push(new Baddy( +3 * w, h * 2));
-    gameObjects.push(new Baddy( +3 * w, h * 3));
-    gameObjects.push(new Baddy( +3 * w, -h * 1));
-    gameObjects.push(new Baddy( +3 * w, -h * 2));
-    gameObjects.push(new Baddy( +3 * w, -h * 3));
+    var targetType = Drone;
+    // var targetType = Asteroid;
+    // var targetType = Baddy;
+    gameObjects.push(new targetType( +0 * w, h * 1));
+    gameObjects.push(new targetType( +0 * w, h * 2));
+    gameObjects.push(new targetType( +0 * w, h * 3));
+    gameObjects.push(new targetType( +0 * w, -h * 1));
+    gameObjects.push(new targetType( +0 * w, -h * 2));
+    gameObjects.push(new targetType( +0 * w, -h * 3));
 }
 function setCameras(){
     GlobalParams.camera.Targets[0] = gameObjects[0];
@@ -32,7 +40,8 @@ function setCameras(){
 }
 // --
 initGameArea();
-impossible();
+fullGame();
+// pvp();
 // targetPractice()
 setCameras();
 launch();
