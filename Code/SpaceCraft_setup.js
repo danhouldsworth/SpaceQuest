@@ -1,10 +1,10 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
 var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/Asteroid.png";
-var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";
-var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";
-var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png"; bossBaddy.drawingOffsetAngle = 0;
-var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png"; bombBaddy.drawingOffsetAngle = Math.PI;
+var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";          fireball.drawingOffsetAngle = 0;
+var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";              bomb.drawingOffsetAngle = 0;
+var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png";  bossBaddy.drawingOffsetAngle = 0;
+var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png";  bombBaddy.drawingOffsetAngle = Math.PI;
 var missile     = bombBaddy;
 var spaceShip   = [];
 spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/SpaceShip.png";        spaceShip[1].drawingOffsetAngle = 0;

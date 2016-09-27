@@ -408,19 +408,21 @@ var Ship                        = function(x, y, size, density, image){
     this.image          = image;
     this.offSet         = image.drawingOffsetAngle;
     this.friction       = 0;
+    var suitableSpinThrustSize = Math.min(30, 0.02 * this.size * Math.sqrt(this.size) );
+    var suitableSpinThrustSpeed= 0.00002 * this.inertiaRot / (suitableSpinThrustSize * suitableSpinThrustSize * suitableSpinThrustSize * 0.5 * Math.PI) ;
     this.projectileEngines        = {
     // NOTE: All projectileEngines assumed to start on the circumference of the circle
-        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 4,     projectileSpeed :  1,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
-        frontLeft   : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : 0,                projectileAngle : Math.PI / 2},
-        frontRight  : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : 0,                projectileAngle : Math.PI * 3 / 2},
-        backLeft    : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : Math.PI,          projectileAngle : Math.PI / 2},
-        backRight   : {projectileType : Thrust,     projectileSize : this.size /10,     projectileSpeed :0.5,    projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
-        hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,     projectileSpeed :  1,    projectilePosition : 0,                projectileAngle : 0},
+        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 4,             projectileSpeed :  1,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
+        frontLeft   : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : 0,                projectileAngle : Math.PI / 2},
+        frontRight  : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : 0,                projectileAngle : Math.PI * 3 / 2},
+        backLeft    : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : Math.PI,          projectileAngle : Math.PI / 2},
+        backRight   : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
+        hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,             projectileSpeed :  1,    projectilePosition : 0,                projectileAngle : 0},
         // *Bay* need getPilotCommand to reconfirm
-        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size ,        projectileSpeed :  0,    projectilePosition : 0,                projectileAngle : 0},
-        cannonBay   : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
-        missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
-        missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
+        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size ,                projectileSpeed :  0,    projectilePosition : 0,                projectileAngle : 0},
+        cannonBay   : {projectileType : Fireball,   projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
+        missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
+        missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
     };
     this.enginesActive = [];
     this.missileLaunchSide = 1;
@@ -444,6 +446,14 @@ Ship.prototype.fireProjectiles       = function(engine){
         y       : -projectile.vy * projectile.mass,
         torque  : -projectile.momentum() * this.size * Math.sin(engineFiring.projectileAngle - engineFiring.projectilePosition)
     };
+};
+Ship.prototype.getForceAvailable = function(engine){
+    // CRUDE - doesn't take into account the engine vector as above
+    var size    = this.projectileEngines[engine].projectileSize;
+    var speed   = this.projectileEngines[engine].projectileSpeed;
+    var mass    = Math.PI * size * size;
+    var impulse = mass * speed;
+    return impulse;
 };
 Ship.prototype.launchMissileWhenReady       = function(){
     if (this.missleLaunchersHot === true) return;
@@ -508,8 +518,8 @@ PlayerShip.prototype.getPilotCommand= function(){
         right       : [null, 87, 39],   // w    Arrow
         thrust      : [null, 69, 38],   // e    Arrow
         fire        : [null, 83, 32],   // s    Space
-        missile     : [null, 82, 40],   // r    Down Arrow
-        bigRocket   : [null, null, null],   // r    Down Arrow
+        missile     : [null, 82, null],   // r    Down Arrow
+        bigRocket   : [null, null, 40],   // r    Down Arrow
         cannon      : [null, 84, 77]    // t    m
     };
     if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = 1;}
@@ -588,13 +598,13 @@ RobotShip.prototype.resolveToThisTarget         = function(target){
     sampleData.full(this, target);
     sampleData.ourOrientation           = this.angle;
     sampleData.ourTrajectory            = getAngle(this.vx, this.vy);
-    sampleData.ourTrajectoryInTargetFrameOfRef = getAngle(this.vx - target.vx, this.vy - target.vy);
-    sampleData.ourSpeedInTargetFrameOfRef = modulus(this.vx - target.vx, this.vy - target.vy);
+    sampleData.ourTrajectoryInTargetFrameOfRef  = getAngle(this.vx - target.vx, this.vy - target.vy);
+    sampleData.ourSpeedInTargetFrameOfRef       = modulus(this.vx - target.vx, this.vy - target.vy);
     // sampleData.closingSpeed             = modulus(this.vx - target.vx, this.vy - target.vy);
-    sampleData.absoluteAngleToTarget    = getAngle(sampleData.unitVector.x, sampleData.unitVector.y);
+    sampleData.absoluteAngleToTarget            = getAngle(sampleData.unitVector.x, sampleData.unitVector.y);
     sampleData.deflectionAngleToTarget          = normaliseAnglePItoMinusPI(sampleData.absoluteAngleToTarget - sampleData.ourTrajectory);
     sampleData.deflectionAngleToMovingTarget    = normaliseAnglePItoMinusPI(sampleData.absoluteAngleToTarget - sampleData.ourTrajectoryInTargetFrameOfRef);
-    sampleData.orientationAgleToTarget  = normaliseAnglePItoMinusPI(sampleData.absoluteAngleToTarget - this.angle);
+    sampleData.orientationAgleToTarget          = normaliseAnglePItoMinusPI(sampleData.absoluteAngleToTarget - this.angle);
     sampleData.desired_vx               = target.vx;
     sampleData.desired_vy               = target.vy;
 
@@ -607,38 +617,33 @@ RobotShip.prototype.activateWhenClearOf         = function(clearTarget){
     if (interaction.seperation > 2 * interaction.size) return true;
 };
 RobotShip.prototype.PDinnerLoop_getThrustAngleForInterceptToTarget  = function(deltaT){
-    this.lastSampleData = this.sampleData.copy();
-    this.sampleData     = this.resolveToThisTarget(this.anticipateTargetLocation());
-
+    // THIS ACTION WILL ACT FOR THE ENTIRE DURATION UNTIL WE TAKE ANOTHER SAMPLE, so should be reduced?? with slower calc rates
     // var thrustMass = Math.PI * 0.5 * this.projectileEngines.mainJet.projectileSize * this.projectileEngines.mainJet.projectileSize;
-    // var kP = 0.01 * this.mass / (thrustMass * this.projectileEngines.mainJet.projectileSpeed); // kP ~ main acceleration
     var kP = 1;
-    var kD = 1.0 * kP; // NOT CLEAR HOW TO SET kD
+    var kD = 10 * kP; // NOT CLEAR HOW TO SET kD
 
     var theta   = this.sampleData.deflectionAngleToMovingTarget;
     // Simple fudge if travelling away from target AND YET APPEARS TO ENABLE CORRECT REVERSE ORIENTATION FOR OVERSHOOT
     if(theta >  Math.PI/2) theta = +Math.PI - theta;
     if(theta < -Math.PI/2) theta = -Math.PI - theta;
     // --
-    var lastErr     = this.lastSampleData.err_interceptQ;
+    var lastErr = this.lastSampleData.err_interceptEffort;
 
-    // NO! Needs to be in the frame of reference of a stationary target.
     var approachSpeed = this.sampleData.ourSpeedInTargetFrameOfRef;
-    var err         = approachSpeed * Math.tan(theta); // The quantiy we want to minimise to ensure a CONTROLLABLE intercept [closest approach of current trajectory / time to closest approach]
+    var err         = (approachSpeed < 0.25) ? approachSpeed * theta : approachSpeed * Math.tan(theta); // The quantiy we want to minimise to ensure a CONTROLLABLE intercept [closest approach of current trajectory / time to closest approach]
     var errDot      = (err - lastErr || 0) / deltaT;
     var response    = kP * err + kD * errDot;
-
+    if (isNaN(response))response = 0;
     if (response > +1)  response = +1;
     if (response < -1)  response = -1;
     var desiredAngleForThrust = this.sampleData.absoluteAngleToTarget + response * Math.PI / 2;
 
-    this.sampleData.err_interceptQ = err;
+    this.sampleerr_interceptEffort = err;
     return desiredAngleForThrust;
 };
 RobotShip.prototype.PDouterLoop_OrientationControlForDesiredAngle   = function(desiredOrientation, deltaT){
-    // lastSample copied as part of inner loop
-    var kP = 1;
-    var kD = 500;
+    var kP = 0.0005 * this.inertiaRot / (2 * this.size * this.getForceAvailable('frontRight'));
+    var kD = 500 * kP;
 
     var lastErr = this.lastSampleData.err_orientation;
 
@@ -651,11 +656,8 @@ RobotShip.prototype.PDouterLoop_OrientationControlForDesiredAngle   = function(d
     this.sampleData.err_orientation = err;
 };
 RobotShip.prototype.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative      = function(deltaT){
-    // Consider an integral term if we have a bias (like gravity)
-    this.lastSampleData = this.sampleData.copy();
-    this.sampleData     = this.resolveToThisTarget(this.anticipateTargetLocation());
+    var kP = 0.1 * this.mass / this.getForceAvailable('goUp');
 
-    var kP = 5;
     var err_vx       = (this.sampleData.desired_vx - this.vx);
     var err_vy       = (this.sampleData.desired_vy - this.vy);
     var response_x  = kP * err_vx;
@@ -666,27 +668,63 @@ RobotShip.prototype.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative   
     if (response_y < 0) {this.enginesActive.goDown  = Math.min(1, -response_y);}
     this.angle = Math.PI / 2; this.spin = 0;
 };
-
-var Drone                       = function(x,y){
+RobotShip.prototype.resample = function(){
+    this.lastSampleData = this.sampleData.copy();
+    this.sampleData     = this.resolveToThisTarget(this.anticipateTargetLocation());
+};
+var Drone1                       = function(x,y, size){
     this.base = RobotShip;
-    this.base(x, y, 100, 1, bossBaddy);
+    this.base(x, y, size, 1, bossBaddy);
     this.team = 3;
     this.angle = Math.PI / 2;
-    this.energy /= 100;
     this.projectileEngines        = {
-    // NOTE: All projectileEngines assumed to start on the circumference of the circle
         goUp    : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : 1.0,    projectilePosition : Math.PI,           projectileAngle : Math.PI},
         goDown  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : 1.0,    projectilePosition : 0,                 projectileAngle : 0},
         goLeft  : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : 1.0,    projectilePosition : Math.PI * 1 / 2,   projectileAngle : Math.PI * 1 / 2},
         goRight : {projectileType : Thrust,     projectileSize : this.size / 10,     projectileSpeed : 1.0,    projectilePosition : Math.PI * 3 / 2,   projectileAngle : Math.PI * 3 / 2}
     };
 };
-Drone.prototype                 = Object.create(RobotShip.prototype);
-Drone.prototype.constructor     = RobotShip;
-Drone.prototype.getPilotCommand = function(deltaT){
+Drone1.prototype                 = Object.create(RobotShip.prototype);
+Drone1.prototype.constructor     = RobotShip;
+Drone1.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
     if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.resample();
     this.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative(deltaT);
+    return this; // chainable
+};
+var Drone2                       = function(x,y){
+    this.base = RobotShip;
+    this.base(x, y, 200, 10, fireball);
+    this.team = 3;
+    this.angle = Math.PI / 2;
+    this.projectileEngines.mainJet.projectileSize *= 0.1;
+};
+Drone2.prototype                 = Object.create(RobotShip.prototype);
+Drone2.prototype.constructor     = RobotShip;
+Drone2.prototype.getPilotCommand = function(deltaT){
+    this.canclePreviousControl();
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.resample();
+    this.angle = this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT);
+    this.spin = 0;
+    this.enginesActive.mainJet = 1;
+    return this; // chainable
+};
+var Drone3                       = function(x,y, size){
+    this.base = RobotShip;
+    this.base(x, y, size, 1, bombBaddy);
+    this.team = 3;
+    this.angle = Math.PI / 2;
+};
+Drone3.prototype                 = Object.create(RobotShip.prototype);
+Drone3.prototype.constructor     = RobotShip;
+Drone3.prototype.getPilotCommand = function(deltaT){
+    this.canclePreviousControl();
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.resample();
+    this.PDouterLoop_OrientationControlForDesiredAngle(this.target.angle, deltaT);
+    // this.enginesActive.mainJet = 1;
     return this; // chainable
 };
 
@@ -711,6 +749,7 @@ Fireball.prototype.getPilotCommand  = function(deltaT){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) {
         if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+        this.resample();
         this.angle = this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT);
         this.spin = 0;
         this.enginesActive.mainJet = 1;
@@ -764,6 +803,7 @@ Missile.prototype.getPilotCommand   = function(deltaT){
     this.canclePreviousControl();
     if (this.activateWhenClearOf(this.parent)) {
         if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+        this.resample();
         this.PDouterLoop_OrientationControlForDesiredAngle(this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT), deltaT);
         this.enginesActive.mainJet = 1;
     }
@@ -776,16 +816,13 @@ var Baddy                           = function(x, y){
     this.team = 3;
     this.angle = Math.PI / 2;
     this.projectileEngines.mainJet.projectileSize       *= 0.5;
-    // this.projectileEngines.frontLeft.projectileSize     *= 0.5;
-    // this.projectileEngines.frontRight.projectileSize    *= 0.5;
-    // this.projectileEngines.backLeft.projectileSize      *= 0.5;
-    // this.projectileEngines.backRight.projectileSize     *= 0.5;
 };
 Baddy.prototype                     = Object.create(RobotShip.prototype);
 Baddy.prototype.constructor         = RobotShip;
 Baddy.prototype.getPilotCommand     = function(deltaT){
     this.canclePreviousControl();
     if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.resample();
     this.PDouterLoop_OrientationControlForDesiredAngle(this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT), deltaT);
     if (interaction.seperation < 5 * interaction.size) {this.enginesActive.hoseGun = 1;}
     else {this.enginesActive.mainJet = 1;}
@@ -822,6 +859,7 @@ BossBaddy.prototype.getPilotCommand = function(deltaT){
     }
     this.canclePreviousControl();
     if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.resample();
     this.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative(deltaT);
 };
 
@@ -836,7 +874,7 @@ Interaction.prototype.copy          = function(){
     // copy.x          = this.x;
     // copy.y          = this.y;
     // copy.size       = this.size;
-    copy.err_interceptQ         = this.err_interceptQ;
+    copy.err_interceptEffort    = this.err_interceptEffort;
     copy.err_orientation        = this.err_orientation;
     return copy;
 };
