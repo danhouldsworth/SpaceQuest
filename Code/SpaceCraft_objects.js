@@ -617,11 +617,8 @@ RobotShip.prototype.activateWhenClearOf         = function(clearTarget){
     if (interaction.seperation > 2 * interaction.size) return true;
 };
 RobotShip.prototype.PDinnerLoop_getThrustAngleForInterceptToTarget  = function(deltaT){
-    // THIS ACTION WILL ACT FOR THE ENTIRE DURATION UNTIL WE TAKE ANOTHER SAMPLE, so should be reduced?? with slower calc rates
-    // var thrustMass = Math.PI * 0.5 * this.projectileEngines.mainJet.projectileSize * this.projectileEngines.mainJet.projectileSize;
-    var kP = 1;
-    var kD = 10 * kP; // NOT CLEAR HOW TO SET kD
-
+    var kP = 0.05 * this.mass / this.getForceAvailable('mainJet');
+    var kD = 500 * kP; // NOT CLEAR HOW TO SET kD
     var theta   = this.sampleData.deflectionAngleToMovingTarget;
     // Simple fudge if travelling away from target AND YET APPEARS TO ENABLE CORRECT REVERSE ORIENTATION FOR OVERSHOOT
     if(theta >  Math.PI/2) theta = +Math.PI - theta;
@@ -649,7 +646,7 @@ RobotShip.prototype.PDouterLoop_OrientationControlForDesiredAngle   = function(d
 
     var err     = normaliseAnglePItoMinusPI(desiredOrientation - this.sampleData.ourOrientation);
     var errDot  = (err - lastErr) / deltaT;
-    var response    = kP * err + kD * errDot;
+    var response= kP * err + kD * errDot;
     // console.log("err = " + err + "\t errDot = " + errDot + "\t lastInteraction.err = " + this.lastInteraction.err);
     if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft   = Math.min(1, +response);}
     if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight  = Math.min(1, -response);}
@@ -693,12 +690,12 @@ Drone1.prototype.getPilotCommand = function(deltaT){
     this.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative(deltaT);
     return this; // chainable
 };
-var Drone2                       = function(x,y){
+var Drone2                       = function(x,y,size){
     this.base = RobotShip;
-    this.base(x, y, 200, 10, fireball);
+    this.base(x, y, size, 10, fireball);
     this.team = 3;
     this.angle = Math.PI / 2;
-    this.projectileEngines.mainJet.projectileSize *= 0.1;
+    // this.projectileEngines.mainJet.projectileSize *= 0.5;
 };
 Drone2.prototype                 = Object.create(RobotShip.prototype);
 Drone2.prototype.constructor     = RobotShip;

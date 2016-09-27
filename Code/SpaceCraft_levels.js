@@ -17,10 +17,13 @@ function droneTesting_MatchSpeed(){
     gameObjects.push(new Drone1( 0, 0, 500));
     gameObjects.push(new Drone1( -w, h, 200));
     gameObjects.push(new Drone1( -w/2, h/2, 50));
-    // gameObjects[gameObjects.length-1].projectileEngines.goUp.projectileSize     *= 2;
-    // gameObjects[gameObjects.length-1].projectileEngines.goDown.projectileSize   *= 2;
-    // gameObjects[gameObjects.length-1].projectileEngines.goLeft.projectileSize   *= 2;
-    // gameObjects[gameObjects.length-1].projectileEngines.goRight.projectileSize  *= 2;
+}
+function droneTesting_Intercept(){
+    gameObjects.push(new PlayerShip(-w, 0, 2));
+    gameObjects.push(new Drone2( 0, h, 100));
+    gameObjects.push(new Drone2( 0, 0, 500));
+    gameObjects.push(new Drone2( -w, h, 200));
+    gameObjects.push(new Drone2( -w/2, h/2, 50));
 }
 function fullGame(){
     gameObjects.push(new PlayerShip(-w, 0, 2));
@@ -33,12 +36,12 @@ function fullGame(){
 
 }
 function targetPractice(){
-    gameObjects.push(new PlayerShip(-3*w, 0, 2));
+    gameObjects.push(new PlayerShip(-3*w, 0, 1));
     // gameObjects[0].angle = Math.PI/2;
 
     // var targetType = Drone;
-     var targetType = Asteroid;
-   // var targetType = Baddy;
+     // var targetType = Asteroid;
+   var targetType = Baddy;
     gameObjects.push(new targetType( +0 * w, h * 1));
     gameObjects.push(new targetType( +0 * w, h * 2));
     gameObjects.push(new targetType( +0 * w, h * 3));
@@ -59,8 +62,9 @@ initGameArea();
 
 // fullGame();
 // pvp();
-droneTesting_Orientation();
+// droneTesting_Orientation();
 // droneTesting_MatchSpeed();
- // targetPractice()
+// droneTesting_Intercept();
+ targetPractice()
 setCameras();
 launch();
