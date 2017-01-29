@@ -28,8 +28,8 @@ function droneTesting_Intercept(){
 function fullGame(){
     gameObjects.push(new PlayerShip(-w, 0, 2));
     gameObjects.push(new PlayerShip(w, 0, 1));
-    // gameObjects.push(new BossBaddy( 2*w, 0));
-    // gameObjects.push(new BossBaddy( -2*w, 0));
+    gameObjects.push(new BossBaddy( 2*w, 0));
+    gameObjects.push(new BossBaddy( -2*w, 0));
 
     for (var count = 0; count < 100; count++)
         gameObjects.push(new Asteroid( (Math.random()-0.5) * w, (Math.random()-0.5) * 8*h, 0.2 * (Math.random() - 0.5), 0.2 * (Math.random() - 0.5), 200 * Math.random(), 0.01 * (Math.random() - 0.5)));
@@ -60,11 +60,11 @@ function setCameras(){
 // --
 initGameArea();
 
-// fullGame();
+fullGame();
 // pvp();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
- targetPractice()
+ // targetPractice()
 setCameras();
 launch();

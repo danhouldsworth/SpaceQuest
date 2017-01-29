@@ -419,8 +419,8 @@ var Ship                        = function(x, y, size, density, image){
         backRight   : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
         hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,             projectileSpeed :  1,    projectilePosition : 0,                projectileAngle : 0},
         // *Bay* need getPilotCommand to reconfirm
-        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size ,                projectileSpeed :  0,    projectilePosition : 0,                projectileAngle : 0},
-        cannonBay   : {projectileType : Fireball,   projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
+        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size ,                projectileSpeed :0.0,    projectilePosition : Math.PI,                projectileAngle : 0},
+        bombBay   : {projectileType : Fireball,   projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
         missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
         missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
     };
@@ -474,7 +474,7 @@ Ship.prototype.launchCannonWhenReady        = function(){
     if (this.longRangeGunHot === true) return;
     this.longRangeGunHot = true;
     this.cannonCoolTimer = (function(thisShip){setTimeout(function(){thisShip.longRangeGunHot = false;}, 500);})(this);
-    this.enginesActive.cannonBay = 1;
+    this.enginesActive.bombBay = 1;
     return this; // chainable
 };
 Ship.prototype.updateForces                 = function(deltaT){
@@ -518,15 +518,15 @@ PlayerShip.prototype.getPilotCommand= function(){
         right       : [null, 87, 39],   // w    Arrow
         thrust      : [null, 69, 38],   // e    Arrow
         fire        : [null, 83, 32],   // s    Space
-        missile     : [null, 82, null],   // r    Down Arrow
-        bigRocket   : [null, null, 40],   // r    Down Arrow
-        cannon      : [null, 84, 77]    // t    m
+        missile     : [null, null, null],   // r    Down Arrow
+        bigRocket   : [null, 82, 40],   // r    Down Arrow
+        smartBomb   : [null, 84, 77]    // t    m
     };
     if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = 1;}
     if (keyState[playerKeys.right[  this.team]])      {this.enginesActive.frontLeft = this.enginesActive.backRight = 1;}
     if (keyState[playerKeys.thrust[ this.team]])      {this.enginesActive.mainJet   = 1;}
     if (keyState[playerKeys.fire[   this.team]])      {this.enginesActive.hoseGun   = 1;}
-    if (keyState[playerKeys.cannon[ this.team]])      {this.launchCannonWhenReady();}
+    if (keyState[playerKeys.smartBomb[ this.team]])      {this.launchCannonWhenReady();}
     if (keyState[playerKeys.missile[this.team]])      {this.launchMissileWhenReady();}
     if (keyState[playerKeys.bigRocket[this.team]])    {this.launchRocketWhenReady();}
     return this; // chainable
@@ -556,6 +556,8 @@ RobotShip.prototype.getTarget                   = function(){
         if (!(threat instanceof Graphic))                               {continue;}                         // Don't target bullets / thrust
         if (this.target === false)                                      {this.target = threat; continue;}   // Target the first graphic we come across if not yet targeted
         if (this.target.team === this.team && threat.team !== this.team){this.target = threat; continue;}   // If we're targeting ourselves (from above), then target anyone else if poss
+
+        if (!(this.target instanceof RobotShip) && (threat instanceof RobotShip) ){this.target = threat; continue;}
         // Target valid threats that not yet targeted?
         switch (this.team){
             case 1:

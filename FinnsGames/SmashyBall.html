@@ -1,0 +1,198 @@
+<body></body><script id="x-fragment" type="x-shader">   // Start on line:2 to sync error report
+    precision   highp   float;
+    uniform     float   t;
+    varying     vec3    vPosition;
+    varying     vec3    cameraPostion;
+    #define PI      3.14159265
+    #define root2   1.41
+    #define TBD     0.0
+    #define BALLS_NUM 14
+    vec3    lightDir    = 1.07 * normalize(vec3(1.0, 1.0, -1.0));
+    vec3    blandColour = 1.05 * normalize(vec3(1.0, 1.0, 1.0));
+    float   ambience    = 0.3;
+    float   diffussion  = 0.3;
+    float   shinyness   = 0.5;
+    vec4    spherePos[BALLS_NUM];
+    vec3    sphereCol[BALLS_NUM];
+    bool intersectSphere(vec4 sphere, vec3 rayStart, vec3 rayDirection, out float distance) {
+        vec3    c = sphere.xyz - rayStart;
+        float   L = length(c);
+        float   Tca= dot(rayDirection, c);  if (Tca < 0.0)  {distance = 999.0; return false;} // Don't intersect if ray moving away
+        float   d2 = L*L- Tca*Tca;
+        if (d2 > sphere.w * sphere.w)                       {distance = 999.0; return false;} // Missed sphere
+        float Thc2 = sphere.w*sphere.w - d2;
+        distance = Tca - sqrt(Thc2);
+        return true;
+    }
+
+    vec3 lightAt(vec3 instersectNormal, vec3 rayDirection, vec3 color) {
+        float visibleLightReflection = dot(reflect(lightDir, instersectNormal), rayDirection);
+        if (visibleLightReflection < 0.0) visibleLightReflection = 0.0;
+        float saturation = ambience
+                + shinyness   * pow(visibleLightReflection, 50.0)
+                + diffussion  * dot(lightDir, instersectNormal);
+        if (saturation > 1.0){
+            float overSaturation = saturation - 1.0;
+            return mix(color, 2.0 * blandColour, overSaturation);
+        }
+        return saturation * color;
+    }
+
+
+    bool intersectWorld(vec3 lStart, inout vec3 rayDirection, out vec3 intersectPosition, inout vec3 endColour, inout vec3 colMultiplier) {
+        float d[BALLS_NUM], distance;
+        vec3 instersectNormal, collisionColor, ballCenter;
+        bool ground = false;
+        bool h0 = intersectSphere(spherePos[0], lStart, rayDirection, d[0]);
+        bool h1 = intersectSphere(spherePos[1], lStart, rayDirection, d[1]);
+        bool h2 = intersectSphere(spherePos[2], lStart, rayDirection, d[2]);
+        bool h3 = intersectSphere(spherePos[3], lStart, rayDirection, d[3]);
+        bool h4 = intersectSphere(spherePos[4], lStart, rayDirection, d[4]);
+        bool h5 = intersectSphere(spherePos[5], lStart, rayDirection, d[5]);
+        bool h6 = intersectSphere(spherePos[6], lStart, rayDirection, d[6]);
+        bool h7 = intersectSphere(spherePos[7], lStart, rayDirection, d[7]);
+        bool h8 = intersectSphere(spherePos[8], lStart, rayDirection, d[8]);
+        bool h9 = intersectSphere(spherePos[9], lStart, rayDirection, d[9]);
+        bool h10 = intersectSphere(spherePos[10], lStart, rayDirection, d[10]);
+        bool h11 = intersectSphere(spherePos[11], lStart, rayDirection, d[11]);
+        bool h12 = intersectSphere(spherePos[12], lStart, rayDirection, d[12]);
+        bool h13 = intersectSphere(spherePos[13], lStart, rayDirection, d[13]);
+             if (h13 && d[13] < d[12] && d[13] < d[11]&& d[13] < d[11-1] && d[13] < d[11-2] && d[13] < d[11-3] && d[13] < d[11-4] && d[13] < d[11-5] && d[13] < d[11-6] && d[13] < d[11-7] && d[13] < d[11-8] && d[13] < d[11-9] && d[13] < d[1] && d[13] < d[0])   {distance = d[13]; collisionColor = sphereCol[13]; ballCenter = spherePos[13].xyz;}
+        else if (h12 && d[12] < d[11] && d[12] < d[10]&& d[12] < d[10-1] && d[12] < d[10-2] && d[12] < d[10-3] && d[12] < d[10-4] && d[12] < d[10-5] && d[12] < d[10-6] && d[12] < d[10-7] && d[12] < d[10-8] && d[12] < d[10-9] && d[12] < d[0])   {distance = d[12]; collisionColor = sphereCol[12]; ballCenter = spherePos[12].xyz;}
+        else if (h11 && d[11] < d[10] && d[11] < d[9] && d[11] < d[9-1] && d[11] < d[9-2] && d[11] < d[9-3] && d[11] < d[9-4] && d[11] < d[9-5] && d[11] < d[9-6] && d[11] < d[9-7] && d[11] < d[9-8] && d[11] < d[9-9])   {distance = d[11]; collisionColor = sphereCol[11]; ballCenter = spherePos[11].xyz;}
+        else if (h10 && d[10] < d[9] && d[10] < d[8] && d[10] < d[8-1] && d[10] < d[8-2] && d[10] < d[8-3] && d[10] < d[8-4] && d[10] < d[8-5] && d[10] < d[8-6] && d[10] < d[8-7] && d[10] < d[8-8])   {distance = d[10]; collisionColor = sphereCol[10]; ballCenter = spherePos[10].xyz;}
+        else if (h9 && d[9] < d[8] && d[9] < d[7] && d[9] < d[7-1] && d[9] < d[7-2] && d[9] < d[7-3] && d[9] < d[7-4] && d[9] < d[7-5] && d[9] < d[7-6] && d[9] < d[7-7])   {distance = d[9]; collisionColor = sphereCol[9]; ballCenter = spherePos[9].xyz;}
+        else if (h8 && d[8] < d[7] && d[8] < d[6] && d[8] < d[6-1] && d[8] < d[6-2] && d[8] < d[6-3] && d[8] < d[6-4] && d[8] < d[6-5] && d[8] < d[6-6])                    {distance = d[8]; collisionColor = sphereCol[8]; ballCenter = spherePos[8].xyz;}
+        else if (h7 && d[7] < d[6] && d[7] < d[5] && d[7] < d[5-1] && d[7] < d[5-2] && d[7] < d[5-3] && d[7] < d[5-4] && d[7] < d[5-5])                                     {distance = d[7]; collisionColor = sphereCol[7]; ballCenter = spherePos[7].xyz;}
+        else if (h6 && d[6] < d[5] && d[6] < d[4] && d[6] < d[4-1] && d[6] < d[4-2] && d[6] < d[4-3] && d[6] < d[4-4])                                                      {distance = d[6]; collisionColor = sphereCol[6]; ballCenter = spherePos[6].xyz;}
+        else if (h5 && d[5] < d[4] && d[5] < d[3] && d[5] < d[3-1] && d[5] < d[3-2] && d[5] < d[3-3])                                                                       {distance = d[5]; collisionColor = sphereCol[5]; ballCenter = spherePos[5].xyz;}
+        else if (h4 && d[4] < d[3] && d[4] < d[2] && d[4] < d[2-1] && d[4] < d[2-2])                                                                                        {distance = d[4]; collisionColor = sphereCol[4]; ballCenter = spherePos[4].xyz;}
+        else if (h3 && d[3] < d[2] && d[3] < d[1] && d[3] < d[1-1])                                                                                                         {distance = d[3]; collisionColor = sphereCol[3]; ballCenter = spherePos[3].xyz;}
+        else if (h2 && d[2] < d[1] && d[2] < d[0])                                                                                                                          {distance = d[2]; collisionColor = sphereCol[2]; ballCenter = spherePos[2].xyz;}
+        else if (h1 && d[1] < d[0])                                                                                                                                         {distance = d[1]; collisionColor = sphereCol[1]; ballCenter = spherePos[1].xyz;}
+        else if (h0)                                                                                                                                                        {distance = d[0]; collisionColor = sphereCol[0]; ballCenter = spherePos[0].xyz;}
+        else if (rayDirection.y < 0.0)                                                                                                                                      {distance = -lStart.y / rayDirection.y; ground = true;}
+        // Our eye and objects are above the floor. Hence can't possibly intersect if ray going upwards
+        else return false;
+
+        intersectPosition   = lStart + distance * rayDirection;
+        instersectNormal    = normalize(intersectPosition - ballCenter);
+        if (ground){
+            instersectNormal = vec3(0.0, 1.0, 0.0);
+            if (length(intersectPosition.xz) > 6.0) return false;
+
+            if (fract(intersectPosition.x) > 0.5 == fract(intersectPosition.z) > 0.5)   collisionColor = vec3(1.0, 1.0, 1.0);
+            else                                                                        collisionColor = vec3(0.5, 0.5, 0.0);
+
+        }
+
+        endColour       += lightAt(instersectNormal, rayDirection, collisionColor);
+        endColour       *= colMultiplier;
+        colMultiplier   *= mix(blandColour, collisionColor, 0.7);
+        rayDirection = reflect(rayDirection, instersectNormal);
+        return true;
+    }
+
+    void main(void) {
+        sphereCol[ 0] = vec3(0.4+0.4*pow(cos(t*0.1),10.0), 0.4+0.4*pow(cos(t*0.1),10.0), 0.4);    spherePos[ 0] = vec4( +0.0,                               +1.0 + 0.5 * abs(sin(t * 0.2)),     +0.0,                               1.0);
+        sphereCol[ 1] = vec3(0.8, 0.8, 0.8);    spherePos[ 1] = vec4( +1.3 * cos(t * 0.015 + PI),         +0.5,                               +1.3 * sin(t * 0.015 + PI),         0.5);
+        sphereCol[ 2] = vec3(0.0, 0.5, 0.5);    spherePos[ 2] = vec4( +0.0,                               +3.0 + 2.0 * abs(sin(t * 0.1)),     +0.0,                               1.0);
+        sphereCol[ 3] = vec3(0.9, 0.9, 0.5);    spherePos[ 3] = vec4( +1.3 * cos(t * 0.015 + PI*0.5),     +0.5,                               +1.3 * sin(t * 0.015 + PI*0.5),     0.5);
+        sphereCol[ 4] = vec3(0.2, 0.3, 0.5);    spherePos[ 4] = vec4( +1.3 * cos(t * 0.015 + PI*1.5),     +0.5,                               +1.3 * sin(t * 0.015 + PI*1.5),     0.5);
+        sphereCol[ 5] = vec3(0.1, 0.1, 0.1);    spherePos[ 5] = vec4( +1.3 * cos(t * 0.015 + PI*0.75),     +0.5,                               +1.3 * sin(t * 0.015 + PI*0.75),     0.5);
+        sphereCol[ 6] = vec3(0.6, 0.2, 0.2);    spherePos[ 6] = vec4( +1.3 * cos(t * 0.015 + PI*1.25),     +0.5,                               +1.3 * sin(t * 0.015 + PI*1.25),     0.5);
+        sphereCol[ 7] = vec3(0.9, 0.6, 0.7);    spherePos[ 7] = vec4( +1.3 * cos(t * 0.015 + PI*0.25),     +0.5,                               +1.3 * sin(t * 0.015 + PI*0.25),     0.5);
+        sphereCol[ 8] = vec3(0.3, 0.6, 0.3);    spherePos[ 8] = vec4( +1.3 * cos(t * 0.015 + PI*1.75),     +0.5,                               +1.3 * sin(t * 0.015 + PI*1.75),     0.5);
+        sphereCol[ 9] = vec3(0.4, 0.4, 0.9);    spherePos[ 9] = vec4( (2.0+root2) * cos(t * 0.015),       TBD,                                 (2.0+root2) * sin(t * 0.015),      TBD);
+        sphereCol[10] = vec3(0.4, 0.1, 0.5);    spherePos[10] = vec4( root2 * sin(t * 0.015),             +1.0,                              +root2  * cos(t * 0.015),            1.0) + spherePos[9];
+        sphereCol[11] = vec3(0.3, 0.9, 0.7);    spherePos[11] = vec4( root2 * sin(t * 0.015 + PI),        +1.0,                              +root2  * cos(t * 0.015 + PI),       1.0) + spherePos[9];
+        sphereCol[12] = vec3(0.1, 0.9, 0.9);    spherePos[12] = vec4( root2 * sin(t * 0.015 + PI*0.5),    +1.0,                              +root2  * cos(t * 0.015 + PI*0.5),   1.0) + spherePos[9];
+        sphereCol[13] = vec3(0.9, 0.1, 0.9);    spherePos[13] = vec4( root2 * sin(t * 0.015 + PI*1.5),    +1.0,                              +root2  * cos(t * 0.015 + PI*1.5),   1.0) + spherePos[9];
+        spherePos[9].y = 1.5 + root2 + 0.0 * abs(sin(t * 0.15)); spherePos[9].w = 1.4;
+        sphereCol[ 9] = vec3(0.5+0.5*(sin(t*0.001)));
+        // sphereCol[ 14] =vec3(0.4, 0.4, 0.9);    spherePos[ 9] = vec4( (2.0+root2) * cos(t * 0.015),       TBD,                                 (2.0+root2) * sin(t * 0.015),      TBD);
+
+        vec3 cameraDir = normalize(vPosition - cameraPostion);
+        vec3 intersectPosition1, intersectPosition2, intersectPosition3,intersectPosition4, dummy;
+        vec3 endColour, colMultiplier;
+        endColour       = vec3(0, 0, 0);
+        colMultiplier   = vec3(1, 1, 1);
+        if (intersectWorld(cameraPostion, cameraDir, intersectPosition1, endColour, colMultiplier)) {
+            if (intersectWorld(intersectPosition1, cameraDir, intersectPosition2, endColour, colMultiplier)) {
+                if (intersectWorld(intersectPosition2, cameraDir, intersectPosition3, endColour, colMultiplier)) {
+                    if (intersectWorld(intersectPosition3, cameraDir, intersectPosition4, endColour, colMultiplier)) {
+                        intersectWorld(intersectPosition4, cameraDir, dummy, endColour, colMultiplier);
+                    }
+                }
+            }
+        } else endColour = vec3(0, 0, 0);
+        gl_FragColor = vec4(endColour, 1);
+    }
+</script>
+
+<script id="x-vertex" type="x-shader">                  // Add 130 to sync error report
+    precision   highp   float;
+    attribute   float   a_label;
+    uniform     float   t;
+    uniform     float   u_ratio;
+    varying     vec3    vPosition;
+    varying     vec3    cameraPostion;
+    void main(void) {
+        vec3 cameraTo   = vec3(0.0, 0.0, 0.0);
+        vec3 up         = vec3(0.0, 1.0, 0.0);
+        float cameraPersp = 5.0;
+
+        cameraPostion   = vec3(+20.0 * sin(t * 0.003),              10.0 + 10.0 * sin(t * 0.002),      20.0 * cos(t * 0.001));
+
+        vec3 cameraDir  = normalize(cameraTo - cameraPostion);
+        vec3 cameraLeft = normalize(cross(cameraDir, up));
+        vec3 cameraUp   = normalize(cross(cameraLeft, cameraDir));
+        vec3 cameraCenter= cameraPostion + cameraDir * cameraPersp;
+        vec3 cameraTopLeft  = cameraCenter + cameraUp + cameraLeft * u_ratio;
+        vec3 cameraBotLeft  = cameraCenter - cameraUp + cameraLeft * u_ratio;
+        vec3 cameraTopRight = cameraCenter + cameraUp - cameraLeft * u_ratio;
+        vec3 cameraBotRight = cameraCenter - cameraUp - cameraLeft * u_ratio;
+
+        if      (a_label == 1.0) {gl_Position = vec4(+1.0, +1.0, 0.0, 1.0); vPosition = cameraTopRight;}
+        else if (a_label == 2.0) {gl_Position = vec4(-1.0, +1.0, 0.0, 1.0); vPosition = cameraTopLeft;}
+        else if (a_label == 3.0) {gl_Position = vec4(+1.0, -1.0, 0.0, 1.0); vPosition = cameraBotRight;}
+        else if (a_label == 4.0) {gl_Position = vec4(-1.0, -1.0, 0.0, 1.0); vPosition = cameraBotLeft;}
+    }
+</script>
+<script>
+    var canvas  = document.createElement("canvas"); document.body.appendChild(canvas);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    var gl = canvas.getContext("webgl");
+
+    var vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, document.getElementById("x-vertex").text);
+    gl.compileShader(vertexShader);
+    var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, document.getElementById("x-fragment").text);
+    gl.compileShader(fragmentShader);
+    if(!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS))     {console.log(gl.getShaderInfoLog(vertexShader));    throw "vertexShader failed";}
+    if(!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS))   {console.log(gl.getShaderInfoLog(fragmentShader));  throw "fragmentShader failed";}
+    var shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.vertexAttribPointer(gl.getAttribLocation(shaderProgram, "a_label"), 1, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(gl.getAttribLocation(shaderProgram, "a_label"));
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1,2,3,4]), gl.STATIC_DRAW);
+    gl.uniform1f(gl.getUniformLocation(shaderProgram, "u_ratio"), (canvas.width / canvas.height));
+
+    var t = 0;
+    function drawScene() {
+        // Passing in sphere positions here would save on thousands of (simple trig) calcs for sphere heights.
+        // Doing them in vertex shader saves thoasands of calcs too, but we are limited in how much we can pass via varying
+        // However doing matrix maths in JS requires a whole lot of baggage
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "t"), t++);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        window.requestAnimationFrame(drawScene);
+    }
+    drawScene();
+</script>
