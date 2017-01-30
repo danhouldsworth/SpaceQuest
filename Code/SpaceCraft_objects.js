@@ -155,13 +155,14 @@ Particle.prototype.collide      = function(that){
         return true;
     }
     else if (this instanceof Asteroid || that instanceof Asteroid) {
-        interaction.touching();
-        interaction.resolve();
-        var gravityFactor = 0.00001;
-        this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
-        this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
-        that.ax -= gravityFactor * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
-        that.ay -= gravityFactor * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
+        // if (this.gameClass === "wall" || that.gameClass === "wall") console.log("wall");
+        // interaction.touching();
+        // interaction.resolve();
+        // var gravityFactor = 0.00001;
+        // this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
+        // this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
+        // that.ax -= gravityFactor * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
+        // that.ay -= gravityFactor * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
     }
     return false;
 };
@@ -323,10 +324,11 @@ Graphic.prototype               = Object.create(Particle.prototype);
 Graphic.prototype.constructor   = Particle;
 Graphic.prototype.draw          = function(){
     var grad;
+    if (!this.scale) this.scale = 1;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.offSet + this.angle);
-    ctx.drawImage(this.image, -this.size, -this.size, 2 * this.size, 2 * this.size);
+    ctx.drawImage(this.image, -this.size*this.scale, -this.size*this.scale, 2 * this.size*this.scale, 2 * this.size*this.scale);
     ctx.restore();
     if (this.target){
         ctx.beginPath();
@@ -380,9 +382,9 @@ Graphic.prototype.explode       = function(){
 // --
 
 // Game objects - based on Graphics. Have active controls and specific actions
-var Asteroid                    = function(x, y, vx, vy, size, spin){
+var Asteroid                    = function(x, y, vx, vy, size, spin, density){
     this.base = Graphic;
-    this.base(x, y, vx, vy, size || 100, 0, spin, 10);
+    this.base(x, y, vx, vy, size || 100, 0, spin, density || 10);
     this.gameClass  = 'asteroid';
     this.image      = asteroid;
     this.showPath   = false;
@@ -397,6 +399,27 @@ Asteroid.prototype.sanitiseSingularities      = function(deltaT) {
     this.vx     *= (1 - deltaT / 1000);
     this.vy     *= (1 - deltaT / 1000);
     this.spin   *= (1 - deltaT / 1000);
+    return this; // chainable
+};
+
+var Moon                    = function(x, y, vx, vy, size, spin, density){
+    this.base = Asteroid;
+    this.base(x, y, vx, vy, size, 0, density || 100);
+    this.gameClass  = 'moon';
+    this.image      = moon;
+    this.scale      = moon.scale;
+    this.showPath   = false;
+    this.restitution= 0.25;
+    if (!size) this.energy = 0.01;// this.energy *= 10; // Fudge to stop all exploding
+};
+Moon.prototype              = Object.create(Asteroid.prototype);
+Moon.prototype.constructor  = Asteroid;
+Moon.prototype.sanitiseSingularities      = function(deltaT) {
+    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
+    // Over large times we don't want energy to build up through trunaction errors & antisqueeze etc so we apply pseudo drag
+    // this.vx     *= (1 - deltaT / 1000);
+    // this.vy     *= (1 - deltaT / 1000);
+    // this.spin   *= (1 - deltaT / 1000);
     return this; // chainable
 };
 
@@ -419,7 +442,7 @@ var Ship                        = function(x, y, size, density, image){
         backRight   : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
         hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,             projectileSpeed :  1,    projectilePosition : 0,                projectileAngle : 0},
         // *Bay* need getPilotCommand to reconfirm
-        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size ,                projectileSpeed :0.0,    projectilePosition : Math.PI,                projectileAngle : 0},
+        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size *3,                projectileSpeed :0.0,    projectilePosition : Math.PI,                projectileAngle : 0},
         bombBay   : {projectileType : Fireball,   projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
         missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
         missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
@@ -766,8 +789,8 @@ var BigRocket = function(x, y, vx, vy, size, parent){
     this.vx             = vx;
     this.vy             = vy;
     this.showEnergyBar  = false;
-    this.damagePts      = 10000;
-    this.projectileEngines.mainJet.projectileSize       *= 4;
+    this.damagePts      = 20000;
+    this.projectileEngines.mainJet.projectileSize       *= 1;
     this.projectileEngines.frontLeft.projectileSize     *= 4;
     this.projectileEngines.frontRight.projectileSize    *= 4;
     this.projectileEngines.backLeft.projectileSize      *= 4;

@@ -49,6 +49,13 @@ function targetPractice(){
     gameObjects.push(new targetType( +0 * w, -h * 2));
     gameObjects.push(new targetType( +0 * w, -h * 3));
 }
+function bigmoon(){
+    gameObjects.push(new PlayerShip(w, +0.1*h, 2));
+    gameObjects.push(new PlayerShip(-w, -0.1*h, 1));
+    gameObjects.push(new Moon(0, 0, 0, 0, 800, 0));
+    // gameObjects.push(new Moon(w*0.5, 0, 0, .2, 100, 0));
+    // gameObjects.push(new Moon(-w*0.75, 0, 0, .12, 50, 0));
+}
 function setCameras(){
     GlobalParams.camera.Targets[0] = gameObjects[0];
     GlobalParams.camera.Targets[1] = gameObjects[1];
@@ -60,8 +67,9 @@ function setCameras(){
 // --
 initGameArea();
 
-fullGame();
-// pvp();
+// fullGame();
+ //pvp();
+bigmoon();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
