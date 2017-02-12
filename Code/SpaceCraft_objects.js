@@ -710,7 +710,8 @@ Drone1.prototype                 = Object.create(RobotShip.prototype);
 Drone1.prototype.constructor     = RobotShip;
 Drone1.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
-    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    //if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    this.target=gameObjects[1];
     this.resample();
     this.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative(deltaT);
     return this; // chainable
@@ -790,16 +791,44 @@ var BigRocket = function(x, y, vx, vy, size, parent){
     this.vy             = vy;
     this.showEnergyBar  = false;
     this.damagePts      = 20000;
-    this.projectileEngines.mainJet.projectileSize       *= 1;
-    this.projectileEngines.frontLeft.projectileSize     *= 4;
-    this.projectileEngines.frontRight.projectileSize    *= 4;
-    this.projectileEngines.backLeft.projectileSize      *= 4;
-    this.projectileEngines.backRight.projectileSize     *= 4;
+    this.projectileEngines.mainJet.projectileSize       *= 4;
+    // this.projectileEngines.frontLeft.projectileSize     *= 2;
+    // this.projectileEngines.frontRight.projectileSize    *= 2;
+    // this.projectileEngines.backLeft.projectileSize      *= 2;
+    // this.projectileEngines.backRight.projectileSize     *= 2;
+this.launchtime=Date.now();
+
 };
 BigRocket.prototype                   = Object.create(RobotShip.prototype);
 BigRocket.prototype.constructor       = RobotShip;
 BigRocket.prototype.getPilotCommand   = function(deltaT){
+    // this.PDouterLoop_OrientationControlForDesiredAngle(this.target.angle, deltaT);
     this.enginesActive.mainJet = 1;
+    if (this.size > 10 && this.launchtime < (Date.now()-1000)){
+        var split1 = new BigRocket(
+            this.x + 1*this.size * Math.cos(this.angle + Math.PI / 2),
+            this.y + 1*this.size * Math.sin(this.angle + Math.PI / 2),
+            this.vx,
+            this.vy,
+            this.size / 2,
+            this
+        );
+        gameObjects.push(split1);
+
+        var split2 = new BigRocket(
+            this.x + 1*this.size * Math.cos(this.angle - Math.PI / 2),
+            this.y + 1*this.size * Math.sin(this.angle - Math.PI / 2),
+            this.vx,
+            this.vy,
+            this.size / 2,
+            this
+        );
+        gameObjects.push(split2);
+        // this.explode();
+        Particle.prototype.explode.call(this);
+    } else if(this.size<10){
+            this.explode();
+    }
 };
 
 var Missile                         = function(x, y, vx, vy, size, parent){
