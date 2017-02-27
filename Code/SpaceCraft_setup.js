@@ -83,6 +83,16 @@ function initGameArea(){
     window.document.body.appendChild(gameArea);
     window.addEventListener('keydown',  function(e){keyState[e.keyCode] = true;});
     window.addEventListener('keyup',    function(e){keyState[e.keyCode] = false;});
+    window.addEventListener('devicemotion',  function(e){
+        var i2tilt = e.rotationRate.alpha;
+        if (i2tilt < -100) {keyState[81] = true;} else {keyState[81] = false;}
+        if (i2tilt > +100) {keyState[87] = true;} else {keyState[87] = false;}
+        // document.getElementById('alpha').innerHTML = e.rotationRate.alpha;
+        // document.getElementById('beta').innerHTML = e.rotationRate.beta;
+        // document.getElementById('gamma').innerHTML = e.rotationRate.gamma;
+        // document.getElementById('interval').innerHTML = e.interval;
+    });
+
     starfield.style.zIndex = 1;
     gameArea.style.zIndex = 2;
     for (var count = 0, star; count < 1500; count++) stars.push(new Star);
