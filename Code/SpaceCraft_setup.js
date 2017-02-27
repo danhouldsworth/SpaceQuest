@@ -97,8 +97,8 @@ function initGameArea(){
         var i3tilt = e.gamma;
         if (i2tilt < -10) {keyState[81] = true;} else {keyState[81] = false;}
         if (i2tilt > +10) {keyState[87] = true;} else {keyState[87] = false;}
-        if (i3tilt < -10) {keyState[69] = true;} else {keyState[69] = false;}
-        if (i3tilt > +10) {keyState[83] = true;} else {keyState[83] = false;}
+        if (i3tilt > +10) {keyState[69] = true;} else {keyState[69] = false;}
+        if (i3tilt < -10) {keyState[83] = true;} else {keyState[83] = false;}
 
         // document.getElementById('o_alpha').innerHTML = e.alpha;
         // document.getElementById('o_beta').innerHTML = e.beta;
