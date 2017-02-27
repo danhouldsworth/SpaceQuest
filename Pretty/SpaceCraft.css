@@ -7,10 +7,10 @@ canvas{
 }
 body{
     background-color: black;
+    color:white;
 }
 
 h1{
-    color:white;
     font-family: 'Roboto', sans-serif;
     font-weight: 300;
     font-size: 40px;

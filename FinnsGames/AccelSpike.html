@@ -1,13 +1,23 @@
 <html><head>
 <link rel='stylesheet' type='text/css' href='../Pretty/SpaceCraft.css'>
 </head><body>
-	<div><h1>Gyro (Alpha) = <text id='g_alpha'>123</text> degrees/sec</h1><br/></div>
-	<div><h1>Gyro (Beta) = <text id='g_beta'>123</text> degrees/sec</h1><br/></div>
-	<div><h1>Gyro (Gamma) = <text id='g_gamma'>123</text> degrees/sec</h1><br/></div>
-	<div><h1>Interval = <text id='g_interval'>123</text> millseconds</h1><br/></div>
-	<div><h1>Orientation (Alpha) = <text id='o_alpha'>123</text> ?units?</h1><br/></div>
-	<div><h1>Orientation (Beta) = <text id='o_beta'>123</text> ?units?</h1><br/></div>
-	<div><h1>Orientation (Gamma) = <text id='o_gamma'>123</text> ?units?</h1><br/></div>
+	<div><h3>Accel (x) = <text id='g_x'>TBC</text> m/sec</h3></div>
+	<div><h3>Accel (y) = <text id='g_y'>TBC</text> m/sec</h3></div>
+	<div><h3>Accel (z) = <text id='g_z'>TBC</text> m/sec</h3></div>
+	<div><h3>Accel (x) = <text id='g_xG'>TBC</text> m/sec Inc Gravity</h3></div>
+	<div><h3>Accel (y) = <text id='g_yG'>TBC</text> m/sec Inc Gravity</h3></div>
+	<div><h3>Accel (z) = <text id='g_zG'>TBC</text> m/sec Inc Gravity</h3></div>
+	<div><h3>Gyro (Alpha) = <text id='g_alpha'>TBC</text> degrees/sec</h3></div>
+	<div><h3>Gyro (Beta) = <text id='g_beta'>TBC</text> degrees/sec</h3></div>
+	<div><h3>Gyro (Gamma) = <text id='g_gamma'>TBC</text> degrees/sec</h3></div>
+	<div><h3>Interval = <text id='g_interval'>TBC</text> millseconds</h3></div>
+	<br/>
+	<div><h3>Orientation (Alpha) = <text id='o_alpha'>TBC</text> degrees</h3></div>
+	<div><h3>Orientation (Beta) = <text id='o_beta'>TBC</text> degrees</h3></div>
+	<div><h3>Orientation (Gamma) = <text id='o_gamma'>TBC</text> degrees</h3></div>
+	<div><h3>Orientation (earth_frame) = <text id='o_absolute'>TBC</text></h3></div>
+	<br/>
+
 </body>
 </html>
 <body></body>
@@ -17,6 +27,12 @@
 		document.getElementById('g_alpha').innerHTML = e.rotationRate.alpha;
 		document.getElementById('g_beta').innerHTML = e.rotationRate.beta;
 		document.getElementById('g_gamma').innerHTML = e.rotationRate.gamma;
+		document.getElementById('g_x').innerHTML = e.acceleration.x;
+		document.getElementById('g_y').innerHTML = e.acceleration.y;
+		document.getElementById('g_z').innerHTML = e.acceleration.z;
+		document.getElementById('g_xG').innerHTML = e.accelerationIncludingGravity.x;
+		document.getElementById('g_yG').innerHTML = e.accelerationIncludingGravity.y;
+		document.getElementById('g_zG').innerHTML = e.accelerationIncludingGravity.z;
 		document.getElementById('g_interval').innerHTML = e.interval;
 	});
 	window.addEventListener('deviceorientation',  function(e){
@@ -24,5 +40,6 @@
 		document.getElementById('o_alpha').innerHTML = e.alpha;
 		document.getElementById('o_beta').innerHTML = e.beta;
 		document.getElementById('o_gamma').innerHTML = e.gamma;
+		document.getElementById('o_absolute').innerHTML = e.absolute;
 	});
 </script>
