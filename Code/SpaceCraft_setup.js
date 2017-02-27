@@ -84,13 +84,25 @@ function initGameArea(){
     window.addEventListener('keydown',  function(e){keyState[e.keyCode] = true;});
     window.addEventListener('keyup',    function(e){keyState[e.keyCode] = false;});
     window.addEventListener('devicemotion',  function(e){
-        var i2tilt = e.rotationRate.alpha;
-        if (i2tilt < -100) {keyState[81] = true;} else {keyState[81] = false;}
-        if (i2tilt > +100) {keyState[87] = true;} else {keyState[87] = false;}
+        // var i2tilt = e.rotationRate.alpha;
+        // if (i2tilt < -100) {keyState[81] = true;} else {keyState[81] = false;}
+        // if (i2tilt > +100) {keyState[87] = true;} else {keyState[87] = false;}
         // document.getElementById('alpha').innerHTML = e.rotationRate.alpha;
         // document.getElementById('beta').innerHTML = e.rotationRate.beta;
         // document.getElementById('gamma').innerHTML = e.rotationRate.gamma;
         // document.getElementById('interval').innerHTML = e.interval;
+    });
+    window.addEventListener('deviceorientation',  function(e){
+        var i2tilt = e.beta;
+        var i3tilt = e.gamma;
+        if (i2tilt < -10) {keyState[81] = true;} else {keyState[81] = false;}
+        if (i2tilt > +10) {keyState[87] = true;} else {keyState[87] = false;}
+        if (i3tilt < -10) {keyState[69] = true;} else {keyState[69] = false;}
+        if (i3tilt > +10) {keyState[83] = true;} else {keyState[83] = false;}
+
+        // document.getElementById('o_alpha').innerHTML = e.alpha;
+        // document.getElementById('o_beta').innerHTML = e.beta;
+        // document.getElementById('o_gamma').innerHTML = e.gamma;
     });
 
     starfield.style.zIndex = 1;
