@@ -147,7 +147,7 @@
         float cameraPersp = 5.0;
 
         // cameraPostion   = vec3(+20.0 * sin(t * 0.003),              10.0 + 10.0 * sin(t * 0.002),      20.0 * cos(t * 0.001));
-        cameraPostion   = vec3(alpha, beta, gamma);
+        cameraPostion   = vec3(20.0 * sin(alpha), 10.0 + 10.0 * sin(beta), 20.0 * cos(gamma));
 
         vec3 cameraDir  = normalize(cameraTo - cameraPostion);
         vec3 cameraLeft = normalize(cross(cameraDir, up));
@@ -197,9 +197,9 @@
         // Doing them in vertex shader saves thoasands of calcs too, but we are limited in how much we can pass via varying
         // However doing matrix maths in JS requires a whole lot of baggage
         gl.uniform1f(gl.getUniformLocation(shaderProgram, "t"), t++);
-        gl.uniform1f(gl.getUniformLocation(shaderProgram, "alpha"), alpha);
-        gl.uniform1f(gl.getUniformLocation(shaderProgram, "beta"), beta);
-        gl.uniform1f(gl.getUniformLocation(shaderProgram, "gamma"), gamma);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "alpha"), alpha*Math.PI/180);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "beta"), beta*Math.PI/180);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "gamma"), gamma*Math.PI/180);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         window.requestAnimationFrame(drawScene);
