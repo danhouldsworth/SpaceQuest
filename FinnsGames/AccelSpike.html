@@ -1,0 +1,18 @@
+<html><head>
+<link rel='stylesheet' type='text/css' href='../Pretty/SpaceCraft.css'>
+</head><body>
+	<div><h1>Alpha = <text id='alpha'>123</text> degrees/sec</h1><br/></div>
+	<div><h1>Beta = <text id='beta'>123</text> degrees/sec</h1><br/></div>
+	<div><h1>Gamma = <text id='gamma'>123</text> degrees/sec</h1><br/></div>
+	<div><h1>Interval = <text id='interval'>123</text> millseconds</h1><br/></div>
+</body>
+</html>
+<body></body>
+<script>
+	window.addEventListener('devicemotion',  function(e){
+		document.getElementById('alpha').innerHTML = e.rotationRate.alpha;
+		document.getElementById('beta').innerHTML = e.rotationRate.beta;
+		document.getElementById('gamma').innerHTML = e.rotationRate.gamma;
+		document.getElementById('interval').innerHTML = e.interval;
+	});
+</script>
