@@ -146,7 +146,7 @@
         vec3 up         = vec3(0.0, 1.0, 0.0);
         float cameraPersp = 5.0;
         float radius = 20.0 * abs(sin(gamma));
-        if (sin(gamma) < 0) up=vec3(0.0, -1.0, 0.0);
+        if (sin(gamma) < 0.0) {up=vec3(0.0, -1.0, 0.0);}
         // cameraPostion   = vec3(+20.0 * sin(t * 0.003),              10.0 + 10.0 * sin(t * 0.002),      20.0 * cos(t * 0.001));
         cameraPostion   = vec3(radius * cos(alpha), 10.0 + 10.0 * cos(gamma), radius * sin(alpha));
 
