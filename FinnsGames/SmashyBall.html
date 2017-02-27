@@ -147,7 +147,7 @@
         float cameraPersp = 5.0;
 
         // cameraPostion   = vec3(+20.0 * sin(t * 0.003),              10.0 + 10.0 * sin(t * 0.002),      20.0 * cos(t * 0.001));
-        cameraPostion   = vec3(20.0 * cos(alpha), 10.0 + 10.0 * cos(gamma), 20.0 * sin(alpha));
+        cameraPostion   = vec3(20.0 * cos(alpha) * sin(gamma), 10.0 + 10.0 * cos(gamma), 20.0 * sin(alpha) * sin(gamma));
 
         vec3 cameraDir  = normalize(cameraTo - cameraPostion);
         vec3 cameraLeft = normalize(cross(cameraDir, up));
