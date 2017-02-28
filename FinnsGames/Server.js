@@ -21,9 +21,9 @@ let WebSocketServer = require("websocket").server,
             console.log("Closing a thisConnection..");
         });
         thisConnection.on("message" , function(message) {
-            console.log(message);
+            // console.log(message);
             liveConnections.forEach(function(conn){
-                conn.sendUTF(message.utf8Data);
+                if (conn !== thisConnection) {conn.sendUTF(message.utf8Data);}
             });
         });
         liveConnections.push(thisConnection);

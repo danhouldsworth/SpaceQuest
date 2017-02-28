@@ -213,9 +213,9 @@
         }
 
         gl.uniform1f(gl.getUniformLocation(shaderProgram, "t"), t++);
-        gl.uniform1f(gl.getUniformLocation(shaderProgram, "alpha"), alpha*Math.PI/180);
-        gl.uniform1f(gl.getUniformLocation(shaderProgram, "beta"), beta*Math.PI/180);
-        gl.uniform1f(gl.getUniformLocation(shaderProgram, "gamma"), gamma*Math.PI/180);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "alpha"), alpha * Math.PI / 1800);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "beta"),  beta  * Math.PI / 1800);
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, "gamma"), gamma * Math.PI / 1800);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         window.requestAnimationFrame(drawScene);
@@ -236,13 +236,13 @@
         let msgObj = JSON.parse(message.data);
         if (msgObj.command === "Begin!"){
             window.addEventListener('deviceorientation',  function(event){
-                alpha   = event.alpha;
-                beta    = event.beta;
-                gamma   = event.gamma;
+                alpha   = (event.alpha   * 10) | 0;
+                beta    = (event.beta    * 10) | 0;
+                gamma   = (event.gamma   * 10) | 0;
                 serverConnection.send(JSON.stringify({command:"motionData", motionData:{
-                    alpha : event.alpha,
-                    beta  : event.beta,
-                    gamma : event.gamma
+                    alpha : alpha,
+                    beta  : beta,
+                    gamma : gamma
                 }}));
             });
             drawScene();
