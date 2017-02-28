@@ -207,6 +207,11 @@
         // Passing in sphere positions here would save on thousands of (simple trig) calcs for sphere heights.
         // Doing them in vertex shader saves thoasands of calcs too, but we are limited in how much we can pass via varying
         // However doing matrix maths in JS requires a whole lot of baggage
+
+        if (!alpha || !beta || !gamma){
+            alpha = 90; beta = 0; gamma = 45;
+        }
+
         gl.uniform1f(gl.getUniformLocation(shaderProgram, "t"), t++);
         gl.uniform1f(gl.getUniformLocation(shaderProgram, "alpha"), alpha*Math.PI/180);
         gl.uniform1f(gl.getUniformLocation(shaderProgram, "beta"), beta*Math.PI/180);
@@ -215,11 +220,40 @@
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         window.requestAnimationFrame(drawScene);
     }
-    drawScene();
-    window.addEventListener('deviceorientation',  function(e){
-        alpha=e.alpha;
-        beta=e.beta;
-        gamma=e.gamma;
-    });
+
+
+    var serverConnection = new window.WebSocket(
+        "wss://127.0.0.1:8000",
+        "bare-metal-robot",
+        null,
+        null,
+        null,
+        {tlsOptions :{rejectUnauthorized:false}}
+    );
+    serverConnection.onopen = function (e) {console.log(e);};
+    serverConnection.onmessage = function ( message ) {
+        console.log(message);
+        let msgObj = JSON.parse(message.data);
+        if (msgObj.command === "Begin!"){
+            window.addEventListener('deviceorientation',  function(event){
+                alpha   = event.alpha;
+                beta    = event.beta;
+                gamma   = event.gamma;
+                serverConnection.send(JSON.stringify({command:"motionData", motionData:{
+                    alpha : event.alpha,
+                    beta  : event.beta,
+                    gamma : event.gamma
+                }}));
+            });
+            drawScene();
+            // serverConnection.send("hello i have begun");
+        } else if (msgObj.command === "motionData") {
+            alpha   = msgObj.motionData.alpha;
+            beta    = msgObj.motionData.beta;
+            gamma   = msgObj.motionData.gamma;
+            console.log(JSON.stringify(msgObj.motionData));
+        }
+    };
+    window.addEventListener("beforeunload", serverConnection.onclose);
 
 </script>
