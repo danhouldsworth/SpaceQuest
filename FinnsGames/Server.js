@@ -10,7 +10,13 @@ let WebSocketServer = require("websocket").server,
         request.addListener("data", function(postDataChunk){console.log("Consuming data : " + postDataChunk);});
         request.addListener("end",  function(){
             response.writeHead(200);
-            response.end(fs.readFileSync("SmashyBall.html"));
+            switch (request.url.toLowerCase()){
+                case "/smashyball"  : response.end(fs.readFileSync("SmashyBall.html")); break;
+                case "/spacequest"  : response.end(fs.readFileSync("SpaceCraft.html")); break;
+                case "/accel"       : response.end(fs.readFileSync("AccelSpike.html")); break;
+                default :
+
+                }
         });
     },
     onWSrequest = function(request) {
