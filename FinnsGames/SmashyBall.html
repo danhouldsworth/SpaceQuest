@@ -239,7 +239,7 @@
                 alpha   = (event.alpha   * 10) | 0;
                 beta    = (event.beta    * 10) | 0;
                 gamma   = (event.gamma   * 10) | 0;
-                serverConnection.send(JSON.stringify({command:"motionData", motionData:{
+                serverConnection.send(JSON.stringify({command:"orientationData", orientationData:{
                     alpha : alpha,
                     beta  : beta,
                     gamma : gamma
@@ -247,11 +247,11 @@
             });
             drawScene();
             // serverConnection.send("hello i have begun");
-        } else if (msgObj.command === "motionData") {
-            alpha   = msgObj.motionData.alpha;
-            beta    = msgObj.motionData.beta;
-            gamma   = msgObj.motionData.gamma;
-            console.log(JSON.stringify(msgObj.motionData));
+        } else if (msgObj.command === "orientationData") {
+            alpha   = msgObj.orientationData.alpha;
+            beta    = msgObj.orientationData.beta;
+            gamma   = msgObj.orientationData.gamma;
+            console.log(JSON.stringify(msgObj.orientationData));
         }
     };
     window.addEventListener("beforeunload", serverConnection.onclose);

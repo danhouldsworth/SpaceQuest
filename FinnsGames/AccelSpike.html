@@ -1,6 +1,8 @@
 <html><head>
 <link rel='stylesheet' type='text/css' href='../Pretty/SpaceCraft.css'>
 </head><body>
+	<h1>Sending to DeskCopter :-)</h1>
+	<br/>
 	<div><h3>Accel (x) = <text id='g_x'>TBC</text> m/sec</h3></div>
 	<div><h3>Accel (y) = <text id='g_y'>TBC</text> m/sec</h3></div>
 	<div><h3>Accel (z) = <text id='g_z'>TBC</text> m/sec</h3></div>
@@ -22,24 +24,73 @@
 </html>
 <body></body>
 <script>
-	window.addEventListener('devicemotion',  function(e){
-		console.log(e);
-		document.getElementById('g_alpha').innerHTML = e.rotationRate.alpha;
-		document.getElementById('g_beta').innerHTML = e.rotationRate.beta;
-		document.getElementById('g_gamma').innerHTML = e.rotationRate.gamma;
-		document.getElementById('g_x').innerHTML = e.acceleration.x;
-		document.getElementById('g_y').innerHTML = e.acceleration.y;
-		document.getElementById('g_z').innerHTML = e.acceleration.z;
-		document.getElementById('g_xG').innerHTML = e.accelerationIncludingGravity.x;
-		document.getElementById('g_yG').innerHTML = e.accelerationIncludingGravity.y;
-		document.getElementById('g_zG').innerHTML = e.accelerationIncludingGravity.z;
-		document.getElementById('g_interval').innerHTML = e.interval;
-	});
-	window.addEventListener('deviceorientation',  function(e){
-		console.log(e);
-		document.getElementById('o_alpha').innerHTML = e.alpha;
-		document.getElementById('o_beta').innerHTML = e.beta;
-		document.getElementById('o_gamma').innerHTML = e.gamma;
-		document.getElementById('o_absolute').innerHTML = e.absolute;
-	});
+    var serverConnection = new window.WebSocket(
+        "ws://baremetalrobots.com:80",
+        "bare-metal-robot",
+        null,
+        null,
+        null,
+        {tlsOptions :{rejectUnauthorized:false}}
+    );
+    serverConnection.onopen = function (e) {console.log(e);};
+    serverConnection.onmessage = function ( message ) {
+        console.log(message);
+        let msgObj = JSON.parse(message.data);
+        if (msgObj.command === "Begin!"){
+            window.addEventListener('deviceorientation',  function(event){
+                alpha   = (event.alpha   * 10) | 0;
+                beta    = (event.beta    * 10) | 0;
+                gamma   = (event.gamma   * 10) | 0;
+                serverConnection.send(JSON.stringify({command:"orientationData", orientationData:{
+                    alpha : alpha,
+                    beta  : beta,
+                    gamma : gamma
+                }}));
+				document.getElementById('o_alpha').innerHTML 	= alpha;
+				document.getElementById('o_beta').innerHTML 	= beta;
+				document.getElementById('o_gamma').innerHTML 	= gamma;
+				document.getElementById('o_absolute').innerHTML = event.absolute;
+            });
+			window.addEventListener('devicemotion',  function(e){
+                serverConnection.send(JSON.stringify({command:"motionData", motionData:{
+					rotationRate : {
+										alpha 	: e.rotationRate.alpha,
+										beta 	: e.rotationRate.beta,
+										gamma 	: e.rotationRate.gamma
+									},
+					acceleration : {
+										x 		: e.acceleration.x,
+										y 		: e.acceleration.y,
+										z 		: e.acceleration.z
+									},
+					accelerationIncludingGravity : {
+										x 		: e.accelerationIncludingGravity.x,
+										y 		: e.accelerationIncludingGravity.y,
+										z 		: e.accelerationIncludingGravity.z
+									},
+					interval : e.interval
+                }}));
+
+				document.getElementById('g_alpha'	).innerHTML	= e.rotationRate.alpha;
+				document.getElementById('g_beta'	).innerHTML	= e.rotationRate.beta;
+				document.getElementById('g_gamma'	).innerHTML	= e.rotationRate.gamma;
+				document.getElementById('g_x'		).innerHTML	= e.acceleration.x;
+				document.getElementById('g_y'		).innerHTML	= e.acceleration.y;
+				document.getElementById('g_z'		).innerHTML	= e.acceleration.z;
+				document.getElementById('g_xG'		).innerHTML	= e.accelerationIncludingGravity.x;
+				document.getElementById('g_yG'		).innerHTML	= e.accelerationIncludingGravity.y;
+				document.getElementById('g_zG'		).innerHTML	= e.accelerationIncludingGravity.z;
+				document.getElementById('g_interval').innerHTML = e.interval;
+			});
+
+            drawScene();
+            // serverConnection.send("hello i have begun");
+        } else if (msgObj.command === "orientationData") {
+            alpha   = msgObj.orientationData.alpha;
+            beta    = msgObj.orientationData.beta;
+            gamma   = msgObj.orientationData.gamma;
+            console.log(JSON.stringify(msgObj.orientationData));
+        }
+    };
+    window.addEventListener("beforeunload", serverConnection.onclose);
 </script>
