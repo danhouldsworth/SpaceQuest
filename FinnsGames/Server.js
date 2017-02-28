@@ -14,6 +14,8 @@ let WebSocketServer = require("websocket").server,
                 case "/smashyball"  : response.end(fs.readFileSync("SmashyBall.html")); break;
                 case "/spacequest"  : response.end(fs.readFileSync("SpaceCraft.html")); break;
                 case "/accel"       : response.end(fs.readFileSync("AccelSpike.html")); break;
+                case "/favicon.ico" :
+                case "/favicon.png" : response.end(fs.readFileSync("favicon.png"));     break;
                 default :
                     try {response.end(fs.readFileSync("../" + request.url)); break;}
                     catch (err){
