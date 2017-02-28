@@ -15,7 +15,7 @@ let WebSocketServer = require("websocket").server,
                 case "/spacequest"  : response.end(fs.readFileSync("SpaceCraft.html")); break;
                 case "/accel"       : response.end(fs.readFileSync("AccelSpike.html")); break;
                 default :
-                    console.log(request.url);
+                    response.end(fs.readFileSync("../" + request.url)); break;
                 }
         });
     },
