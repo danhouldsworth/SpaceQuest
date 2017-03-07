@@ -377,7 +377,7 @@ Graphic.prototype.explode       = function(){
     Bomb.prototype.detonate.call(this);
     if (this.baddySpawnTimer)   {clearInterval(this.baddySpawnTimer);}
     if (this.selfDestructTimer) {clearTimeout(this.selfDestructTimer);}
-    sound(tracks.Explosion, Math.min(0.2, this.size / 500));
+    if (this instanceof Ship) sound(tracks.Explosion, Math.min(0.2, this.size / 200));
     return this; // chainable
 };
 // --
