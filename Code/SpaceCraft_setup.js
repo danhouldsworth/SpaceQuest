@@ -12,6 +12,33 @@ var spaceShip   = [];
 spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/DaddyStealth.png";        spaceShip[1].drawingOffsetAngle = Math.PI;
 spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns ship.png";spaceShip[2].drawingOffsetAngle = Math.PI/2;
 
+// Load sounds!
+var context = new AudioContext();
+
+var tracks = {};
+var sound = function(track, duration){
+    if (track instanceof AudioBuffer){
+        let source = context.createBufferSource();
+        source.buffer = track;
+        source.connect(context.destination);
+        source.start(context.currentTime);
+        if (duration) source.stop(context.currentTime + duration);
+    }
+};
+var loadSound = function(name, filename){
+    fetch(filename)
+    .then(function(response)    {return response.arrayBuffer();})
+    .then(function(arrayBuffer) {return context.decodeAudioData(arrayBuffer);})
+    .then(function(audioBuffer) {tracks[name] = audioBuffer;});
+};
+loadSound("LaserHose",  "FinnsSounds/LaserHose.mp3");
+loadSound("Explosion",  "FinnsSounds/ExplosionMedium.mp3");
+loadSound("Stinger",    "FinnsSounds/StingerMissileLaunch.mp3");
+loadSound("BigRocket",  "FinnsSounds/BigRocketLaunch.mp3");
+//
+
+
+
 // -- GlobalParams
 var gameArea    = document.createElement('canvas'),
     ctx         = gameArea.getContext('2d'),
