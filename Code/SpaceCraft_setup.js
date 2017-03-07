@@ -10,17 +10,20 @@ var missile     = new Image(); missile.src  = "../FinnsArtwork/Warheadtwo.png"; 
 bombBaddy=missile;
 var spaceShip   = [];
 spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/DaddyStealth.png";        spaceShip[1].drawingOffsetAngle = Math.PI;
-spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns ship.png";spaceShip[2].drawingOffsetAngle = Math.PI/2;
+spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns_ship.png";spaceShip[2].drawingOffsetAngle = Math.PI/2;
 
 // Load sounds!
 var context = new AudioContext();
 
 var tracks = {};
-var sound = function(track, duration){
+var sound = function(track, vol = 0.5, duration){
     if (track instanceof AudioBuffer){
         let source = context.createBufferSource();
+        let volume = context.createGain();
+        volume.connect(context.destination);
+        volume.gain.value = vol;
         source.buffer = track;
-        source.connect(context.destination);
+        source.connect(volume);
         source.start(context.currentTime);
         if (duration) source.stop(context.currentTime + duration);
     }
@@ -35,6 +38,7 @@ loadSound("LaserHose",  "FinnsSounds/LaserHose.mp3");
 loadSound("Explosion",  "FinnsSounds/ExplosionMedium.mp3");
 loadSound("Stinger",    "FinnsSounds/StingerMissileLaunch.mp3");
 loadSound("BigRocket",  "FinnsSounds/BigRocketLaunch.mp3");
+loadSound("Thrust",     "FinnsSounds/Thrust.mp3");
 //
 
 

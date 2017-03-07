@@ -377,7 +377,7 @@ Graphic.prototype.explode       = function(){
     Bomb.prototype.detonate.call(this);
     if (this.baddySpawnTimer)   {clearInterval(this.baddySpawnTimer);}
     if (this.selfDestructTimer) {clearTimeout(this.selfDestructTimer);}
-    sound(tracks.Explosion);
+    sound(tracks.Explosion, Math.min(0.2, this.size / 500));
     return this; // chainable
 };
 // --
@@ -548,11 +548,11 @@ PlayerShip.prototype.getPilotCommand= function(){
     };
     if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = 1;}
     if (keyState[playerKeys.right[  this.team]])      {this.enginesActive.frontLeft = this.enginesActive.backRight = 1;}
-    if (keyState[playerKeys.thrust[ this.team]])      {this.enginesActive.mainJet   = 1;}
-    if (keyState[playerKeys.fire[   this.team]])      {this.enginesActive.hoseGun   = 1;    sound(tracks.LaserHose, 0.5);}
-    if (keyState[playerKeys.smartBomb[ this.team]])   {this.launchCannonWhenReady();        sound(tracks.Stinger);}
-    if (keyState[playerKeys.missile[this.team]])      {this.launchMissileWhenReady();}
-    if (keyState[playerKeys.bigRocket[this.team]])    {this.launchRocketWhenReady();        sound(tracks.BigRocket);}
+    if (keyState[playerKeys.thrust[ this.team]])      {this.enginesActive.mainJet   = 1;    sound(tracks.Thrust, 0.5, 1.5);}
+    if (keyState[playerKeys.fire[   this.team]])      {this.enginesActive.hoseGun   = 1;    sound(tracks.LaserHose, 0.5, 0.5);}
+    if (keyState[playerKeys.smartBomb[ this.team]])   {this.launchCannonWhenReady();        sound(tracks.Stinger, 0.5);}
+    if (keyState[playerKeys.missile[this.team]])      {this.launchMissileWhenReady();       sound(tracks.Stinger, 0.5);}
+    if (keyState[playerKeys.bigRocket[this.team]])    {this.launchRocketWhenReady();        sound(tracks.BigRocket, 0.5);}
     return this; // chainable
 };
 PlayerShip.prototype.sanitiseSingularities      = function(deltaT) {
