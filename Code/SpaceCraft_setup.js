@@ -9,9 +9,12 @@ var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout
 var missile     = new Image(); missile.src  = "../FinnsArtwork/Warheadtwo.png";         missile.drawingOffsetAngle=Math.PI;
 bombBaddy=missile;
 var spaceShip   = [];
-spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/DaddyStealth.png";        spaceShip[1].drawingOffsetAngle = Math.PI;
-spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns_ship.png";spaceShip[2].drawingOffsetAngle = Math.PI/2;
-
+// spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/DaddyStealth.png";       spaceShip[1].drawingOffsetAngle = Math.PI;
+// spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns_ship.png";         spaceShip[2].drawingOffsetAngle = Math.PI/2;
+spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";             spaceShip[1].drawingOffsetAngle = Math.PI;
+spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/Eurofighter.png";         spaceShip[2].drawingOffsetAngle = Math.PI;
+// spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";          spaceShip[1].drawingOffsetAngle = Math.PI;
+// spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/airfoil.png";         spaceShip[2].drawingOffsetAngle = Math.PI;
 // Load sounds!
 var context = new AudioContext();
 

@@ -2,6 +2,8 @@
 /* jshint
 node : true
 */
+// node Server.js 8000
+// https://localhost:8000/spacequest
 
 let WebSocketServer = require("websocket").server,
     fs = require("fs"),

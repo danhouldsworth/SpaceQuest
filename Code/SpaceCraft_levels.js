@@ -1,5 +1,10 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
 
+function gliders(){
+    gameObjects.push(new PlayerShip(-3.9*w, 3.9*h, 2));
+    gameObjects.push(new PlayerShip(-3.8*w, 3.9*h, 1));
+    for (var star of stars) star.vx = 0;
+}
 function pvp(){
     gameObjects.push(new PlayerShip(-w, 0, 2));
     gameObjects.push(new PlayerShip(w, 0, 1));
@@ -82,21 +87,29 @@ function invasionFleet(){
 function setCameras(){
     GlobalParams.camera.Targets[0] = gameObjects[0];
     GlobalParams.camera.Targets[1] = gameObjects[1];
-    // GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
-    // GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
     GlobalParams.camera.OldTargets[0] = {x : -w*6, y : 0, size : 1};
     GlobalParams.camera.OldTargets[1] = {x : w*6, y : 0, size : 1};
 }
 // --
 initGameArea();
-
-  epicOribitalArena();
- // pvp();
-//bigmoon();
-//invasionFleet();
+gliders();
+// epicOribitalArena();
+// pvp();
+// bigmoon();
+// invasionFleet();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
  // targetPractice()
 setCameras();
 launch();
+
+
+/*
+1. Create Wing type     / gravity on Ay / Ay, Ax = f(speed, theta, vector)
+2. Create PlayerCraft / Bots of Wing type wing controls
+3. Get lookup tables for Cl, Cd, Cm from AoA(=theta-vector)
+4. Set MI *and* Mass
+5. Calculate torque from moveable Mass vs 1/4 chord
+
+*/
