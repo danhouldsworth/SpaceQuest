@@ -92,7 +92,7 @@ function setCameras(){
 }
 // --
 initGameArea();
-gliders();
+// gliders();
 // epicOribitalArena();
 // pvp();
 // bigmoon();
@@ -100,7 +100,7 @@ gliders();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
- // targetPractice()
+ targetPractice()
 setCameras();
 launch();
 
