@@ -1,3 +1,7 @@
+// npm install websocket
+// sudo node Server.js 443
+// https://54.246.224.158/spacequest
+
 "use strict";
 /* jshint
 node : true
