@@ -17,8 +17,8 @@ var Primitive                   = function(x, y, vx, vy, size, angle, spin){
     this.spinDot= 0;
     this.size   = size  || 0;
 };
-Primitive.prototype.speed       = function (){
-    var speed = modulus(this.vx, this.vy);
+Primitive.prototype.speed       = function (relativeTo={vx:0, vy:0}){
+    var speed = modulus(this.vx-relativeTo.vx, this.vy-relativeTo.vy);
     return speed;
 };
 Primitive.prototype.clearAccelerations = function (){
@@ -68,12 +68,18 @@ var Particle                    = function(x, y, vx, vy, size, angle, spin, dens
     this.friction       = 100;
     this.density        = density;
     this.energy         = 1; // Consider it adhesion
-    this.mass           = Math.PI   * this.size * this.size * this.density; // NOTE: mass is not recalculated during attrition!!
-    this.inertiaRot     = 0.5       * this.size * this.size * this.mass;
+    const r = this.size;
+    this.volume         = (4/3) * Math.PI * r*r*r; // NOTE: mass is not recalculated during attrition!!
+    this.mass           = this.volume * this.density
+    const m = this.mass;
+    // 4/3 pi r^3
+    // this.mass           = Math.PI   * this.size * this.size * this.density; // NOTE: mass is not recalculated during attrition!!
+    // this.inertiaRot     = 0.5       * this.size * this.size * this.mass;
+    this.inertiaRot     = (2/5)*m*r*r;
 };
 Particle.prototype              = new Primitive();
-Particle.prototype.momentum     = function(){
-    return this.mass * this.speed();
+Particle.prototype.momentum     = function(relativeTo){
+    return this.mass * this.speed(relativeTo);
 };
 Particle.prototype.collide      = function(that){
 
@@ -154,15 +160,20 @@ Particle.prototype.collide      = function(that){
 
         return true;
     }
-    else if (this instanceof Asteroid || that instanceof Asteroid) {
-        // if (this.gameClass === "wall" || that.gameClass === "wall") console.log("wall");
+    // else if (this instanceof Asteroid || that instanceof Asteroid) {
+    else if (this instanceof Asteroid && that instanceof Asteroid) {
+        // if (this.gameClass === "wall" || that.gameClass === "wall") {console.log("wall");}
         // interaction.touching();
         // interaction.resolve();
         // var gravityFactor = 0.00001;
+
         // this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
         // this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
+        // Currently only 1st object experiencing gravity??
+
         // that.ax -= gravityFactor * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
         // that.ay -= gravityFactor * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
+        // this does nothing??
     }
     return false;
 };
@@ -171,49 +182,49 @@ Particle.prototype.boundaryConstraint = function() {
         h = gameArea.height;
 
     if (this.boundary_flag === -1){                 // BOUNCE
-        if ((this.x - this.size) < -4*w){
+        if ((this.x - this.size) < -0.5*GlobalParams.universeSize*w){
             wall.clear();
             wall.y      = this.y;
-            wall.x      = -4*w-wall.size;
+            wall.x      = -0.5*GlobalParams.universeSize*w-wall.size;
             this.collide(wall);applyCollisionRules(this, wall);
         }
-        if ((this.x + this.size) > 4*w){
+        if ((this.x + this.size) > 0.5*GlobalParams.universeSize*w){
             wall.clear();
             wall.y      = this.y;
-            wall.x      = 4*w + wall.size;
+            wall.x      = 0.5*GlobalParams.universeSize*w + wall.size;
             this.collide(wall);applyCollisionRules(this, wall);
         }
-        if ((this.y - this.size) < -4*h){
+        if ((this.y - this.size) < -0.5*GlobalParams.universeSize*h){
             wall.clear();
             wall.x = this.x;
-            wall.y = -4*h-wall.size;
+            wall.y = -0.5*GlobalParams.universeSize*h-wall.size;
             this.collide(wall);applyCollisionRules(this, wall);
         }
-        if ((this.y + this.size) > 4*h){
+        if ((this.y + this.size) > 0.5*GlobalParams.universeSize*h){
             wall.clear();
             wall.x      = this.x;
-            wall.y      = 4*h + wall.size;
+            wall.y      = 0.5*GlobalParams.universeSize*h + wall.size;
             this.collide(wall);applyCollisionRules(this, wall);
         }
     } else if (this.boundary_flag == 1){            // WRAP
-        while ((this.x - this.size) < -4*w){
+        while ((this.x - this.size) < -0.5*GlobalParams.universeSize*w){
             this.x += 8*w;
         }
-        while ((this.x + this.size) > 4*w){
+        while ((this.x + this.size) > 0.5*GlobalParams.universeSize*w){
             this.x -= 8*w;
         }
-        while ((this.y - this.size) < -4*h){
+        while ((this.y - this.size) < -0.5*GlobalParams.universeSize*h){
             this.y += 8*h;
         }
-        while ((this.y + this.size) > 4*h){
+        while ((this.y + this.size) > 0.5*GlobalParams.universeSize*h){
             this.y -= 8*h;
         }
     } else {                                        // DEFAULT?
         console.log(this);
-        if (this.x < -4*w || this.x > 4*w){
+        if (this.x < -0.5*GlobalParams.universeSize*w || this.x > 0.5*GlobalParams.universeSize*w){
             this.vx = 0;
         }
-        if (this.y < -4*h || this.y > 4*h){
+        if (this.y < -0.5*GlobalParams.universeSize*h || this.y > 0.5*GlobalParams.universeSize*h){
             this.vy = 0;
         }
     }
@@ -245,60 +256,67 @@ Star.prototype.draw             = function(){
 
 // -- Game objects - based on gameObjects. They damage points for collisions, and know their parent.
 var Bullet                      = function(x, y, vx, vy, size, parent){
+    const density = 0.0001;
     this.base = Particle;
-    this.base(x, y, vx, vy, size, 0, 0, 0.0001);
+    this.base(x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'bullet';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = 20;
+    this.damagePts      = parent.size * 10;
     this.calcColour = function(){
-        this.red    = (this.parent.team % 2) ? 255                        : 255;
-        this.green  = (this.parent.team % 2) ? Math.floor(this.size*50)  : 255;
-        this.blue   = (this.parent.team % 2) ? Math.floor(this.size*50)  : Math.floor(this.size*50);
+        this.red    = (this.parent.team % 2) ? 255                       : 255;
+        this.green  = (this.parent.team % 2) ? Math.floor(this.size*30)  : 255;
+        this.blue   = (this.parent.team % 2) ? Math.floor(this.size*30)  : Math.floor(this.size*30);
     };
 };
 Bullet.prototype                = Object.create(Particle.prototype);
 Bullet.prototype.constructor    = Particle;
 
 var Thrust                      = function(x, y, vx, vy, size, parent){
+    const density = 1;
     this.base = Particle;
-    this.base(x, y, vx, vy, size, 0, 0, 0.5);
+    this.base(x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'thrust';
     this.parent         = parent;
     this.team           = parent.team;
+// attempt to not react when hit thrust
+    // this.mass = 1;
+    //
     this.calcColour = function(){
-        this.red    = (this.parent.team % 2) ? Math.floor(this.size*50) : Math.floor(this.size*50);
-        this.green  = (this.parent.team % 2) ? Math.floor(this.size*50) : 255;
-        this.blue   = (this.parent.team % 2) ? 255                       : Math.floor(this.size*50);
+        this.red    = (this.parent.team % 2) ? Math.floor(this.size*30) : Math.floor(this.size*30);
+        this.green  = (this.parent.team % 2) ? Math.floor(this.size*30) : 255;
+        this.blue   = (this.parent.team % 2) ? 255                      : Math.floor(this.size*30);
     };
 };
 Thrust.prototype                = Object.create(Particle.prototype);
 Thrust.prototype.constructor    = Particle;
 
 var Bomb                        = function(x, y, vx, vy, size, parent){
+    const density = 1;
     this.base = Particle;
-    this.base(x, y, vx, vy, size, 0, 0, 1);
+    this.base(x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'bomb';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = 100;
+    this.damagePts      = parent.size * 3;
     this.calcColour = function(){
         this.red    = 255;
         this.green  = 255;
-        this.blue   = Math.floor(this.size*50);
+        this.blue   = Math.floor(this.size*30);
     };
 };
 Bomb.prototype                  = Object.create(Particle.prototype);
 Bomb.prototype.constructor      = Particle;
 Bomb.prototype.detonate         = function(){
-    var numberOfBombs   = Math.min(100, 5 * this.speed() + this.mass);
-    var bombSpeed       = Math.min(2,   1 * this.speed() + this.mass * 0.0001);
+    // invoked with this=Graphic && this=Bomb
+    var numberOfBombs   = Math.min(200, 5 * this.speed() + this.mass / 1);
+    var bombSpeed       = Math.min(0.5, 1 * this.speed() + this.mass / 1000000);
     for(var bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
-        var fragSize = Math.min(20, Math.random() * this.size);
+        var fragSize = Math.random() * Math.min(10, this.size);
         var throwAngle = 2 * Math.PI * numberOfBombs / bombPiece;
         gameObjects.push(new Bomb(
-            this.x + this.size * Math.random() * Math.cos(throwAngle),
-            this.y + this.size * Math.random() * Math.sin(throwAngle),
+            this.x + (this.size * Math.random() * Math.cos(throwAngle) ),
+            this.y + (this.size * Math.random() * Math.sin(throwAngle) ),
             bombSpeed * Math.cos(throwAngle),
             bombSpeed * Math.sin(throwAngle),
             fragSize,
@@ -308,7 +326,7 @@ Bomb.prototype.detonate         = function(){
 };
 Bomb.prototype.sanitiseSingularities        = function(deltaT){
     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
-    if (Math.random() < (this.mass / 1000000) ) this.detonate();
+    if (Math.random() < (this.mass / 10000000) ) this.detonate();
     return this;
 };
 // --
@@ -351,7 +369,7 @@ Graphic.prototype.draw          = function(){
         ctx.fillRect( - this.size,  - this.size, 2 * this.size * this.energy, 8);
         ctx.restore();
     }
-    if (this.showPath) {
+    if (this.showPath) { // Show trace of where we'll travel in next 1000ms (under current acceleration)
         var maxTimeSteps = 1000;
         grad = ctx.createLinearGradient(
             this.x,
@@ -397,6 +415,7 @@ Asteroid.prototype.constructor  = Graphic;
 Asteroid.prototype.sanitiseSingularities      = function(deltaT) {
     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
     // Over large times we don't want energy to build up through trunaction errors & antisqueeze etc so we apply pseudo drag
+    // Which totally defeats gravity motion!!!!
     this.vx     *= (1 - deltaT / 1000);
     this.vy     *= (1 - deltaT / 1000);
     this.spin   *= (1 - deltaT / 1000);
@@ -432,21 +451,19 @@ var Ship                        = function(x, y, size, density, image){
     this.image          = image;
     this.offSet         = image.drawingOffsetAngle;
     this.friction       = 0;
-    var suitableSpinThrustSize = Math.min(30, 0.02 * this.size * Math.sqrt(this.size) );
-    var suitableSpinThrustSpeed= 0.00002 * this.inertiaRot / (suitableSpinThrustSize * suitableSpinThrustSize * suitableSpinThrustSize * 0.5 * Math.PI) ;
     this.projectileEngines        = {
     // NOTE: All projectileEngines assumed to start on the circumference of the circle
-        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 4,             projectileSpeed :  1,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
-        frontLeft   : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : 0,                projectileAngle : Math.PI / 2},
-        frontRight  : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : 0,                projectileAngle : Math.PI * 3 / 2},
-        backLeft    : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : Math.PI,          projectileAngle : Math.PI / 2},
-        backRight   : {projectileType : Thrust,     projectileSize : suitableSpinThrustSize,    projectileSpeed :suitableSpinThrustSpeed,    projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
-        hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 5,             projectileSpeed :  1,    projectilePosition : 0,                projectileAngle : 0},
+        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,   projectilePosition : Math.PI,          projectileAngle : Math.PI},
+        frontLeft   : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : 0,                projectileAngle : Math.PI / 2},
+        frontRight  : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : 0,                projectileAngle : Math.PI * 3 / 2},
+        backLeft    : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : Math.PI,          projectileAngle : Math.PI / 2},
+        backRight   : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
+        hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 8,     projectileSpeed :1.5,   projectilePosition : 0,                projectileAngle : 0},
         // *Bay* need getPilotCommand to reconfirm
-        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size *3,                projectileSpeed :0.0,    projectilePosition : Math.PI,                projectileAngle : 0},
-        bombBay   : {projectileType : Fireball,   projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI,          projectileAngle : Math.PI},
-        missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
-        missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,             projectileSpeed :0.2,    projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
+        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size *3,      projectileSpeed :0.0,   projectilePosition : Math.PI,          projectileAngle : 0},
+        bombBay     : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI,          projectileAngle : Math.PI},
+        missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
+        missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
     };
     this.enginesActive = [];
     this.missileLaunchSide = 1;
@@ -454,21 +471,23 @@ var Ship                        = function(x, y, size, density, image){
 Ship.prototype                  = Object.create(Graphic.prototype);
 Ship.prototype.constructor      = Graphic;
 Ship.prototype.fireProjectiles       = function(engine){
+    const clearanceBufferPx = 15;
     var engineFiring    = this.projectileEngines[engine];
     var ProjectileType = engineFiring.projectileType;
     var projectile = new ProjectileType(
-        this.x + (this.size + engineFiring.projectileSize + 1) * Math.cos(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
-        this.y + (this.size + engineFiring.projectileSize + 1) * Math.sin(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
-        engineFiring.projectileSpeed * Math.cos(this.angle + engineFiring.projectileAngle),
-        engineFiring.projectileSpeed * Math.sin(this.angle + engineFiring.projectileAngle),
-        Math.max(0.5, engineFiring.projectileSize * this.enginesActive[engine]),
+        this.x + this.vx + (this.size + engineFiring.projectileSize + clearanceBufferPx) * Math.cos(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
+        this.y + this.vy + (this.size + engineFiring.projectileSize + clearanceBufferPx) * Math.sin(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
+        this.vx + engineFiring.projectileSpeed * Math.cos(this.angle + engineFiring.projectileAngle),
+        this.vy + engineFiring.projectileSpeed * Math.sin(this.angle + engineFiring.projectileAngle),
+        Math.max(0.5, engineFiring.projectileSize * this.enginesActive[engine]), // enginesActive is a float [0:1]
         this
     );
     gameObjects.push(projectile);
+    // return impulse on parent. Must be DELTA relative to parent! not absolute
     return {
-        x       : -projectile.vx * projectile.mass,
-        y       : -projectile.vy * projectile.mass,
-        torque  : -projectile.momentum() * this.size * Math.sin(engineFiring.projectileAngle - engineFiring.projectilePosition)
+        x       : (this.vx-projectile.vx) * projectile.mass,
+        y       : (this.vy-projectile.vy) * projectile.mass,
+        torque  : -projectile.momentum(this) * this.size * Math.sin(engineFiring.projectileAngle - engineFiring.projectilePosition)
     };
 };
 Ship.prototype.getForceAvailable = function(engine){
@@ -527,8 +546,10 @@ Ship.prototype.sanitiseSingularities        = function(deltaT) {
 
 
 var PlayerShip                      = function(x, y, team){
+    const shipSize = 100;
+    const density = 1;
     this.base = Ship;
-    this.base(x, y, 40, 1, spaceShip[team]);
+    this.base(x, y, shipSize, density, spaceShip[team]);
     this.gameClass  = 'player';
     this.team       = team;
 };
@@ -542,8 +563,8 @@ PlayerShip.prototype.getPilotCommand= function(){
         right       : [null, 87, 39],   // w    Arrow
         thrust      : [null, 69, 38],   // e    Arrow
         fire        : [null, 83, 32],   // s    Space
-        missile     : [null, null, null],   // r    Down Arrow
-        bigRocket   : [null, 82, 40],   // r    Down Arrow
+        missile     : [null, 82, null],   // r    Down Arrow
+        bigRocket   : [null, null, 40],   // r    Down Arrow
         smartBomb   : [null, 84, 77]    // t    m
     };
     if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = 1;}
@@ -557,9 +578,9 @@ PlayerShip.prototype.getPilotCommand= function(){
 };
 PlayerShip.prototype.sanitiseSingularities      = function(deltaT) {
     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
-    this.vx     *= (1 - deltaT / 500);
-    this.vy     *= (1 - deltaT / 500);
-    this.spin   *= (1 - deltaT / 100);
+    this.vx     *= (1 - deltaT / 5000);
+    this.vy     *= (1 - deltaT / 5000);
+    this.spin   *= (1 - deltaT / 1000);
     return this; // chainable
 };
 
@@ -576,7 +597,9 @@ RobotShip.prototype.canclePreviousControl = function(){
 };
 RobotShip.prototype.getTarget                   = function(){
     this.target = false;
-    for (var threat of gameObjects){
+    for (let threat of gameObjects){
+        if (threat === this) {continue;}                                                                    // Ha! Don't target ourselves!
+        if (this.target.team && this.target.team !== this.team && threat.team === this.team){continue;}                         // If we're targetting another team, DO NOT target our own team!
         if (!(threat instanceof Graphic))                               {continue;}                         // Don't target bullets / thrust
         if (this.target === false)                                      {this.target = threat; continue;}   // Target the first graphic we come across if not yet targeted
         if (this.target.team === this.team && threat.team !== this.team){this.target = threat; continue;}   // If we're targeting ourselves (from above), then target anyone else if poss
@@ -753,8 +776,9 @@ Drone3.prototype.getPilotCommand = function(deltaT){
 };
 
 var Fireball                        = function(x, y, vx, vy, size, parent){
+    const density = 5;
     this.base = RobotShip;
-    this.base(x, y, size, 5, bomb);
+    this.base(x, y, size, density, bomb);
     // this.base(x, y, size, 5, fireball);
     this.gameClass      = 'fireball';
     this.parent         = parent;
@@ -764,7 +788,7 @@ var Fireball                        = function(x, y, vx, vy, size, parent){
     this.vy             = vy;
     this.showEnergyBar  = false;
     this.showPath       = false;
-    this.damagePts      = 3000;
+    this.damagePts      = parent.mass;
     this.projectileEngines.mainJet.projectileSize *= 2;
 };
 Fireball.prototype                  = Object.create(RobotShip.prototype);
@@ -782,8 +806,9 @@ Fireball.prototype.getPilotCommand  = function(deltaT){
 };
 
 var BigRocket = function(x, y, vx, vy, size, parent){
+    const density = 40;
     this.base = RobotShip;
-    this.base(x, y, size, 40, missile);
+    this.base(x, y, size, density, missile);
     this.gameClass      = 'missile';
     this.parent         = parent;
     this.team           = parent.team;
@@ -791,7 +816,7 @@ var BigRocket = function(x, y, vx, vy, size, parent){
     this.vx             = vx;
     this.vy             = vy;
     this.showEnergyBar  = false;
-    this.damagePts      = 20000;
+    this.damagePts      = parent.size * 100;
     this.projectileEngines.mainJet.projectileSize       *= 4;
     // this.projectileEngines.frontLeft.projectileSize     *= 2;
     // this.projectileEngines.frontRight.projectileSize    *= 2;
@@ -834,8 +859,9 @@ BigRocket.prototype.getPilotCommand   = function(deltaT){
 };
 
 var Missile                         = function(x, y, vx, vy, size, parent){
+    const density = 10;
     this.base = RobotShip;
-    this.base(x, y, size, 10, missile);
+    this.base(x, y, size, density, missile);
     this.gameClass      = 'missile';
     this.parent         = parent;
     this.team           = parent.team;
@@ -843,7 +869,7 @@ var Missile                         = function(x, y, vx, vy, size, parent){
     this.vx             = vx;
     this.vy             = vy;
     this.showEnergyBar  = false;
-    this.damagePts      = 3000;
+    this.damagePts      = parent.size * 100;
     this.projectileEngines.mainJet.projectileSize       *= 2;
     this.projectileEngines.frontLeft.projectileSize     *= 2;
     this.projectileEngines.frontRight.projectileSize    *= 2;
@@ -883,8 +909,9 @@ Baddy.prototype.getPilotCommand     = function(deltaT){
 
 
 var BossBaddy                       = function(x,y){
+    const density = 1;
     this.base = RobotShip;
-    this.base(x, y, 100, 1, bossBaddy);
+    this.base(x, y, 100, density, bossBaddy);
     this.team = 3;
     this.baddySpawnReady    = false;
     this.baddySpawnTimer    = (function(parent){setInterval(function(){parent.baddySpawnReady = true;}, 2000);})(this);
@@ -968,8 +995,9 @@ Interaction.prototype.clear         = function(){
 
 // -- Wall is a size = 200 Primitive, that only collides.
 var Wall                            = function(){
+    const density = 10000;
     this.base = Particle;
-    this.base(0,0,0,0,200,0, 0, 10000);
+    this.base(0,0,0,0,200,0, 0, density);
     this.restitution    = 0;
     this.friction       = 0;
     this.gameClass      = 'wall';

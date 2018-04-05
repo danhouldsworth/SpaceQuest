@@ -37,7 +37,7 @@ function iteratePhysics(){
         // Attrition & recharge
         switch (p1.gameClass){
             case 'player'   :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
+            // case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
             case 'thrust'   :   p1.size *= evaporationRateVolatile        ; break;
             case 'bomb'     :
             case 'bullet'   :   p1.size *= evaporationRateBullet;
@@ -147,9 +147,9 @@ function updateScoreStars(){
 
     starfield.width = starfield.width;
 
-    gameDisplayText("Daddy : "  + (1000000 + GlobalParams.scores[1]).toString().slice(1), .05, .1);
-    gameDisplayText("Baddies : "+ (1000000 + GlobalParams.scores[3]).toString().slice(1), .4, .1);
-    gameDisplayText("Finn : "   + (1000000 + GlobalParams.scores[2]).toString().slice(1), .8, .1);
+    gameDisplayText("Daddy : "  + (1000000 + parseInt(GlobalParams.scores[1])).toString().slice(1), .05, .1);
+    gameDisplayText("Baddies : "+ (1000000 + parseInt(GlobalParams.scores[3])).toString().slice(1), .4, .1);
+    gameDisplayText("Finn : "   + (1000000 + parseInt(GlobalParams.scores[2])).toString().slice(1), .8, .1);
     gameDisplayText("FPS : "    + Math.round(GlobalParams.FPS), .15, .95);
     gameDisplayText("Objects : "+ gameObjects.length, .45, .95);
     gameDisplayText("CPS : "    + Math.round(GlobalParams.CPS), .75, .95);
@@ -160,7 +160,7 @@ function updateScoreStars(){
     if (GlobalParams.rotatingFrame) {ctxStars.rotate(-GlobalParams.theta);}
     ctxStars.scale( GlobalParams.scale, GlobalParams.scale);
     ctxStars.translate(GlobalParams.centreX, GlobalParams.centreY);
-    ctxStars.rect(-4 * w, -4 * h, 8 * w, 8 * h);
+    ctxStars.rect(-0.5 * GlobalParams.universeSize * w, -0.5 * GlobalParams.universeSize * h, GlobalParams.universeSize * w, GlobalParams.universeSize * h);
     ctxStars.lineWidth = 5;
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();

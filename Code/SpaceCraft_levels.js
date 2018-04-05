@@ -1,13 +1,14 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
-
+"use strict";
+/*globals gameObjects, PlayerShip, stars, w, h */
 function gliders(){
     gameObjects.push(new PlayerShip(-3.9*w, 3.9*h, 2));
     gameObjects.push(new PlayerShip(-3.8*w, 3.9*h, 1));
     for (var star of stars) star.vx = 0;
 }
 function pvp(){
-    gameObjects.push(new PlayerShip(-w, 0, 2));
-    gameObjects.push(new PlayerShip(w, 0, 1));
+    gameObjects.push(new PlayerShip(-0.25*w, 0, 2));
+    gameObjects.push(new PlayerShip(+0.25*w, 0, 1));
 }
 function droneTesting_Orientation(){
     gameObjects.push(new PlayerShip(-w, 0, 2));
@@ -76,6 +77,19 @@ function bigmoon(){
     // gameObjects.push(new Moon(w*0.5, 0, 0, .2, 100, 0));
     // gameObjects.push(new Moon(-w*0.75, 0, 0, .12, 50, 0));
 }
+function orbitingMoons(){
+
+    gameObjects.push(new PlayerShip(-w, 0, 1));
+    gameObjects.push(new PlayerShip(+w, 0, 2));
+    gameObjects.push(new Moon(-2*w, 0, 0, 0, 100, 0));
+    gameObjects.push(new Moon(+2*w, 0, 0, 0, 100, 0));
+    // gameObjects.push(new Moon(w*0.5, 0, 0, .2, 100, 0));
+    // gameObjects.push(new Moon(-w*0.75, 0, 0, .12, 50, 0));
+    console.log(gameObjects[0].mass);
+    console.log(gameObjects[1].mass);
+    console.log(gameObjects[2].mass);
+    console.log(gameObjects[3].mass);
+}
 function invasionFleet(){
     gameObjects.push(new PlayerShip(-w,-.1*h,1));
     gameObjects.push(new PlayerShip(-w,+.1*h ,2));
@@ -93,14 +107,15 @@ function setCameras(){
 // --
 initGameArea();
 // gliders();
+// orbitingMoons();
 // epicOribitalArena();
-// pvp();
+pvp();
 // bigmoon();
 // invasionFleet();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
- targetPractice()
+// targetPractice();
 setCameras();
 launch();
 
@@ -111,5 +126,4 @@ launch();
 3. Get lookup tables for Cl, Cd, Cm from AoA(=theta-vector)
 4. Set MI *and* Mass
 5. Calculate torque from moveable Mass vs 1/4 chord
-
 */
