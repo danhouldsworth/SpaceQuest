@@ -463,7 +463,7 @@ var Ship                        = function(x, y, size, density, image){
         backRight   : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
         hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 8,     projectileSpeed :1.5,   projectilePosition : 0,                projectileAngle : 0},
         // *Bay* need getPilotCommand to reconfirm
-        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size *3,      projectileSpeed :0.0,   projectilePosition : Math.PI,          projectileAngle : 0},
+        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size *1,      projectileSpeed :0.0,   projectilePosition : Math.PI,          projectileAngle : 0},
         bombBay     : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI,          projectileAngle : Math.PI},
         missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
         missileBayR : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
@@ -480,11 +480,13 @@ Ship.prototype.fireProjectiles       = function(engine){
     var projectile = new ProjectileType(
         this.x + this.vx + (this.size + engineFiring.projectileSize + clearanceBufferPx) * Math.cos(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
         this.y + this.vy + (this.size + engineFiring.projectileSize + clearanceBufferPx) * Math.sin(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
-        this.vx + engineFiring.projectileSpeed * Math.cos(this.angle + engineFiring.projectileAngle),
-        this.vy + engineFiring.projectileSpeed * Math.sin(this.angle + engineFiring.projectileAngle),
+        engineFiring.projectileSpeed * Math.cos(this.angle + engineFiring.projectileAngle),
+        engineFiring.projectileSpeed * Math.sin(this.angle + engineFiring.projectileAngle),
         Math.max(0.5, engineFiring.projectileSize * this.enginesActive[engine]), // enginesActive is a float [0:1]
         this
     );
+    projectile.vx += this.vx;
+    projectile.vy += this.vy;
     gameObjects.push(projectile);
     // return impulse on parent. Must be DELTA relative to parent! not absolute
     return {
@@ -737,8 +739,8 @@ Drone1.prototype                 = Object.create(RobotShip.prototype);
 Drone1.prototype.constructor     = RobotShip;
 Drone1.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
-    //if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
-    this.target=gameObjects[1];
+    if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+    // this.target=gameObjects[1];
     this.resample();
     this.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative(deltaT);
     return this; // chainable
@@ -780,7 +782,7 @@ Drone3.prototype.getPilotCommand = function(deltaT){
 
 var Fireball                        = function(x, y, vx, vy, size, parent){
     const density = 5;
-    this.base = RobotShip;
+    this.base = Drone1;
     this.base(x, y, size, density, bomb);
     // this.base(x, y, size, 5, fireball);
     this.gameClass      = 'fireball';
@@ -792,21 +794,22 @@ var Fireball                        = function(x, y, vx, vy, size, parent){
     this.showEnergyBar  = false;
     this.showPath       = false;
     this.damagePts      = parent.mass;
-    this.projectileEngines.mainJet.projectileSize *= 2;
+    // this.projectileEngines.mainJet.projectileSize *= 2;
 };
-Fireball.prototype                  = Object.create(RobotShip.prototype);
-Fireball.prototype.constructor      = RobotShip;
-Fireball.prototype.getPilotCommand  = function(deltaT){
-    this.canclePreviousControl();
-    if (this.activateWhenClearOf(this.parent)) {
-        if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
-        this.resample();
-        this.angle = this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT);
-        this.spin = 0;
-        this.enginesActive.mainJet = 1;
-    }
-    return this; // chainable
-};
+Fireball.prototype                  = Object.create(Drone1.prototype);
+Fireball.prototype.constructor      = Drone1;
+// Fireball.prototype.getPilotCommand  = function(deltaT){
+//     this.canclePreviousControl();
+//     if (this.activateWhenClearOf(this.parent)) {
+//         if (gameObjects.indexOf(this.target) === -1) {this.getTarget();} // Get target if never had one OR lost
+//         this.resample();
+//         // this.angle = this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT);
+//         // this.spin = 0;
+//         // this.enginesActive.mainJet = 1;
+//         this.PDsingleLoop_controlSpeedWithOrthoganalThrustNoDerivative(deltaT);
+//     }
+//     return this; // chainable
+// };
 
 var BigRocket = function(x, y, vx, vy, size, parent){
     const density = 40;
@@ -820,7 +823,7 @@ var BigRocket = function(x, y, vx, vy, size, parent){
     this.vy             = vy;
     this.showEnergyBar  = false;
     this.damagePts      = parent.size * 100;
-    this.projectileEngines.mainJet.projectileSize       *= 4;
+    // this.projectileEngines.mainJet.projectileSize       *= 4;
     // this.projectileEngines.frontLeft.projectileSize     *= 2;
     // this.projectileEngines.frontRight.projectileSize    *= 2;
     // this.projectileEngines.backLeft.projectileSize      *= 2;
