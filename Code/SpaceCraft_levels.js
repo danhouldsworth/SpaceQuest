@@ -79,16 +79,17 @@ function bigmoon(){
 }
 function orbitingMoons(){
 
-    gameObjects.push(new PlayerShip(-w, 0, 1));
-    gameObjects.push(new PlayerShip(+w, 0, 2));
-    gameObjects.push(new Moon(-2*w, 0, 0, 0, 100, 0));
-    gameObjects.push(new Moon(+2*w, 0, 0, 0, 100, 0));
+    gameObjects.push(new PlayerShip(0, h, 1));
+    gameObjects.push(new PlayerShip(0, -h, 2));
+    gameObjects.push(new Moon(-w/4, 0, 0, 0,    400, 0));
+    gameObjects.push(new Moon(+w/2, 0, 0, -1,   100, 0));
+    gameObjects.push(new Moon(0,    0, 0, -2,    20, 0));
     // gameObjects.push(new Moon(w*0.5, 0, 0, .2, 100, 0));
     // gameObjects.push(new Moon(-w*0.75, 0, 0, .12, 50, 0));
     console.log(gameObjects[0].mass);
     console.log(gameObjects[1].mass);
     console.log(gameObjects[2].mass);
-    console.log(gameObjects[3].mass);
+    // console.log(gameObjects[3].mass);
 }
 function invasionFleet(){
     gameObjects.push(new PlayerShip(-w,-.1*h,1));
@@ -107,9 +108,9 @@ function setCameras(){
 // --
 initGameArea();
 // gliders();
-// orbitingMoons();
+orbitingMoons();
 // epicOribitalArena();
-pvp();
+// pvp();
 // bigmoon();
 // invasionFleet();
 // droneTesting_Orientation();

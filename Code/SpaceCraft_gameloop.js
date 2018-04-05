@@ -1,5 +1,5 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
-/* global Interaction, Wall, spaceShips, spaceShips, elasticons, particles, attachments, , gameArea, timerAnimate, gameDisplayText */
+/* globals Interaction, Wall, spaceShips, spaceShips, elasticons, particles, attachments, gameArea, timerAnimate, gameDisplayText */
 "use strict";
 var interaction = new Interaction();        // -- Interaction object is useful to have seperation x,y,vx,vy,mass etc
 var wall        = new Wall();               // -- Simulate wall as a infinitely large particle
@@ -24,10 +24,13 @@ function iteratePhysics(){
     var evaporationRateBullet   = (1 - Math.min(1,dT * dT / 3000));
     var evaporationRateVolatile = (1 - Math.min(1,dT * dT / 1000));
 
-    for (var i = 0; i < gameObjects.length; i++){
-        var p1 = gameObjects[i].clearAccelerations();
-        for (var j = i + 1; j < gameObjects.length; j++){
-            var p2 = gameObjects[j];
+    // Calc interaction between pairs ONCE, so must accumulate the forces on the recipient
+    for (let i = 0; i < gameObjects.length; i++) gameObjects[i].clearAccelerations();
+
+    for (let i = 0; i < gameObjects.length; i++){
+        const p1 = gameObjects[i];
+        for (let j = i + 1; j < gameObjects.length; j++){
+            const p2 = gameObjects[j];
             if (p1.collide(p2)) {
                 applyCollisionRules(p1,p2);
                 applyCollisionRules(p2,p1);

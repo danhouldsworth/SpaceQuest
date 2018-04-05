@@ -71,7 +71,7 @@ var gameArea    = document.createElement('canvas'),
     GlobalParams = {
         rotatingFrame   : false,
         boundary_flag   : -1, // -1=bounce  / +1=wrap
-        universeSize    : 0.5,
+        universeSize    : 3,
         scores          : {1 : 0, 2 : 0, 3 : 0},
         camera          : {
             Targets         : [{x : 0, y : 0, size : 1}, {x : 0, y : 0, size : 1}],

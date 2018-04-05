@@ -162,17 +162,20 @@ Particle.prototype.collide      = function(that){
     }
     // else if (this instanceof Asteroid || that instanceof Asteroid) {
     else if (this instanceof Asteroid && that instanceof Asteroid) {
-        // if (this.gameClass === "wall" || that.gameClass === "wall") {console.log("wall");}
-        // interaction.touching();
-        // interaction.resolve();
-        // var gravityFactor = 0.00001;
+        // ONLY IF NOT TOUCHING!!?!
+        if (this.gameClass === "wall" || that.gameClass === "wall") {console.log("wall");}
+        interaction.touching();
+        interaction.resolve();
+        var gravityFactor = 0.0000001;
 
-        // this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
-        // this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
+        this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
+        this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
         // Currently only 1st object experiencing gravity??
 
-        // that.ax -= gravityFactor * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
-        // that.ay -= gravityFactor * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
+        that.ax -= gravityFactor * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
+        that.ay -= gravityFactor * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
+
+        // console.log(this.ax + " : " + this.vx + " -- " + that.ax + " : " + that.vx);
         // this does nothing??
     }
     return false;
