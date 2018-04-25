@@ -56,6 +56,13 @@ Primitive.prototype.sanitiseSingularities   = function(deltaT) {
     // this.spin   *= (1 - deltaT / 10000);
     return this; // chainable
 };
+Primitive.prototype.applyDrag      = function(deltaT) {
+    // this.vx     *= (1 - deltaT / 5000);
+    // this.vy     *= (1 - deltaT / 5000);
+    // this.spin   *= (1 - deltaT / 1000);
+    return this; // chainable
+};
+
 
 
 // -- Particle is a subset of Primitive. It has density (& therefor mass), restituion and friction - and so can interact with other gameObjects.
@@ -70,7 +77,7 @@ var Particle                    = function(x, y, vx, vy, size, angle, spin, dens
     this.energy         = 1; // Consider it adhesion
     const r = this.size;
     this.volume         = (4/3) * Math.PI * r*r*r; // NOTE: mass is not recalculated during attrition!!
-    this.mass           = this.volume * this.density
+    this.mass           = this.volume * this.density;
     const m = this.mass;
     // 4/3 pi r^3
     // this.mass           = Math.PI   * this.size * this.size * this.density; // NOTE: mass is not recalculated during attrition!!
@@ -415,15 +422,15 @@ var Asteroid                    = function(x, y, vx, vy, size, spin, density){
 };
 Asteroid.prototype              = Object.create(Graphic.prototype);
 Asteroid.prototype.constructor  = Graphic;
-Asteroid.prototype.sanitiseSingularities      = function(deltaT) {
-    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
-    // Over large times we don't want energy to build up through trunaction errors & antisqueeze etc so we apply pseudo drag
-    // Which totally defeats gravity motion!!!!
-    this.vx     *= (1 - deltaT / 1000);
-    this.vy     *= (1 - deltaT / 1000);
-    this.spin   *= (1 - deltaT / 1000);
-    return this; // chainable
-};
+// Asteroid.prototype.sanitiseSingularities      = function(deltaT) {
+//     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
+//     // Over large times we don't want energy to build up through trunaction errors & antisqueeze etc so we apply pseudo drag
+//     // Which totally defeats gravity motion!!!!
+//     // this.vx     *= (1 - deltaT / 1000);
+//     // this.vy     *= (1 - deltaT / 1000);
+//     // this.spin   *= (1 - deltaT / 1000);
+//     return this; // chainable
+// };
 
 var Moon                    = function(x, y, vx, vy, size, spin, density){
     this.base = Asteroid;
@@ -437,14 +444,14 @@ var Moon                    = function(x, y, vx, vy, size, spin, density){
 };
 Moon.prototype              = Object.create(Asteroid.prototype);
 Moon.prototype.constructor  = Asteroid;
-Moon.prototype.sanitiseSingularities      = function(deltaT) {
-    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
-    // Over large times we don't want energy to build up through trunaction errors & antisqueeze etc so we apply pseudo drag
-    // this.vx     *= (1 - deltaT / 1000);
-    // this.vy     *= (1 - deltaT / 1000);
-    // this.spin   *= (1 - deltaT / 1000);
-    return this; // chainable
-};
+// Moon.prototype.sanitiseSingularities      = function(deltaT) {
+//     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
+//     // Over large times we don't want energy to build up through trunaction errors & antisqueeze etc so we apply pseudo drag
+//     // this.vx     *= (1 - deltaT / 1000);
+//     // this.vy     *= (1 - deltaT / 1000);
+//     // this.spin   *= (1 - deltaT / 1000);
+//     return this; // chainable
+// };
 
 var Ship                        = function(x, y, size, density, image){
     this.base = Graphic;
@@ -541,13 +548,13 @@ Ship.prototype.getPilotCommand              = function(){
     this.enginesActive = [];
     return this; // chainable
 };
-Ship.prototype.sanitiseSingularities        = function(deltaT) {
-    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
-    // this.vx     *= (1 - deltaT / 1000);
-    // this.vy     *= (1 - deltaT / 1000);
-    // this.spin   *= (1 - deltaT / 100);
-    return this; // chainable
-};
+// Ship.prototype.sanitiseSingularities        = function(deltaT) {
+//     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
+//     // this.vx     *= (1 - deltaT / 1000);
+//     // this.vy     *= (1 - deltaT / 1000);
+//     // this.spin   *= (1 - deltaT / 100);
+//     return this; // chainable
+// };
 
 
 var PlayerShip                      = function(x, y, team){
@@ -581,8 +588,8 @@ PlayerShip.prototype.getPilotCommand= function(){
     if (keyState[playerKeys.bigRocket[this.team]])    {this.launchRocketWhenReady();        sound(tracks.BigRocket, 0.5);}
     return this; // chainable
 };
-PlayerShip.prototype.sanitiseSingularities      = function(deltaT) {
-    Primitive.prototype.sanitiseSingularities.call(this, deltaT);
+PlayerShip.prototype.applyDrag      = function(deltaT) {
+    Primitive.prototype.applyDrag.call(this, deltaT);
     this.vx     *= (1 - deltaT / 5000);
     this.vy     *= (1 - deltaT / 5000);
     this.spin   *= (1 - deltaT / 1000);

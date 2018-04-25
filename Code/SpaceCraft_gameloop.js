@@ -47,7 +47,7 @@ function iteratePhysics(){
         }
 
         if (p1.size > 1.1 && p1.energy > 0) {
-            p1.updateForces(dT).updateVelocities(dT).updatePosition(dT).sanitiseSingularities(dT).boundaryConstraint();
+            p1.updateForces(dT).updateVelocities(dT).applyDrag(dT).updatePosition(dT).sanitiseSingularities(dT).boundaryConstraint();
         } else {
             p1.explode();
         }
