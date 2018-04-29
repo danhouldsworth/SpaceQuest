@@ -1,7 +1,7 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
-var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/vortex.png";
-var moon        = new Image(); moon.src      = "../FinnsArtwork/bluemoon.png";          moon.scale = 1.05;
+var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/vortex.png";            asteroid.scale = 2;
+var moon        = new Image(); moon.src      = "../FinnsArtwork/bluemoon.png";          moon.scale = 1.07;
 var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";          fireball.drawingOffsetAngle = 0;
 var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";              bomb.drawingOffsetAngle = 0;
 var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/human_mothership.gif";  bossBaddy.drawingOffsetAngle = Math.PI/4;
@@ -69,17 +69,22 @@ var gameArea    = document.createElement('canvas'),
         pilotInput          : 0
     },
     GlobalParams = {
+        slowMoFactor    : 2,
+        slowMoCounter   : 0,
         rotatingFrame   : false,
         boundary_flag   : -1, // -1=bounce  / +1=wrap
-        universeSize    : 8,
+        universeSize    : 16,
+        gravityFactor   : 0.0000001,
         scores          : {1 : 0, 2 : 0, 3 : 0},
         camera          : {
-            Targets         : [{x : 0, y : 0, size : 1}, {x : 0, y : 0, size : 1}],
-            OldTargets      : [{x : 0, y : 0, size : 1}, {x : 0, y : 0, size : 1}],
-            Blender         : [100, 100]
+            Targets         : [],
+            OldTargets      : [],
+            CurrentCam      : [],
+            Blender         : [100, 100],
+            Distance        : 0
         },
         refreshInterval : {
-            physics         : 0,    // 200 Hz
+            physics         : 1,    // 200 Hz
             animation       : 20,   //  50 Hz
             starsAndScores  : 50,   //  20 Hz
             pilotInput      : 100   //  10 Hz

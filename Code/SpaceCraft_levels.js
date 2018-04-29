@@ -78,12 +78,35 @@ function bigmoon(){
     // gameObjects.push(new Moon(-w*0.75, 0, 0, .12, 50, 0));
 }
 function orbitingMoons(){
+    const planet = new Moon(0, 0,  0, 0,      400, 100);
 
-    gameObjects.push(new PlayerShip(0, h, 1));
-    gameObjects.push(new PlayerShip(0, -h, 2));
-    gameObjects.push(new Moon(-w/4, 0, 0, 0,    400, 0));
-    gameObjects.push(new Moon(+w/2, 0, 0, -1,   100, 0));
-    gameObjects.push(new Moon(0,    0, 0, 2.48,    20, 0));
+    function speedForCircularOrbitAround(planet, r){
+        const m = planet.mass;
+        const G = GlobalParams.gravityFactor;
+        const v = Math.sqrt(G * m / r);
+        return v;
+    }
+
+    const maxMoons = 50;
+    let r;
+    r = (50 / maxMoons) * w * GlobalParams.universeSize * 0.25;
+    gameObjects.push(new PlayerShip(-r, 0, 0, -speedForCircularOrbitAround(planet, r), 2));
+    r = (4 / maxMoons) * w * GlobalParams.universeSize * 0.25;
+    gameObjects.push(new PlayerShip(+r, 0, 0, +speedForCircularOrbitAround(planet, r), 1));
+    for(var mooncount=5;mooncount < maxMoons;mooncount++){
+        // const r = Math.random() * w * GlobalParams.universeSize * 0.5;
+        r = (mooncount / maxMoons) * w * GlobalParams.universeSize * 0.25;
+        // gameObjects.push(new Moon((Math.random()-0.5) * GlobalParams.universeSize*w,(Math.random()-0.5) * GlobalParams.universeSize*h,0,0,Math.random()*100,0));
+        gameObjects.push(new Moon(planet.x + r, 0,  0, +speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
+        gameObjects.push(new Moon(planet.x - r, 0,  0, -speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
+    }
+    gameObjects.push(planet);   // Big planet
+    // gameObjects.push(new Moon(0,    0,  0, -3,      20, 0));
+    // gameObjects.push(new Moon(-w/2, 0,  0,  3,       20, 0));
+    // gameObjects.push(new Moon(-w/4, 500, 3, 0,       20, 0));
+    // gameObjects.push(new Moon(-w/4, -500, -3, 0,     20, 0));
+
+
     // gameObjects.push(new Moon(w*0.5, 0, 0, .2, 100, 0));
     // gameObjects.push(new Moon(-w*0.75, 0, 0, .12, 50, 0));
     console.log(gameObjects[0].mass);
@@ -102,8 +125,10 @@ function invasionFleet(){
 function setCameras(){
     GlobalParams.camera.Targets[0] = gameObjects[0];
     GlobalParams.camera.Targets[1] = gameObjects[1];
-    GlobalParams.camera.OldTargets[0] = {x : -w*6, y : 0, size : 1};
-    GlobalParams.camera.OldTargets[1] = {x : w*6, y : 0, size : 1};
+    GlobalParams.camera.OldTargets[0] = new Primitive(-w*GlobalParams.universeSize, 0, 0, 0, 1, 0, 0);
+    GlobalParams.camera.OldTargets[1] = new Primitive(+w*GlobalParams.universeSize, 0, 0, 0, 1, 0, 0);
+    GlobalParams.camera.CurrentCam[0] = new Primitive(0, 0, 0, 0, 1, 0, 0);
+    GlobalParams.camera.CurrentCam[1] = new Primitive(0, 0, 0, 0, 1, 0, 0);
 }
 // --
 initGameArea();

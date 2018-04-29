@@ -7,6 +7,7 @@ var wall        = new Wall();               // -- Simulate wall as a infinitely 
 function timeStep(timer){
     deltaT[timer]   = Date.now() - lastTime[timer];
     lastTime[timer] = Date.now();
+    return deltaT[timer];
 }
 function applyCollisionRules(obj1, obj2){
     switch (obj1.gameClass){
@@ -17,10 +18,15 @@ function applyCollisionRules(obj1, obj2){
         case 'fireball' :
         case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)         {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
     }
-    if (obj1 instanceof Ship && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
+    // if (obj1 instanceof Ship && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
+    if (obj1 instanceof Graphic && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
 }
 function iteratePhysics(){
-    timeStep("physics"); var dT = deltaT.physics;
+    var dT = timeStep("physics");
+    // if (GlobalParams.slowMoCounter){
+        // GlobalParams.slowMoCounter--;
+    dT /= GlobalParams.slowMoFactor;
+    // }
     var evaporationRateBullet   = (1 - Math.min(1,dT * dT / 3000));
     var evaporationRateVolatile = (1 - Math.min(1,dT * dT / 1000));
 
@@ -57,52 +63,88 @@ function iteratePhysics(){
 }
 
 function animate(){
-    timeStep('animation');
+    var dT = timeStep('animation');
     gameArea.width = gameArea.width;
 
-    if (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1 && GlobalParams.camera.Blender[0] === 0) {
-        GlobalParams.camera.OldTargets[0] = GlobalParams.camera.Targets[0];
+    // The issue with the camera blending, is that if all objects are moving together, then this is brains frame of reference
+    // However, OldTargets is set at the coordinates, NOT the speed or Frame
+
+    const camTool = new Interaction();
+    // Lost target0 since last animation (and not blending from it)
+    if (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1) {
+        GlobalParams.camera.OldTargets[0] = GlobalParams.camera.CurrentCam[0];
         GlobalParams.camera.Blender[0] = 100;
         // GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
+        GlobalParams.camera.Distance = GlobalParams.universeSize * w;
         for (var target of gameObjects) {
             if (target === GlobalParams.camera.Targets[1]) continue;
+            if (!(target instanceof Graphic)) continue;
 
             if (target instanceof Ship) {
                 GlobalParams.camera.Targets[0] = target;
                 break;
-            } else if (target.mass > GlobalParams.camera.Targets[0].mass || (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1)) {
+            // } else if (target.mass > GlobalParams.camera.Targets[0].mass || (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1)) {
+            }
+
+            const d = camTool.getSeperation(target, GlobalParams.camera.Targets[1]);
+            if (d < GlobalParams.camera.Distance || (gameObjects.indexOf(GlobalParams.camera.Targets[0]) === -1)) {
+                GlobalParams.camera.Distance = d;
                 GlobalParams.camera.Targets[0] = target;
             }
+
+            // if (target instanceof Graphic && !(GlobalParams.camera.Targets[0] instanceof Graphic)) {
+            //     GlobalParams.camera.Distance = d;
+            //     GlobalParams.camera.Targets[0] = target;
+            // }
+
         }
     }
-    if (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1 && GlobalParams.camera.Blender[1] === 0) {
-        GlobalParams.camera.OldTargets[1] = GlobalParams.camera.Targets[1];
+    // Lost target1 since last animation (and not blending from it)
+    if (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1) {
+        GlobalParams.camera.OldTargets[1] = GlobalParams.camera.CurrentCam[1];
         GlobalParams.camera.Blender[1] = 100;
         // GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
+        GlobalParams.camera.Distance = GlobalParams.universeSize * w;
         for (var target of gameObjects) {
             if (target === GlobalParams.camera.Targets[0]) continue;
+            if (!(target instanceof Graphic)) continue;
 
             if (target instanceof Ship) {
                 GlobalParams.camera.Targets[1] = target;
                 break;
-            } else if (target.mass > GlobalParams.camera.Targets[1].mass || (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1)) {
+            // } else if (target.mass > GlobalParams.camera.Targets[1].mass || (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1)) {
+            }
+
+            const d = camTool.getSeperation(target, GlobalParams.camera.Targets[0]);
+            if (d < GlobalParams.camera.Distance || (gameObjects.indexOf(GlobalParams.camera.Targets[1]) === -1)) {
+                GlobalParams.camera.Distance = d;
                 GlobalParams.camera.Targets[1] = target;
             }
+
+            // if (target instanceof Graphic && !(GlobalParams.camera.Targets[1] instanceof Graphic)) {
+            //     GlobalParams.camera.Distance = d;
+            //     GlobalParams.camera.Targets[1] = target;
+            // }
         }
     }
 
     if (GlobalParams.camera.Blender[0] > 0) GlobalParams.camera.Blender[0]--;
     if (GlobalParams.camera.Blender[1] > 0) GlobalParams.camera.Blender[1]--;
-    var camera1 = {
-        x : GlobalParams.camera.Targets[0].x + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[0] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[0].x - GlobalParams.camera.Targets[0].x),
-        y : GlobalParams.camera.Targets[0].y + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[0] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[0].y - GlobalParams.camera.Targets[0].y),
-        size : 1
-    };
-    var camera2 = {
-        x : GlobalParams.camera.Targets[1].x + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[1] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[1].x - GlobalParams.camera.Targets[1].x),
-        y : GlobalParams.camera.Targets[1].y + (0.5 - 0.5 * Math.cos(GlobalParams.camera.Blender[1] * Math.PI / 100)) * (GlobalParams.camera.OldTargets[1].y - GlobalParams.camera.Targets[1].y),
-        size : 1
-    };
+
+    GlobalParams.camera.OldTargets[0].updatePosition(dT);
+    GlobalParams.camera.OldTargets[1].updatePosition(dT);
+
+    // Cosine -1 --> 1 : k 1 --> 0
+    const k1 = 0.5 * (1 - Math.cos(Math.PI * GlobalParams.camera.Blender[0] / 100));
+    const k2 = 0.5 * (1 - Math.cos(Math.PI * GlobalParams.camera.Blender[1] / 100));
+
+    // Create "currentCamera", so can start Tspline from here rather than waiting till now defunct destination
+    var camera1 = GlobalParams.camera.CurrentCam[0];
+    camera1.x = GlobalParams.camera.Targets[0].x + k1 * (GlobalParams.camera.OldTargets[0].x - GlobalParams.camera.Targets[0].x);
+    camera1.y = GlobalParams.camera.Targets[0].y + k1 * (GlobalParams.camera.OldTargets[0].y - GlobalParams.camera.Targets[0].y);
+    var camera2 = GlobalParams.camera.CurrentCam[1];
+    camera2.x = GlobalParams.camera.Targets[1].x + k2 * (GlobalParams.camera.OldTargets[1].x - GlobalParams.camera.Targets[1].x);
+    camera2.y = GlobalParams.camera.Targets[1].y + k2 * (GlobalParams.camera.OldTargets[1].y - GlobalParams.camera.Targets[1].y);
 
     interaction.near(camera1, camera2);
     interaction.touching();
@@ -128,8 +170,15 @@ function animate(){
     // Move viewport to centre on midpoint between ships
     ctx.translate(GlobalParams.centreX, GlobalParams.centreY);
 
-    for (var gameObject of gameObjects)
+    for (var gameObject of gameObjects){
         gameObject.draw();
+        // if (gameObject === GlobalParams.camera.Targets[0])draw_ball(gameObject.x, gameObject.y, gameObject.size, 100-GlobalParams.camera.Blender[0], 0, 0);
+        // if (gameObject === GlobalParams.camera.Targets[1])draw_ball(gameObject.x, gameObject.y, gameObject.size, 0, 100-GlobalParams.camera.Blender[1], 0);
+    }
+    // gameObject = GlobalParams.camera.OldTargets[0];
+    // draw_ball(gameObject.x, gameObject.y, gameObject.size, 100, 100, 0);
+    // gameObject = GlobalParams.camera.OldTargets[1];
+    // draw_ball(gameObject.x, gameObject.y, gameObject.size, 100, 0, 100);
 
     setTimeout(animate, GlobalParams.refreshInterval.animation);
 }
@@ -146,16 +195,21 @@ function updateScoreStars(){
     timeStep("starsAndScores");
 
     GlobalParams.FPS        = 1000 / deltaT.animation;
-    GlobalParams.CPS        = 1000 / deltaT.physics;
+    GlobalParams.CPS        = 1000 / (deltaT.physics / GlobalParams.slowMoFactor);
 
     starfield.width = starfield.width;
 
     gameDisplayText("Daddy : "  + (1000000 + parseInt(GlobalParams.scores[1])).toString().slice(1), .05, .1);
     gameDisplayText("Baddies : "+ (1000000 + parseInt(GlobalParams.scores[3])).toString().slice(1), .4, .1);
     gameDisplayText("Finn : "   + (1000000 + parseInt(GlobalParams.scores[2])).toString().slice(1), .8, .1);
-    gameDisplayText("FPS : "    + Math.round(GlobalParams.FPS), .15, .95);
-    gameDisplayText("Objects : "+ gameObjects.length, .45, .95);
-    gameDisplayText("CPS : "    + Math.round(GlobalParams.CPS), .75, .95);
+
+    // gameDisplayText("B0 : "     + GlobalParams.camera.Blender[0],   .00, .95);
+    // gameDisplayText("B1 : "     + GlobalParams.camera.Blender[1],   .90, .95);
+    // gameDisplayText("SloMo : "     + GlobalParams.slowMoCounter,   .00, .95);
+    gameDisplayText(""     + GlobalParams.camera.Targets[1].gameClass,   .90, .95);
+    gameDisplayText("FPS : "    + Math.round(GlobalParams.FPS),     .15, .95);
+    gameDisplayText("Objects : "+ gameObjects.length,               .45, .95);
+    gameDisplayText("CPS : "    + Math.round(GlobalParams.CPS),     .75, .95);
 
     ctxStars.translate(w/2,  h/2);
     ctxStars.scale(1, -1);

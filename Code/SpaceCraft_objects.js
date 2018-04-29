@@ -162,25 +162,27 @@ Particle.prototype.collide      = function(that){
             if (this instanceof Graphic && that instanceof Graphic){
                 that.energy -= thatDisplacement / 100;
                 this.energy -= thisDisplacement / 100;
+                // Increase friction here?
             }
         }
 
         return true;
     }
     // else if (this instanceof Asteroid || that instanceof Asteroid) {
-    else if (this instanceof Asteroid && that instanceof Asteroid) {
+    // else if (this instanceof Asteroid && that instanceof Asteroid) {
+    else if (this instanceof Graphic && that instanceof Graphic) {
         // ONLY IF NOT TOUCHING!!?!
         if (this.gameClass === "wall" || that.gameClass === "wall") {console.log("wall");}
         interaction.touching();
         interaction.resolve();
-        var gravityFactor = 0.0000001;
+        const G = GlobalParams.gravityFactor;
 
-        this.ax += gravityFactor * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
-        this.ay += gravityFactor * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
+        this.ax += G * interaction.unitVector.x * that.mass / interaction.seperationSqrd;
+        this.ay += G * interaction.unitVector.y * that.mass / interaction.seperationSqrd;
         // Currently only 1st object experiencing gravity??
 
-        that.ax -= gravityFactor * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
-        that.ay -= gravityFactor * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
+        that.ax -= G * interaction.unitVector.x * this.mass / interaction.seperationSqrd;
+        that.ay -= G * interaction.unitVector.y * this.mass / interaction.seperationSqrd;
 
         // console.log(this.ax + " : " + this.vx + " -- " + that.ax + " : " + that.vx);
         // this does nothing??
@@ -218,16 +220,16 @@ Particle.prototype.boundaryConstraint = function() {
         }
     } else if (this.boundary_flag == 1){            // WRAP
         while ((this.x - this.size) < -0.5*GlobalParams.universeSize*w){
-            this.x += 8*w;
+            this.x += GlobalParams.universeSize*w;
         }
         while ((this.x + this.size) > 0.5*GlobalParams.universeSize*w){
-            this.x -= 8*w;
+            this.x -= GlobalParams.universeSize*w;
         }
         while ((this.y - this.size) < -0.5*GlobalParams.universeSize*h){
-            this.y += 8*h;
+            this.y += GlobalParams.universeSize*h;
         }
         while ((this.y + this.size) > 0.5*GlobalParams.universeSize*h){
-            this.y -= 8*h;
+            this.y -= GlobalParams.universeSize*h;
         }
     } else {                                        // DEFAULT?
         console.log(this);
@@ -252,7 +254,7 @@ Particle.prototype.explode      = function(){
 
 var Star = function(){
     this.base = Particle;
-    this.base( (Math.random()-0.5) * 8*w, (Math.random()-0.5) * 8*h, Math.random() / 5, 0, Math.random() * 10, 0, 0, 0);
+    this.base( (Math.random()-0.5) * GlobalParams.universeSize*w, (Math.random()-0.5) * GlobalParams.universeSize*h, Math.random() / 5, 0, Math.random() * 10, 0, 0, 0);
     this.boundary_flag = 1;
 };
 Star.prototype                  = Object.create(Particle.prototype);
@@ -272,7 +274,7 @@ var Bullet                      = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'bullet';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = parent.size * 10;
+    this.damagePts      = parent.s3;
     this.calcColour = function(){
         this.red    = (this.parent.team % 2) ? 255                       : 255;
         this.green  = (this.parent.team % 2) ? Math.floor(this.size*30)  : 255;
@@ -308,7 +310,7 @@ var Bomb                        = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'bomb';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = parent.size * 3;
+    this.damagePts      = parent.mass;
     this.calcColour = function(){
         this.red    = 255;
         this.green  = 255;
@@ -416,6 +418,7 @@ var Asteroid                    = function(x, y, vx, vy, size, spin, density){
     this.base(x, y, vx, vy, size || 100, 0, spin, density || 10);
     this.gameClass  = 'asteroid';
     this.image      = asteroid;
+    this.scale      = asteroid.scale;
     this.showPath   = false;
     this.restitution= 0.25;
     if (!size) this.energy = 0.01;// this.energy *= 10; // Fudge to stop all exploding
@@ -439,8 +442,9 @@ var Moon                    = function(x, y, vx, vy, size, spin, density){
     this.image      = moon;
     this.scale      = moon.scale;
     this.showPath   = false;
-    this.restitution= 0.25;
+    // this.restitution= 1;
     if (!size) this.energy = 0.01;// this.energy *= 10; // Fudge to stop all exploding
+    this.energy = (1/200000000) * this.mass;
 };
 Moon.prototype              = Object.create(Asteroid.prototype);
 Moon.prototype.constructor  = Asteroid;
@@ -453,9 +457,9 @@ Moon.prototype.constructor  = Asteroid;
 //     return this; // chainable
 // };
 
-var Ship                        = function(x, y, size, density, image){
+var Ship                        = function(x, y, vx, vy, size, density, image){
     this.base = Graphic;
-    this.base(x, y, 0, 0, size, 0, 0, density);
+    this.base(x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'ship';
     this.showEnergyBar  = true;
     this.image          = image;
@@ -557,11 +561,11 @@ Ship.prototype.getPilotCommand              = function(){
 // };
 
 
-var PlayerShip                      = function(x, y, team){
+var PlayerShip                      = function(x, y, vx, vy, team){
     const shipSize = 100;
     const density = 1;
     this.base = Ship;
-    this.base(x, y, shipSize, density, spaceShip[team]);
+    this.base(x, y, vx, vy, shipSize, density, spaceShip[team]);
     this.gameClass  = 'player';
     this.team       = team;
 };
@@ -590,15 +594,20 @@ PlayerShip.prototype.getPilotCommand= function(){
 };
 PlayerShip.prototype.applyDrag      = function(deltaT) {
     Primitive.prototype.applyDrag.call(this, deltaT);
-    this.vx     *= (1 - deltaT / 5000);
-    this.vy     *= (1 - deltaT / 5000);
+    // this.vx     *= (1 - deltaT / 5000);
+    // this.vy     *= (1 - deltaT / 5000);
     this.spin   *= (1 - deltaT / 1000);
     return this; // chainable
 };
+PlayerShip.prototype.explode       = function(){
+    Graphic.prototype.explode.call(this);
+    GlobalParams.slowMoCounter = 100;
+};
 
-var RobotShip                       = function(x, y, size, density, image){
+
+var RobotShip                       = function(x, y, vx, vy, size, density, image){
     this.base = Ship;
-    this.base(x, y, size, density, image);
+    this.base(x, y, vx, vy, size, density, image);
     this.showEnergyBar  = true;
     this.sampleData = new Interaction();
 };
@@ -732,7 +741,7 @@ RobotShip.prototype.resample = function(){
 };
 var Drone1                       = function(x,y, size){
     this.base = RobotShip;
-    this.base(x, y, size, 1, bossBaddy);
+    this.base(x, y, 0,0,size, 1, bossBaddy);
     this.team = 3;
     this.angle = Math.PI / 2;
     this.projectileEngines        = {
@@ -754,7 +763,7 @@ Drone1.prototype.getPilotCommand = function(deltaT){
 };
 var Drone2                       = function(x,y,size){
     this.base = RobotShip;
-    this.base(x, y, size, 10, fireball);
+    this.base(x, y, 0,0,size, 10, fireball);
     this.team = 3;
     this.angle = Math.PI / 2;
     // this.projectileEngines.mainJet.projectileSize *= 0.5;
@@ -772,7 +781,7 @@ Drone2.prototype.getPilotCommand = function(deltaT){
 };
 var Drone3                       = function(x,y, size){
     this.base = RobotShip;
-    this.base(x, y, size, 1, bombBaddy);
+    this.base(x, y, 0,0,size, 1, bombBaddy);
     this.team = 3;
     this.angle = Math.PI / 2;
 };
@@ -821,15 +830,15 @@ Fireball.prototype.constructor      = Drone1;
 var BigRocket = function(x, y, vx, vy, size, parent){
     const density = 40;
     this.base = RobotShip;
-    this.base(x, y, size, density, missile);
+    this.base(x, y, vx, vy, size, density, missile);
     this.gameClass      = 'missile';
     this.parent         = parent;
     this.team           = parent.team;
     this.angle          = this.parent.angle;
-    this.vx             = vx;
-    this.vy             = vy;
+    // this.vx             = vx;
+    // this.vy             = vy;
     this.showEnergyBar  = false;
-    this.damagePts      = parent.size * 100;
+    this.damagePts      = parent.si3;
     // this.projectileEngines.mainJet.projectileSize       *= 4;
     // this.projectileEngines.frontLeft.projectileSize     *= 2;
     // this.projectileEngines.frontRight.projectileSize    *= 2;
@@ -874,15 +883,15 @@ BigRocket.prototype.getPilotCommand   = function(deltaT){
 var Missile                         = function(x, y, vx, vy, size, parent){
     const density = 10;
     this.base = RobotShip;
-    this.base(x, y, size, density, missile);
+    this.base(x, y, vx, vy, size, density, missile);
     this.gameClass      = 'missile';
     this.parent         = parent;
     this.team           = parent.team;
     this.angle          = this.parent.angle;
-    this.vx             = vx;
-    this.vy             = vy;
+    // this.vx             = vx;
+    // this.vy             = vy;
     this.showEnergyBar  = false;
-    this.damagePts      = parent.size * 100;
+    this.damagePts      = parent.si3;
     this.projectileEngines.mainJet.projectileSize       *= 2;
     this.projectileEngines.frontLeft.projectileSize     *= 2;
     this.projectileEngines.frontRight.projectileSize    *= 2;
@@ -904,7 +913,7 @@ Missile.prototype.getPilotCommand   = function(deltaT){
 
 var Baddy                           = function(x, y){
     this.base = RobotShip;
-    this.base(x, y, 30, 1, bombBaddy);
+    this.base(x, y, 0,0,30, 1, bombBaddy);
     this.team = 3;
     this.angle = Math.PI / 2;
     this.projectileEngines.mainJet.projectileSize       *= 0.5;
@@ -924,7 +933,7 @@ Baddy.prototype.getPilotCommand     = function(deltaT){
 var BossBaddy                       = function(x,y){
     const density = 1;
     this.base = RobotShip;
-    this.base(x, y, 100, density, bossBaddy);
+    this.base(x, y, 0,0,100, density, bossBaddy);
     this.team = 3;
     this.baddySpawnReady    = false;
     this.baddySpawnTimer    = (function(parent){setInterval(function(){parent.baddySpawnReady = true;}, 2000);})(this);
