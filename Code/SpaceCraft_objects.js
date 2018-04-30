@@ -29,6 +29,7 @@ Primitive.prototype.clearAccelerations = function (){
 };
 Primitive.prototype.updateForces = function(deltaT){
     // These are cleared at the start of each physics iterations, and before collisions detected
+    this.ax += this.size * (GlobalParams.wind * (this.y+0.5*GlobalParams.universeSize*h)*(this.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h)) / Math.max(10000,this.mass);
     return this;
 };
 Primitive.prototype.updateVelocities  = function(deltaT){
@@ -254,7 +255,18 @@ Particle.prototype.explode      = function(){
 
 var Star = function(){
     this.base = Particle;
-    this.base( (Math.random()-0.5) * GlobalParams.universeSize*w, (Math.random()-0.5) * GlobalParams.universeSize*h, Math.random() / 5, 0, Math.random() * 10, 0, 0, 0);
+    const size = Math.random() * 15;
+    let x, y;
+    this.base(
+        x=(Math.random()-0.5) * GlobalParams.universeSize*w,
+        y=(Math.random()-0.5) * GlobalParams.universeSize*h,
+        // 5 / size,
+        5*(y+0.5*GlobalParams.universeSize*h)*(y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h),
+        0,
+        size,
+        // 5,
+        0, 0, 0
+    );
     this.boundary_flag = 1;
 };
 Star.prototype                  = Object.create(Particle.prototype);
@@ -537,8 +549,10 @@ Ship.prototype.launchCannonWhenReady        = function(){
     return this; // chainable
 };
 Ship.prototype.updateForces                 = function(deltaT){
+    Graphic.prototype.updateForces.call(this);
     // NOTE : Thrust acceleration (deltaV) will be independent of CPS / deltaT, and is correctly calculated on the momentum impulse of the thrust particle
     // However, the actual number of particles injected for animation and game purposes IS CPS / deltaT dependent.
+
     for (var engine in this.enginesActive) if (this.enginesActive[engine]){
         var impulse = this.fireProjectiles(engine);
         this.ax     += (impulse.x      / this.mass)         / deltaT;

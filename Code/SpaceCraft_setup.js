@@ -72,8 +72,9 @@ var gameArea    = document.createElement('canvas'),
         slowMoFactor    : 2,
         slowMoCounter   : 0,
         rotatingFrame   : false,
+        wind            : 100,
         boundary_flag   : -1, // -1=bounce  / +1=wrap
-        universeSize    : 16,
+        universeSize    : 8,
         gravityFactor   : 0.0000001,
         scores          : {1 : 0, 2 : 0, 3 : 0},
         camera          : {
@@ -147,7 +148,7 @@ function initGameArea(){
 
     starfield.style.zIndex = 1;
     gameArea.style.zIndex = 2;
-    for (var count = 0, star; count < 1500; count++) stars.push(new Star);
+    for (var count = 0, star; count < 2500; count++) stars.push(new Star);
 }
 // -- On screen display functions
 function gameDisplayText(text, x, y){

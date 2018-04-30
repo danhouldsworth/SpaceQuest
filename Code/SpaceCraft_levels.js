@@ -7,8 +7,8 @@ function gliders(){
     for (var star of stars) star.vx = 0;
 }
 function pvp(){
-    gameObjects.push(new PlayerShip(-0.25*w, 0, 2));
-    gameObjects.push(new PlayerShip(+0.25*w, 0, 1));
+    gameObjects.push(new PlayerShip(-w, 0, 0,0,2));
+    gameObjects.push(new PlayerShip(+w, 0, 0,0,1));
 }
 function droneTesting_Orientation(){
     gameObjects.push(new PlayerShip(-w, 0, 2));
@@ -91,12 +91,12 @@ function orbitingMoons(){
     for(var mooncount=4;mooncount < maxMoons;mooncount++){
         // const r = Math.random() * w * GlobalParams.universeSize * 0.5;
         const r = (mooncount / maxMoons) * w * GlobalParams.universeSize * 0.25;
-        if (mooncount === 4){
+        if (mooncount === 10){
             gameObjects.push(new PlayerShip(-r, 0, 0, -speedForCircularOrbitAround(planet, r), 1));
             gameObjects.push(new PlayerShip(+r, 0, 0, +speedForCircularOrbitAround(planet, r), 2));
         } else {
-            gameObjects.push(new Moon(planet.x + r, 0,  0, +speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
-            gameObjects.push(new Moon(planet.x - r, 0,  0, -speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
+            // gameObjects.push(new Moon(planet.x + r, 0,  0, +speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
+            // gameObjects.push(new Moon(planet.x - r, 0,  0, -speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
         }
     }
     gameObjects.push(planet);   // Big planet
@@ -112,6 +112,9 @@ function orbitingMoons(){
     console.log(gameObjects[1].mass);
     console.log(gameObjects[2].mass);
     // console.log(gameObjects[3].mass);
+}
+function windy(){
+
 }
 function invasionFleet(){
     gameObjects.push(new PlayerShip(-w,-.1*h,1));
@@ -132,9 +135,9 @@ function setCameras(){
 // --
 initGameArea();
 // gliders();
-orbitingMoons();
+// orbitingMoons();
 // epicOribitalArena();
-// pvp();
+pvp();
 // bigmoon();
 // invasionFleet();
 // droneTesting_Orientation();
