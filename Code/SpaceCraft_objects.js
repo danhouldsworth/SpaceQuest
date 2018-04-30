@@ -274,7 +274,7 @@ var Bullet                      = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'bullet';
     this.parent         = parent;
     this.team           = parent.team;
-    this.damagePts      = parent.s3;
+    this.damagePts      = parent.mass;
     this.calcColour = function(){
         this.red    = (this.parent.team % 2) ? 255                       : 255;
         this.green  = (this.parent.team % 2) ? Math.floor(this.size*30)  : 255;
@@ -444,7 +444,7 @@ var Moon                    = function(x, y, vx, vy, size, spin, density){
     this.showPath   = false;
     // this.restitution= 1;
     if (!size) this.energy = 0.01;// this.energy *= 10; // Fudge to stop all exploding
-    this.energy = (1/200000000) * this.mass;
+    // this.energy = (1/200000000) * this.mass;
 };
 Moon.prototype              = Object.create(Asteroid.prototype);
 Moon.prototype.constructor  = Asteroid;

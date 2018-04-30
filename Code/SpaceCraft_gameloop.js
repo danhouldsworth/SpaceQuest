@@ -19,7 +19,7 @@ function applyCollisionRules(obj1, obj2){
         case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)         {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
     }
     // if (obj1 instanceof Ship && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
-    if (obj1 instanceof Graphic && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
+    if (obj1 instanceof Graphic && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += Math.round(obj2.damagePts/1000000); // Includes baddies & missiles into scoring
 }
 function iteratePhysics(){
     var dT = timeStep("physics");

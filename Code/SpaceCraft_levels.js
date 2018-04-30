@@ -88,17 +88,16 @@ function orbitingMoons(){
     }
 
     const maxMoons = 50;
-    let r;
-    r = (50 / maxMoons) * w * GlobalParams.universeSize * 0.25;
-    gameObjects.push(new PlayerShip(-r, 0, 0, -speedForCircularOrbitAround(planet, r), 2));
-    r = (4 / maxMoons) * w * GlobalParams.universeSize * 0.25;
-    gameObjects.push(new PlayerShip(+r, 0, 0, +speedForCircularOrbitAround(planet, r), 1));
-    for(var mooncount=5;mooncount < maxMoons;mooncount++){
+    for(var mooncount=4;mooncount < maxMoons;mooncount++){
         // const r = Math.random() * w * GlobalParams.universeSize * 0.5;
-        r = (mooncount / maxMoons) * w * GlobalParams.universeSize * 0.25;
-        // gameObjects.push(new Moon((Math.random()-0.5) * GlobalParams.universeSize*w,(Math.random()-0.5) * GlobalParams.universeSize*h,0,0,Math.random()*100,0));
-        gameObjects.push(new Moon(planet.x + r, 0,  0, +speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
-        gameObjects.push(new Moon(planet.x - r, 0,  0, -speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
+        const r = (mooncount / maxMoons) * w * GlobalParams.universeSize * 0.25;
+        if (mooncount === 4){
+            gameObjects.push(new PlayerShip(-r, 0, 0, -speedForCircularOrbitAround(planet, r), 1));
+            gameObjects.push(new PlayerShip(+r, 0, 0, +speedForCircularOrbitAround(planet, r), 2));
+        } else {
+            gameObjects.push(new Moon(planet.x + r, 0,  0, +speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
+            gameObjects.push(new Moon(planet.x - r, 0,  0, -speedForCircularOrbitAround(planet, r), 30, 0));   // Moon
+        }
     }
     gameObjects.push(planet);   // Big planet
     // gameObjects.push(new Moon(0,    0,  0, -3,      20, 0));
