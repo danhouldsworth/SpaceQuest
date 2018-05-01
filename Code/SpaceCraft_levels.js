@@ -111,10 +111,11 @@ function orbitingMoons(){
     console.log(gameObjects[0].mass);
     console.log(gameObjects[1].mass);
     console.log(gameObjects[2].mass);
-    // console.log(gameObjects[3].mass);
+    console.log(gameObjects[3].mass);
 }
-function windy(){
-
+function windyPVP(){
+    GlobalParams.wind = 100;
+    pvp();
 }
 function invasionFleet(){
     gameObjects.push(new PlayerShip(-w,-.1*h,1));
@@ -132,18 +133,23 @@ function setCameras(){
     GlobalParams.camera.CurrentCam[0] = new Primitive(0, 0, 0, 0, 1, 0, 0);
     GlobalParams.camera.CurrentCam[1] = new Primitive(0, 0, 0, 0, 1, 0, 0);
 }
+function addStars(){
+    for (var count = 0, star; count < GlobalParams.starCount; count++) stars.push(new Star);
+}
 // --
 initGameArea();
 // gliders();
 // orbitingMoons();
 // epicOribitalArena();
-pvp();
+// pvp();
+windyPVP();
 // bigmoon();
 // invasionFleet();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
 // targetPractice();
+addStars();
 setCameras();
 launch();
 

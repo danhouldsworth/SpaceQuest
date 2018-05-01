@@ -69,12 +69,14 @@ var gameArea    = document.createElement('canvas'),
         pilotInput          : 0
     },
     GlobalParams = {
-        slowMoFactor    : 2,
-        slowMoCounter   : 0,
+        universeSize    : 4,
+        starCount       : 1500,
+        slowMoFactor    : 1,
         rotatingFrame   : false,
-        wind            : 100,
+        gravityFlag     : false,
         boundary_flag   : -1, // -1=bounce  / +1=wrap
-        universeSize    : 8,
+        safeBoundary    : false,
+        wind            : 0,
         gravityFactor   : 0.0000001,
         scores          : {1 : 0, 2 : 0, 3 : 0},
         camera          : {
@@ -87,7 +89,7 @@ var gameArea    = document.createElement('canvas'),
         refreshInterval : {
             physics         : 1,    // 200 Hz
             animation       : 20,   //  50 Hz
-            starsAndScores  : 50,   //  20 Hz
+            starsAndScores  : 30,   //  20 Hz
             pilotInput      : 100   //  10 Hz
         }
     };
@@ -148,7 +150,6 @@ function initGameArea(){
 
     starfield.style.zIndex = 1;
     gameArea.style.zIndex = 2;
-    for (var count = 0, star; count < 2500; count++) stars.push(new Star);
 }
 // -- On screen display functions
 function gameDisplayText(text, x, y){

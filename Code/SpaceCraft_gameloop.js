@@ -9,24 +9,24 @@ function timeStep(timer){
     lastTime[timer] = Date.now();
     return deltaT[timer];
 }
-function applyCollisionRules(obj1, obj2){
-    switch (obj1.gameClass){
-        case 'moon'     :
-        case 'asteroid' : if (obj2 instanceof PlayerShip)                       {obj2.explode();}                               break;
-        case 'bullet'   : if (obj2 instanceof Graphic && obj2 !== obj1.parent)  {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
-        case 'bomb'     : if (!obj2 instanceof Bomb)                            {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
-        case 'fireball' :
-        case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)         {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
+function applyCollisionRules(p1,p2){
+    function rules(obj1, obj2){
+        switch (obj1.gameClass){
+            case 'wall'     : if (GlobalParams.safeBoundary) break;
+            case 'moon'     :
+            case 'asteroid' : if (obj2 instanceof PlayerShip)                       {obj2.explode();}                               break;
+            case 'bullet'   : if (obj2 instanceof Graphic && obj2 !== obj1.parent)  {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+            case 'bomb'     : if (!obj2 instanceof Bomb)                            {obj2.energy -= obj1.damagePts / obj2.mass;}    break;
+            case 'fireball' :
+            case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)         {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
+        }
+        if (obj1 instanceof Graphic && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += Math.round(obj2.damagePts/1000000); // Includes baddies & missiles into scoring
     }
-    // if (obj1 instanceof Ship && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += obj2.damagePts; // Includes baddies & missiles into scoring
-    if (obj1 instanceof Graphic && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += Math.round(obj2.damagePts/1000000); // Includes baddies & missiles into scoring
+    rules(p1,p2);
+    rules(p2,p1);
 }
 function iteratePhysics(){
-    var dT = timeStep("physics");
-    // if (GlobalParams.slowMoCounter){
-        // GlobalParams.slowMoCounter--;
-    dT /= GlobalParams.slowMoFactor;
-    // }
+    var dT = timeStep("physics") / GlobalParams.slowMoFactor;
     var evaporationRateBullet   = (1 - Math.min(1,dT * dT / 3000));
     var evaporationRateVolatile = (1 - Math.min(1,dT * dT / 1000));
 
@@ -37,10 +37,7 @@ function iteratePhysics(){
         const p1 = gameObjects[i];
         for (let j = i + 1; j < gameObjects.length; j++){
             const p2 = gameObjects[j];
-            if (p1.collide(p2)) {
-                applyCollisionRules(p1,p2);
-                applyCollisionRules(p2,p1);
-            }
+            if (p1.collide(p2)) applyCollisionRules(p1,p2);
         }
 
         // Attrition & recharge
@@ -205,7 +202,6 @@ function updateScoreStars(){
 
     // gameDisplayText("B0 : "     + GlobalParams.camera.Blender[0],   .00, .95);
     // gameDisplayText("B1 : "     + GlobalParams.camera.Blender[1],   .90, .95);
-    // gameDisplayText("SloMo : "     + GlobalParams.slowMoCounter,   .00, .95);
     gameDisplayText(""     + GlobalParams.camera.Targets[1].gameClass,   .90, .95);
     gameDisplayText("FPS : "    + Math.round(GlobalParams.FPS),     .15, .95);
     gameDisplayText("Objects : "+ gameObjects.length,               .45, .95);
@@ -221,6 +217,7 @@ function updateScoreStars(){
     ctxStars.lineWidth = 5;
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
+
     for (var star of stars)
         star.updatePosition(deltaT.starsAndScores).boundaryConstraint().draw();
 

@@ -29,7 +29,9 @@ Primitive.prototype.clearAccelerations = function (){
 };
 Primitive.prototype.updateForces = function(deltaT){
     // These are cleared at the start of each physics iterations, and before collisions detected
-    this.ax += this.size * (GlobalParams.wind * (this.y+0.5*GlobalParams.universeSize*h)*(this.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h)) / Math.max(10000,this.mass);
+    if (GlobalParams.wind){
+        this.ax += this.size * (GlobalParams.wind * (this.y+0.5*GlobalParams.universeSize*h)*(this.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h)) / Math.max(10000,this.mass);
+    }
     return this;
 };
 Primitive.prototype.updateVelocities  = function(deltaT){
@@ -232,14 +234,6 @@ Particle.prototype.boundaryConstraint = function() {
         while ((this.y + this.size) > 0.5*GlobalParams.universeSize*h){
             this.y -= GlobalParams.universeSize*h;
         }
-    } else {                                        // DEFAULT?
-        console.log(this);
-        if (this.x < -0.5*GlobalParams.universeSize*w || this.x > 0.5*GlobalParams.universeSize*w){
-            this.vx = 0;
-        }
-        if (this.y < -0.5*GlobalParams.universeSize*h || this.y > 0.5*GlobalParams.universeSize*h){
-            this.vy = 0;
-        }
     }
     return this; // chainable
 };
@@ -255,18 +249,11 @@ Particle.prototype.explode      = function(){
 
 var Star = function(){
     this.base = Particle;
-    const size = Math.random() * 15;
-    let x, y;
-    this.base(
-        x=(Math.random()-0.5) * GlobalParams.universeSize*w,
-        y=(Math.random()-0.5) * GlobalParams.universeSize*h,
-        // 5 / size,
-        5*(y+0.5*GlobalParams.universeSize*h)*(y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h),
-        0,
-        size,
-        // 5,
-        0, 0, 0
-    );
+    const size  = Math.random() * 15;
+    const x     = (Math.random()-0.5) * GlobalParams.universeSize*w;
+    const y     = (Math.random()-0.5) * GlobalParams.universeSize*h;
+    const vx    = GlobalParams.wind ? 5*(y+0.5*GlobalParams.universeSize*h)*(y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h) : 5 / size;
+    this.base(x,y,vx,0,size,0, 0, 0);
     this.boundary_flag = 1;
 };
 Star.prototype                  = Object.create(Particle.prototype);
@@ -274,7 +261,7 @@ Star.prototype.constructor      = Particle;
 Star.prototype.draw             = function(){
     ctxStars.beginPath();
     ctxStars.arc(this.x,this.y,this.size, 0, 2 * Math.PI, false);
-    ctxStars.fillStyle = "rgb("+Math.round(this.size*20)+","+Math.round(this.size*20)+","+Math.round(this.size*20)+")";
+    ctxStars.fillStyle = "rgb("+Math.round(300-this.size*20)+","+Math.round(300-this.size*20)+","+Math.round(300-this.size*20)+")";
     ctxStars.fill();
 };
 
@@ -303,9 +290,6 @@ var Thrust                      = function(x, y, vx, vy, size, parent){
     this.gameClass      = 'thrust';
     this.parent         = parent;
     this.team           = parent.team;
-// attempt to not react when hit thrust
-    // this.mass = 1;
-    //
     this.calcColour = function(){
         this.red    = (this.parent.team % 2) ? Math.floor(this.size*30) : Math.floor(this.size*30);
         this.green  = (this.parent.team % 2) ? Math.floor(this.size*30) : 255;
@@ -615,7 +599,6 @@ PlayerShip.prototype.applyDrag      = function(deltaT) {
 };
 PlayerShip.prototype.explode       = function(){
     Graphic.prototype.explode.call(this);
-    GlobalParams.slowMoCounter = 100;
 };
 
 
