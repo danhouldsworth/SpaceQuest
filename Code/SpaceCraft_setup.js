@@ -1,14 +1,14 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
-var asteroid    = new Image(); asteroid.src  = "../FinnsArtwork/vortex.png";            asteroid.scale = 2;
-var moon        = new Image(); moon.src      = "../FinnsArtwork/bluemoon.png";          moon.scale = 1.07;
-var fireball    = new Image(); fireball.src  = "../FinnsArtwork/Fireball.png";          fireball.drawingOffsetAngle = 0;
-var bomb        = new Image(); bomb.src      = "../FinnsArtwork/Bomb.png";              bomb.drawingOffsetAngle = 0;
-var bossBaddy   = new Image(); bossBaddy.src = "../FinnsArtwork/human_mothership.gif";  bossBaddy.drawingOffsetAngle = Math.PI/4;
-var bombBaddy   = new Image(); bombBaddy.src = "../FinnsArtwork/BombBaddy_cutout.png";  bombBaddy.drawingOffsetAngle = Math.PI;
-var missile     = new Image(); missile.src  = "../FinnsArtwork/Warheadtwo.png";         missile.drawingOffsetAngle=Math.PI;
-bombBaddy=missile;
-var spaceShip   = [];
+const asteroid    = new Image(); asteroid.src   = "../FinnsArtwork/vortex.png";            asteroid.scale = 2;
+const moon        = new Image(); moon.src       = "../FinnsArtwork/bluemoon.png";          moon.scale = 1.07;
+const fireball    = new Image(); fireball.src   = "../FinnsArtwork/Fireball.png";          fireball.drawingOffsetAngle = 0;
+const bomb        = new Image(); bomb.src       = "../FinnsArtwork/Bomb.png";              bomb.drawingOffsetAngle = 0;
+const bossBaddy   = new Image(); bossBaddy.src  = "../FinnsArtwork/human_mothership.gif";  bossBaddy.drawingOffsetAngle = Math.PI/4;
+const bombBaddy   = new Image(); bombBaddy.src  = "../FinnsArtwork/BombBaddy_cutout.png";  bombBaddy.drawingOffsetAngle = Math.PI;
+const missile     = new Image(); missile.src    = "../FinnsArtwork/Warheadtwo.png";         missile.drawingOffsetAngle=Math.PI;
+// bombBaddy=missile;
+const spaceShip   = [];
 spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/DaddyStealth.png";       spaceShip[1].drawingOffsetAngle = Math.PI;
 spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns_ship.png";         spaceShip[2].drawingOffsetAngle = Math.PI/2;
 // spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";             spaceShip[1].drawingOffsetAngle = Math.PI;
@@ -16,10 +16,10 @@ spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns_ship.pn
 // spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";          spaceShip[1].drawingOffsetAngle = Math.PI;
 // spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/airfoil.png";         spaceShip[2].drawingOffsetAngle = Math.PI;
 // Load sounds!
-var context = new AudioContext();
+const context = new AudioContext();
 
-var tracks = {};
-var sound = function(track, vol = 0.5, duration){
+const tracks = {};
+const sound = function(track, vol = 0.5, duration){
     if (track instanceof AudioBuffer){
         let source = context.createBufferSource();
         let volume = context.createGain();
@@ -31,7 +31,7 @@ var sound = function(track, vol = 0.5, duration){
         if (duration) source.stop(context.currentTime + duration);
     }
 };
-var loadSound = function(name, filename){
+const loadSound = function(name, filename){
     fetch(filename)
     .then(function(response)    {return response.arrayBuffer();})
     .then(function(arrayBuffer) {return context.decodeAudioData(arrayBuffer);})
@@ -44,15 +44,13 @@ loadSound("BigRocket",  "FinnsSounds/BigRocketLaunch.mp3");
 loadSound("Thrust",     "FinnsSounds/Thrust.mp3");
 //
 
-
-
 // -- GlobalParams
-var gameArea    = document.createElement('canvas'),
-    ctx         = gameArea.getContext('2d'),
-    w           = gameArea.width,
-    h           = gameArea.height,
-    starfield   = document.createElement('canvas'),
-    ctxStars    = starfield.getContext('2d'),
+const gameArea      = document.createElement('canvas'),
+    ctx             = gameArea.getContext('2d'),
+    starfield       = document.createElement('canvas'),
+    ctxStars        = starfield.getContext('2d'),
+    w               = gameArea.width = starfield.width = window.innerWidth,
+    h               = gameArea.height= starfield.height = window.innerHeight,
     gameObjects     = [],
     stars           = [],
     keyState        = {},
@@ -69,13 +67,13 @@ var gameArea    = document.createElement('canvas'),
         pilotInput          : 0
     },
     GlobalParams = {
-        universeSize    : 4,
+        universeSize    : 16,
         starCount       : 1500,
         slowMoFactor    : 1,
         rotatingFrame   : false,
         gravityFlag     : false,
         boundary_flag   : -1, // -1=bounce  / +1=wrap
-        safeBoundary    : false,
+        safeBoundary    : true,
         wind            : 0,
         gravityFactor   : 0.0000001,
         scores          : {1 : 0, 2 : 0, 3 : 0},
@@ -90,7 +88,7 @@ var gameArea    = document.createElement('canvas'),
             physics         : 1,    // 200 Hz
             animation       : 20,   //  50 Hz
             starsAndScores  : 30,   //  20 Hz
-            pilotInput      : 100   //  10 Hz
+            pilotInput      : 10   //  10 Hz  (HumanShips read keyboard input / Drones get input from AI)
         }
     };
 
@@ -102,12 +100,12 @@ function restitution(P1,P2)                 {return (P1.restitution + P2.restitu
 function friction(P1, P2)                   {return (P1.friction + P2.friction) / 2;}
 function normaliseAngle0to2PI (grossAngle)  {return (10 * Math.PI + grossAngle) % (2 * Math.PI);}
 function normaliseAnglePItoMinusPI (grossAngle)  {
-    var posiAngle = normaliseAngle0to2PI(grossAngle);
+    const posiAngle = normaliseAngle0to2PI(grossAngle);
     if (posiAngle > Math.PI) return posiAngle - 2 * Math.PI;
     return posiAngle;
 }
 function getAngle(x, y) {
-    var angle = Math.atan(y / x);
+    let angle = Math.atan(y / x);
     if (y >= 0){
         if (x >= 0) angle += 0;
         if (x < 0)  angle += Math.PI;
@@ -120,8 +118,6 @@ function getAngle(x, y) {
 
 // -- Setup & initialisation
 function initGameArea(){
-    w = gameArea.width = starfield.width = window.innerWidth;
-    h = gameArea.height = starfield.height=window.innerHeight;
     window.document.body.appendChild(starfield);
     window.document.body.appendChild(gameArea);
     window.addEventListener('keydown',  function(e){keyState[e.keyCode] = true;});
@@ -136,8 +132,8 @@ function initGameArea(){
         // document.getElementById('interval').innerHTML = e.interval;
     });
     window.addEventListener('deviceorientation',  function(e){
-        var i2tilt = e.beta;
-        var i3tilt = e.gamma;
+        const i2tilt = e.beta;
+        const i3tilt = e.gamma;
         if (i2tilt < -10) {keyState[81] = true;} else {keyState[81] = false;}
         if (i2tilt > +10) {keyState[87] = true;} else {keyState[87] = false;}
         if (i3tilt > +10) {keyState[69] = true;} else {keyState[69] = false;}
@@ -154,7 +150,7 @@ function initGameArea(){
 // -- On screen display functions
 function gameDisplayText(text, x, y){
     ctxStars.font = Math.floor(h / 20) + "px 'LatoLatin-Light'";
-    var gradient = ctxStars.createLinearGradient(0, 0, gameArea.width, 0);
+    const gradient = ctxStars.createLinearGradient(0, 0, gameArea.width, 0);
     gradient.addColorStop("0", "magenta");
     gradient.addColorStop("0.5", "blue");
     gradient.addColorStop("1.0", "red");
@@ -162,7 +158,7 @@ function gameDisplayText(text, x, y){
     ctxStars.fillText(text, gameArea.width * x, gameArea.height * y);
 }
 function draw_ball(x, y, size, r, g, b){
-    var colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
+    const colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
     ctx.beginPath();
     ctx.arc(x,y,size, 0, 2 * Math.PI, false);
     ctx.fillStyle = colourstring;

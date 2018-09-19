@@ -1,8 +1,8 @@
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
 /* globals Interaction, Wall, spaceShips, spaceShips, elasticons, particles, attachments, gameArea, timerAnimate, gameDisplayText */
 "use strict";
-var interaction = new Interaction();        // -- Interaction object is useful to have seperation x,y,vx,vy,mass etc
-var wall        = new Wall();               // -- Simulate wall as a infinitely large particle
+const interaction = new Interaction();        // -- Interaction object is useful to have seperation x,y,vx,vy,mass etc
+const wall        = new Wall();               // -- Simulate wall as a infinitely large particle
 
 function timeStep(timer){
     deltaT[timer]   = Date.now() - lastTime[timer];
@@ -26,9 +26,9 @@ function applyCollisionRules(p1,p2){
     rules(p2,p1);
 }
 function iteratePhysics(){
-    var dT = timeStep("physics") / GlobalParams.slowMoFactor;
-    var evaporationRateBullet   = (1 - Math.min(1,dT * dT / 3000));
-    var evaporationRateVolatile = (1 - Math.min(1,dT * dT / 1000));
+    const dT = timeStep("physics") / GlobalParams.slowMoFactor;
+    const evaporationRateBullet   = (1 - Math.min(1,dT * dT / 3000));
+    const evaporationRateVolatile = (1 - Math.min(1,dT * dT / 1000));
 
     // Calc interaction between pairs ONCE, so must accumulate the forces on the recipient
     for (let i = 0; i < gameObjects.length; i++) gameObjects[i].clearAccelerations();
@@ -60,7 +60,7 @@ function iteratePhysics(){
 }
 
 function animate(){
-    var dT = timeStep('animation');
+    const dT = timeStep('animation');
     gameArea.width = gameArea.width;
 
     // The issue with the camera blending, is that if all objects are moving together, then this is brains frame of reference
@@ -73,7 +73,7 @@ function animate(){
         GlobalParams.camera.Blender[0] = 100;
         // GlobalParams.camera.Targets[0] = (gameObjects[0] === GlobalParams.camera.Targets[1]) ? gameObjects[1] : gameObjects[0];
         GlobalParams.camera.Distance = GlobalParams.universeSize * w;
-        for (var target of gameObjects) {
+        for (const target of gameObjects) {
             if (target === GlobalParams.camera.Targets[1]) continue;
             if (!(target instanceof Graphic)) continue;
 
@@ -102,7 +102,7 @@ function animate(){
         GlobalParams.camera.Blender[1] = 100;
         // GlobalParams.camera.Targets[1] = (gameObjects[1] === GlobalParams.camera.Targets[0]) ? gameObjects[0] : gameObjects[1];
         GlobalParams.camera.Distance = GlobalParams.universeSize * w;
-        for (var target of gameObjects) {
+        for (const target of gameObjects) {
             if (target === GlobalParams.camera.Targets[0]) continue;
             if (!(target instanceof Graphic)) continue;
 
@@ -136,18 +136,18 @@ function animate(){
     const k2 = 0.5 * (1 - Math.cos(Math.PI * GlobalParams.camera.Blender[1] / 100));
 
     // Create "currentCamera", so can start Tspline from here rather than waiting till now defunct destination
-    var camera1 = GlobalParams.camera.CurrentCam[0];
+    const camera1 = GlobalParams.camera.CurrentCam[0];
     camera1.x = GlobalParams.camera.Targets[0].x + k1 * (GlobalParams.camera.OldTargets[0].x - GlobalParams.camera.Targets[0].x);
     camera1.y = GlobalParams.camera.Targets[0].y + k1 * (GlobalParams.camera.OldTargets[0].y - GlobalParams.camera.Targets[0].y);
-    var camera2 = GlobalParams.camera.CurrentCam[1];
+    const camera2 = GlobalParams.camera.CurrentCam[1];
     camera2.x = GlobalParams.camera.Targets[1].x + k2 * (GlobalParams.camera.OldTargets[1].x - GlobalParams.camera.Targets[1].x);
     camera2.y = GlobalParams.camera.Targets[1].y + k2 * (GlobalParams.camera.OldTargets[1].y - GlobalParams.camera.Targets[1].y);
 
     interaction.near(camera1, camera2);
     interaction.touching();
     interaction.resolve();
-    var cos_theta   = interaction.unitVector.x;
-    var sin_theta   = interaction.unitVector.y;
+    const cos_theta   = interaction.unitVector.x;
+    const sin_theta   = interaction.unitVector.y;
     GlobalParams.theta = Math.atan(sin_theta/cos_theta);
     if (cos_theta < 0) GlobalParams.theta+= Math.PI;
 
@@ -167,7 +167,7 @@ function animate(){
     // Move viewport to centre on midpoint between ships
     ctx.translate(GlobalParams.centreX, GlobalParams.centreY);
 
-    for (var gameObject of gameObjects){
+    for (const gameObject of gameObjects){
         gameObject.draw();
         // if (gameObject === GlobalParams.camera.Targets[0])draw_ball(gameObject.x, gameObject.y, gameObject.size, 100-GlobalParams.camera.Blender[0], 0, 0);
         // if (gameObject === GlobalParams.camera.Targets[1])draw_ball(gameObject.x, gameObject.y, gameObject.size, 0, 100-GlobalParams.camera.Blender[1], 0);
@@ -182,7 +182,7 @@ function animate(){
 
 function getPilotInput(){
     timeStep('pilotInput');
-    for (var gameObject of gameObjects)
+    for (const gameObject of gameObjects)
         if (gameObject instanceof Ship)
             gameObject.getPilotCommand(deltaT.pilotInput);
     setTimeout(getPilotInput, GlobalParams.refreshInterval.pilotInput);
@@ -218,7 +218,7 @@ function updateScoreStars(){
     ctxStars.strokeStyle = "white";
     ctxStars.stroke();
 
-    for (var star of stars)
+    for (const star of stars)
         star.updatePosition(deltaT.starsAndScores).boundaryConstraint().draw();
 
     setTimeout(updateScoreStars, GlobalParams.refreshInterval.starsAndScores);

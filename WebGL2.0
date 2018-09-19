@@ -1,0 +1,34 @@
+WebGL2.0
+
+Math vector/matrix operations
+Hyperbolic trig functions
+3D textures
+Texture lookup without interpolation [-1,1]
+while(){}
+switch(int){case:default:}
+** for loops to int vars **
+** dynamic indexing of 1D arrays **
+
+https://shadertoyunofficial.wordpress.com/2017/02/16/webgl-2-0-vs-webgl-1-0/
+
+
+Sun flare
+https://gpfault.net/posts/webgl2-particles.txt.html
+
+(HTML pure) WebGL2 mandlebrot
+https://gist.github.com/bellbind/8c98bb86cfd064d944312b09b98af1b9
+
+Interesting Occlusion Culling example
+https://tsherif.github.io/webgl2examples/occlusion.html
+
+Convincing nature & shadows from polygons:
+https://demo.marpi.pl/scary_spider/
+
+Interesting HDR explosion
+https://avseoul.net/particleEqualizer/
+
+ShaderToy / Ray tracing
+https://www.shadertoy.com/view/ld2GRz
+
+HDR / Tone mapping
+https://en.wikipedia.org/wiki/Tone_mapping

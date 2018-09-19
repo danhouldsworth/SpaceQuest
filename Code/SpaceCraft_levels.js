@@ -2,39 +2,45 @@
 "use strict";
 /*globals gameObjects, PlayerShip, stars, w, h */
 function gliders(){
-    gameObjects.push(new PlayerShip(-3.9*w, 3.9*h, 2));
-    gameObjects.push(new PlayerShip(-3.8*w, 3.9*h, 1));
+    gameObjects.push(new PlayerShip(-3.9*w, 3.9*h, 0,0, 2));
+    gameObjects.push(new PlayerShip(-3.8*w, 3.9*h, 0,0, 1));
     for (var star of stars) star.vx = 0;
 }
 function pvp(){
-    gameObjects.push(new PlayerShip(-w, 0, 0,0,2));
-    gameObjects.push(new PlayerShip(+w, 0, 0,0,1));
+    gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
+    gameObjects.push(new PlayerShip(+w, 0, 0,0, 1));
+}
+function fireball_testing(){
+    gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
+    gameObjects.push(new PlayerShip(+w, 0, 0,0, 1));
+    // gameObjects.push(new Drone1(0,0, 0,0));
+    // setInterval(()=>gameObjects.push(new Drone1((Math.random()-0.5)*4*w,(0.5-Math.random())*4*h, 0,0)), 5000);
 }
 function droneTesting_Orientation(){
-    gameObjects.push(new PlayerShip(-w, 0, 2));
+    gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
     gameObjects.push(new Drone3( 0, h, 100));
     // gameObjects.push(new Drone3( 0, 0, 500));
     gameObjects.push(new Drone3( -w, h, 200));
     gameObjects.push(new Drone3( -w/2, h/2, 50));
 }
 function droneTesting_MatchSpeed(){
-    gameObjects.push(new PlayerShip(-w, 0, 2));
+    gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
     gameObjects.push(new Drone1( 0, h, 100));
-    gameObjects.push(new Drone1( 0, 0, 500));
-    gameObjects.push(new Drone1( -w, h, 200));
-    gameObjects.push(new Drone1( -w/2, h/2, 50));
+    // gameObjects.push(new Drone1( 0, 0, 500));
+    // gameObjects.push(new Drone1( -w, h, 200));
+    // gameObjects.push(new Drone1( -w/2, h/2, 50));
 }
 function droneTesting_Intercept(){
-    gameObjects.push(new PlayerShip(-w, 0, 2));
+    gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
     gameObjects.push(new Drone2( 0, h, 100));
     gameObjects.push(new Drone2( 0, 0, 500));
     gameObjects.push(new Drone2( -w, h, 200));
     gameObjects.push(new Drone2( -w/2, h/2, 50));
 }
 function fullGame(){
-    gameObjects.push(new PlayerShip(-w, 0, 2));
-    gameObjects.push(new PlayerShip(w, 0, 1));
-    gameObjects.push(new BossBaddy( 2*w, 0));
+    gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
+    gameObjects.push(new PlayerShip(+w, 0, 0,0, 1));
+    gameObjects.push(new BossBaddy( +2*w, 0));
     gameObjects.push(new BossBaddy( -2*w, 0));
 
     for (var count = 0; count < 100; count++)
@@ -42,9 +48,9 @@ function fullGame(){
 
 }
 function epicOribitalArena(){
-    gameObjects.push(new PlayerShip(-w*3, 0, 2));
-    gameObjects.push(new PlayerShip(-w*3, 100, 1));
-    gameObjects.push(new BossBaddy( 2*w, 0));
+    gameObjects.push(new PlayerShip(-w*3, 0,   0,0, 2));
+    gameObjects.push(new PlayerShip(-w*3, 100, 0,0, 1));
+    gameObjects.push(new BossBaddy( +2*w, 0));
     gameObjects.push(new BossBaddy( -2*w, 0));
      gameObjects.push(new Asteroid(0, 0, 0, 0, 1000, 0));
     for (var count = 0; count < 50; count++){
@@ -56,23 +62,23 @@ function epicOribitalArena(){
 }
 
 function targetPractice(){
-    gameObjects.push(new PlayerShip(-3*w, 0, 1));
+    gameObjects.push(new PlayerShip(-1*w, 0, 0,0, 1));
     // gameObjects[0].angle = Math.PI/2;
 
-    // var targetType = Drone;
+    const targetType = Drone1;
      // var targetType = Asteroid;
-   var targetType = Baddy;
-    gameObjects.push(new targetType( +0 * w, h * 1));
-    gameObjects.push(new targetType( +0 * w, h * 2));
-    gameObjects.push(new targetType( +0 * w, h * 3));
+   // var targetType = Baddy;
+    gameObjects.push(new targetType( +0 * w, h  * 1));
+    gameObjects.push(new targetType( +0 * w, h  * 2));
+    gameObjects.push(new targetType( +0 * w, h  * 3));
     gameObjects.push(new targetType( +0 * w, -h * 1));
     gameObjects.push(new targetType( +0 * w, -h * 2));
     gameObjects.push(new targetType( +0 * w, -h * 3));
 }
 function bigmoon(){
-
-    gameObjects.push(new PlayerShip(-w, -0.1*h, 1));
-     gameObjects.push(new PlayerShip(-w, +0.1*h, 2));
+    GlobalParams.gravityFactor = 0;
+    gameObjects.push(new PlayerShip(-w, -0.1*h, 0,0, 1));
+    gameObjects.push(new PlayerShip(-w, +0.1*h, 0,0, 2));
     gameObjects.push(new Moon(0, 0, 0, 0, 800, 0));
     // gameObjects.push(new Moon(w*0.5, 0, 0, .2, 100, 0));
     // gameObjects.push(new Moon(-w*0.75, 0, 0, .12, 50, 0));
@@ -100,10 +106,10 @@ function orbitingMoons(){
         }
     }
     gameObjects.push(planet);   // Big planet
-    // gameObjects.push(new Moon(0,    0,  0, -3,      20, 0));
-    // gameObjects.push(new Moon(-w/2, 0,  0,  3,       20, 0));
-    // gameObjects.push(new Moon(-w/4, 500, 3, 0,       20, 0));
-    // gameObjects.push(new Moon(-w/4, -500, -3, 0,     20, 0));
+    gameObjects.push(new Moon(0,    0,  0, -3,      20, 0));
+    gameObjects.push(new Moon(-w/2, 0,  0,  3,       20, 0));
+    gameObjects.push(new Moon(-w/4, 500, 3, 0,       20, 0));
+    gameObjects.push(new Moon(-w/4, -500, -3, 0,     20, 0));
 
 
     // gameObjects.push(new Moon(w*0.5, 0, 0, .2, 100, 0));
@@ -115,11 +121,15 @@ function orbitingMoons(){
 }
 function windyPVP(){
     GlobalParams.wind = 100;
-    pvp();
+    for (var star of stars) star.vx = 5*(star.y+0.5*GlobalParams.universeSize*h)*(star.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h);
+    gameObjects.push(new PlayerShip(-w, 0, 0,0,2));
+    gameObjects.push(new PlayerShip(+w, 0, 0,0,1));
+    gameObjects[0].angle = Math.PI ;
+    gameObjects[1].angle = Math.PI ;
 }
 function invasionFleet(){
-    gameObjects.push(new PlayerShip(-w,-.1*h,1));
-    gameObjects.push(new PlayerShip(-w,+.1*h ,2));
+    gameObjects.push(new PlayerShip(-w,-.1*h, 0,0, 1));
+    gameObjects.push(new PlayerShip(-w,+.1*h ,0,0, 2));
     gameObjects.push(new Drone1(0,1000,400));
     gameObjects.push(new Drone1(1000,0,400));
     gameObjects.push(new Drone1(1000,1000,400));
@@ -138,18 +148,21 @@ function addStars(){
 }
 // --
 initGameArea();
+addStars();
+
 // gliders();
 // orbitingMoons();
 // epicOribitalArena();
 // pvp();
-windyPVP();
+fireball_testing();
+// windyPVP();
 // bigmoon();
 // invasionFleet();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
 // targetPractice();
-addStars();
+
 setCameras();
 launch();
 
@@ -161,3 +174,19 @@ launch();
 4. Set MI *and* Mass
 5. Calculate torque from moveable Mass vs 1/4 chord
 */
+
+
+/*
+1. Fix Drone testing levels (wind etc)                                      -DONE!
+2. Review units / SI units / Mass / Damage
+3. Review movement from reaction mass - too much realism / complexation?
+4. Review control routines
+-> Test match orientation / speed / position
+-> Bomb stationary target
+-> Bomb moving target
+-> Bomb player evading
+-> Missile above
+*/
+// ** Consider parameterised options path fork (spreading cone / funnel colourised with time)
+// ** Assume continuous, could do interpolation between forks (ie if colour either side of target then refine?)
+// ** Optimise to maximise range of colour either side, and centeralise (ie maximises our options at all times)
