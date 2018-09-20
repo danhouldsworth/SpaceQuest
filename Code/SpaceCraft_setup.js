@@ -104,6 +104,7 @@ function normaliseAnglePItoMinusPI (grossAngle)  {
     if (posiAngle > Math.PI) return posiAngle - 2 * Math.PI;
     return posiAngle;
 }
+function unitVectorFromAngle(angle)         {return {x:Math.cos(angle), y:Math.sin(angle)};}
 function getAngle(x, y) {
     let angle = Math.atan(y / x);
     if (y >= 0){
@@ -115,7 +116,11 @@ function getAngle(x, y) {
     }
     return angle;
 }
-
+function getAngleV(v)   {return getAngle(v.x, v.y);}
+function modulusV(v)    {return modulus(v.x, v.y);}
+const halfPi = Math.PI/2;
+const constraintHalfPiToMinusHalfPi = v => Math.max(Math.min(halfPi, v), -halfPi);
+const displayAsPI = f => Math.round(10*f/Math.PI)/10;
 // -- Setup & initialisation
 function initGameArea(){
     window.document.body.appendChild(starfield);

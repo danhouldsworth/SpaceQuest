@@ -17,11 +17,11 @@ function fireball_testing(){
     // setInterval(()=>gameObjects.push(new Drone1((Math.random()-0.5)*4*w,(0.5-Math.random())*4*h, 0,0)), 5000);
 }
 function droneTesting_Orientation(){
-    gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
-    gameObjects.push(new Drone3( 0, h, 100));
-    // gameObjects.push(new Drone3( 0, 0, 500));
-    gameObjects.push(new Drone3( -w, h, 200));
-    gameObjects.push(new Drone3( -w/2, h/2, 50));
+    gameObjects.push(new PlayerShip(-w, 0, 0,0, 1));
+    const droneType = Drone6;
+    gameObjects.push(new droneType( 0, h, 0,0));
+    gameObjects.push(new droneType( -w, h, 0,0, 200));
+    gameObjects.push(new droneType( -w/2, h/2, 0,0, 50));
 }
 function droneTesting_MatchSpeed(){
     gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
@@ -65,8 +65,8 @@ function targetPractice(){
     gameObjects.push(new PlayerShip(-1*w, 0, 0,0, 1));
     // gameObjects[0].angle = Math.PI/2;
 
-    const targetType = Drone1;
-     // var targetType = Asteroid;
+    // const targetType = Drone1;
+    const targetType = Asteroid;
    // var targetType = Baddy;
     gameObjects.push(new targetType( +0 * w, h  * 1));
     gameObjects.push(new targetType( +0 * w, h  * 2));
@@ -154,14 +154,14 @@ addStars();
 // orbitingMoons();
 // epicOribitalArena();
 // pvp();
-fireball_testing();
+// fireball_testing();
 // windyPVP();
 // bigmoon();
 // invasionFleet();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
-// targetPractice();
+targetPractice();
 
 setCameras();
 launch();

@@ -177,6 +177,10 @@ function animate(){
     // gameObject = GlobalParams.camera.OldTargets[1];
     // draw_ball(gameObject.x, gameObject.y, gameObject.size, 100, 0, 100);
 
+    if (!gameObjects.length){
+        // gameObjects.splice(0);
+        pvp();
+    }
     setTimeout(animate, GlobalParams.refreshInterval.animation);
 }
 
