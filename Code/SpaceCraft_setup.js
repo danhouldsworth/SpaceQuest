@@ -86,9 +86,9 @@ const gameArea      = document.createElement('canvas'),
         },
         refreshInterval : {
             physics         : 1,    // 200 Hz
-            animation       : 20,   //  50 Hz
+            animation       : 20, //  ~60Hz RAF
             starsAndScores  : 30,   //  20 Hz
-            pilotInput      : 10   //  10 Hz  (HumanShips read keyboard input / Drones get input from AI)
+            pilotInput      : 10    // 100 Hz  (HumanShips read keyboard input / Drones get input from AI)
         }
     };
 

@@ -181,6 +181,7 @@ function animate(){
         // gameObjects.splice(0);
         pvp();
     }
+    // window.requestAnimationFrame(animate);
     setTimeout(animate, GlobalParams.refreshInterval.animation);
 }
 

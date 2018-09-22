@@ -1,0 +1,181 @@
+<html><head><style>
+    body {background-color: black;}
+    canvas{
+        position        : absolute;
+        left            : 0px;
+        top             : 0px;
+    }
+
+</style></head><body></body>
+<!-- https://webgl2fundamentals.org/webgl/lessons/webgl-shaders-and-glsl.html#uniforms -->
+<script type="x-shader" id="x-vertex">#version 300 es
+    in      float   a_label;
+    out     vec2    v_bilerpOutput;
+    void main(void) {
+        vec3 screenCoord;
+        if      (a_label == 1.0) {screenCoord = vec3(-1.0, -1.0, 0.0); }
+        else if (a_label == 2.0) {screenCoord = vec3(-1.0, +1.0, 0.0); }
+        else if (a_label == 3.0) {screenCoord = vec3(+1.0, -1.0, 0.0); }
+        else if (a_label == 4.0) {screenCoord = vec3(+1.0, +1.0, 0.0); }
+
+        v_bilerpOutput.x  = screenCoord.x * 2.0;
+        v_bilerpOutput.y  = screenCoord.y * 1.0;
+        gl_Position     = vec4(screenCoord, 1.0);
+    }
+</script>
+<script type="x-shader" id="x-fragment">#version 300 es
+    precision   mediump float;
+    uniform     vec2    sources[250];
+    uniform     float   brightness[250];
+    uniform     vec2    p[250];
+    uniform     float   shipSize[250];
+    uniform     int     sourcesMax;
+    uniform     int     particlesMax;
+    in          vec2    v_bilerpOutput;
+    out         vec4    outColor;
+    void main(void) {
+        outColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+        vec2    zT, pT;
+        vec3    ambient;
+        float intensity, lz, lp, d;
+        for (int i = 0; i < sourcesMax; i++){
+            zT      = v_bilerpOutput - sources[i];
+            lz = length(zT);
+            ambient = vec3(
+                // 1.0 * brightness[i] / pow(lz, 2.0),
+                // 1.0 * brightness[i] / pow(lz, 2.0),
+                // 1.0 * brightness[i] / pow(lz, 2.0)
+
+                2.8 * brightness[i] / pow(lz, 1.2),
+                1.0 * brightness[i] / pow(lz, 2.0),
+                0.7 * brightness[i] / pow(lz, 2.2)
+            );
+            // intensity = brightness[i] / (lz * lz);
+            // ambient = vec3(intensity,intensity,intensity);
+            for (int j = 0; j < particlesMax; j++){
+                pT = p[j] - sources[i];
+                lp = length(pT);
+                d = dot(zT,pT);
+                if (
+                    d > (lp*lp) &&                      // Further away from source
+                    acos(d/(lz*lp)) < shipSize[j]/lp || // And within occlusion angle
+                    length(zT-pT) < shipSize[j]         // Or just fudge body radius
+                ) {ambient = vec3(0.0, 0.0, 0.0);}
+            }
+            outColor += vec4(ambient, 0.0);
+        }
+
+    }
+</script>
+<script type="text/javascript">
+    "use strict";
+    const moon      = new Image(); moon.src         = "../FinnsArtwork/bluemoon.png";   moon.scale = 1.07;
+    const asteroid  = new Image(); asteroid.src     = "../FinnsArtwork/vortex.png";     asteroid.scale = 2;
+
+    const canvas  = document.createElement("canvas");
+    const singularities = [[0,0]];
+    const userEvent = e => {
+        sources[0].x = -2.0 + (e.clientX - canvas.getBoundingClientRect().left) / (0.25*canvas.width);
+        sources[0].y = +1.0 - (e.clientY - canvas.getBoundingClientRect().top ) / (0.50*canvas.height);
+    };
+    canvas.height = 1050;
+    canvas.width = 2*canvas.height;
+    document.body.appendChild(canvas);
+
+
+    const canvas2   = document.createElement("canvas");
+    const ctx       = canvas2.getContext("2d");
+    canvas2.height   = canvas.height;
+    canvas2.width    = canvas.width;
+    canvas.style.zIndex = 1;
+    canvas2.style.zIndex = 2;
+    canvas2.addEventListener("mousemove",    userEvent);
+    canvas2.addEventListener("mousedown",    userEvent);
+    canvas2.addEventListener("touchstart",   userEvent);
+    canvas2.addEventListener("touchmove",    userEvent);
+    document.body.appendChild(canvas2);
+
+    // <-- Compile Shader
+    const gl = canvas.getContext("webgl2");
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, document.getElementById("x-vertex").text);
+    gl.compileShader(vertexShader);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, document.getElementById("x-fragment").text);
+    gl.compileShader(fragmentShader);
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+    // --
+    // <-- Trigger with data
+    const uniqueButMeaninglessLabels = new Float32Array([1,2,3,4]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, uniqueButMeaninglessLabels, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(     gl.getAttribLocation(shaderProgram, "a_label"), 1, gl.FLOAT, false, 0, 0);   // 'Vertex' attributes of size 1
+    gl.enableVertexAttribArray( gl.getAttribLocation(shaderProgram, "a_label"));
+    // -->
+    let ticks = 0.0;
+    const shipSize = [];
+    const brightness = [];
+    const sources = [];
+    const p = [];
+    const numberOfSources   = 2;
+    const numberOfParticles = 2;
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "sourcesMax"),    numberOfSources);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "particlesMax"),  numberOfParticles);
+    for (let i = 0; i < numberOfSources; i++){
+        brightness[i] = Math.random()/50;
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, `brightness[${i}]`),  brightness[i]);
+        sources[i] = {
+            x: (Math.random() - 0.5) * 2,
+            y: (Math.random() - 0.5) ,
+            vx:(Math.random() - 0.5) / 1000,
+            vy:(Math.random() - 0.5) / 1000,
+        };
+    }
+    for (let i = 0; i < numberOfParticles; i++){
+        shipSize[i] = Math.random()/25;
+        gl.uniform1f(gl.getUniformLocation(shaderProgram, `shipSize[${i}]`),    shipSize[i]);
+        p[i] = {
+            x: (Math.random() - 0.5) * 2,
+            y: (Math.random() - 0.5) ,
+            vx:(Math.random() - 0.5) / 100,
+            vy:(Math.random() - 0.5) / 100,
+        };
+    }
+    const animate = function(){
+        for (let i = 0; i < numberOfSources; i++) {
+            sources[i].x += sources[i].vx;
+            sources[i].y += sources[i].vy;
+            sources[i].vx -= sources[i].x/1000000;
+            sources[i].vy -= sources[i].y/1000000;
+            gl.uniform2fv(gl.getUniformLocation(shaderProgram, `sources[${i}]`),[sources[i].x, sources[i].y]);
+        }
+        for (let i = 0; i < numberOfParticles; i++) {
+            p[i].x += p[i].vx;
+            p[i].y += p[i].vy;
+            p[i].vx -= p[i].x/5000;
+            p[i].vy -= p[i].y/5000;
+            gl.uniform2fv(gl.getUniformLocation(shaderProgram, `p[${i}]`),      [p[i].x, p[i].y]);
+        }
+        // gl.uniform2fv(gl.getUniformLocation(shaderProgram, "sources[0]"), singularities[0]);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, uniqueButMeaninglessLabels.length);
+        // drawShips();
+        window.requestAnimationFrame(animate);
+    };
+    animate();
+    function drawShips(){
+        canvas2.width = canvas2.width;
+        for (let i = 0; i < numberOfSources; i++) {
+            const r = brightness[i] * canvas2.width * 10;
+            ctx.drawImage(asteroid, (0.5*sources[i].x + 1) * canvas2.width / 2 - r/2, canvas2.height - (0.5*sources[i].y + 0.5) * canvas2.width / 2 -r/2 , r, r);
+        }
+        for (let i = 0; i < numberOfParticles; i++) {
+            const r = shipSize[i] * canvas2.width * 0.6;
+            ctx.drawImage(moon, (0.5*p[i].x + 1) * canvas2.width / 2 - r/2, canvas2.height - (0.5*p[i].y + 0.5) * canvas2.width / 2 -r/2 , r, r);
+        }
+    }
+</script>

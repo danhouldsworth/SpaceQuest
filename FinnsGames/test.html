@@ -1,0 +1,52 @@
+<html><head><style>
+    body {background-color: black;}
+    canvas{
+        position        : absolute;
+        left            : 0px;
+        top             : 0px;
+    }
+
+</style></head><body></body>
+<script type="text/javascript">
+    "use strict";
+    const moon      = new Image(); moon.src         = "../FinnsArtwork/bluemoon.png";   moon.scale = 1.07;
+    const asteroid  = new Image(); asteroid.src     = "../FinnsArtwork/vortex.png";     asteroid.scale = 2;
+
+    const canvas2   = document.createElement("canvas");
+    const ctx       = canvas2.getContext("2d");
+    canvas2.height   = 1050;
+    canvas2.width    = 2*canvas2.height;
+
+    canvas2.style.zIndex = 2;
+    document.body.appendChild(canvas2);
+
+    const shipSize = [];
+    const p = [];
+    const numberOfParticles = 5;
+    for (let i = 0; i < numberOfParticles; i++){shipSize[i]=Math.random()/50;}
+    for (let i = 0; i < numberOfParticles; i++){
+        p[i] = {
+            x: (Math.random() - 0.5) * 2,
+            y: (Math.random() - 0.5) ,
+            vx:(Math.random() - 0.5) / 100,
+            vy:(Math.random() - 0.5) / 100,
+        };
+    }
+    const animate = function(){
+        for (let i = 0; i < numberOfParticles; i++) {
+            p[i].x += p[i].vx;
+            p[i].y += p[i].vy;
+            p[i].vx -= p[i].x/5000;
+            p[i].vy -= p[i].y/5000;
+        }
+        drawShips();
+        window.requestAnimationFrame(animate);
+    };
+    animate();
+    function drawShips(){
+        canvas2.width = canvas2.width;
+        for (let i = 0; i < numberOfParticles; i++) {
+            ctx.drawImage(moon, (p[i].x + 1) * canvas2.width / 2, (p[i].y + 0.5) * canvas2.width / 2, shipSize[i] * canvas2.width, shipSize[i] * canvas2.width);
+        }
+    }
+</script>

@@ -153,7 +153,7 @@ addStars();
 // gliders();
 // orbitingMoons();
 // epicOribitalArena();
-// pvp();
+pvp();
 // fireball_testing();
 // windyPVP();
 // bigmoon();
@@ -161,7 +161,7 @@ addStars();
 // droneTesting_Orientation();
 // droneTesting_MatchSpeed();
 // droneTesting_Intercept();
-targetPractice();
+// targetPractice();
 
 setCameras();
 launch();
