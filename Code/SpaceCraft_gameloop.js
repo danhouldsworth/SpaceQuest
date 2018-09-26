@@ -5,9 +5,9 @@ const interaction = new Interaction();        // -- Interaction object is useful
 const wall        = new Wall();               // -- Simulate wall as a infinitely large particle
 
 function timeStep(timer){
-    deltaT[timer]   = Date.now() - lastTime[timer];
-    lastTime[timer] = Date.now();
-    return deltaT[timer];
+    GlobalParams.deltaT[timer]   = Date.now() - GlobalParams.lastTime[timer];
+    GlobalParams.lastTime[timer] = Date.now();
+    return GlobalParams.deltaT[timer];
 }
 function applyCollisionRules(p1,p2){
     function rules(obj1, obj2){
@@ -50,7 +50,7 @@ function iteratePhysics(){
         }
 
         if (p1.size > 1.1 && p1.energy > 0) {
-            p1.updateForces(dT).updateVelocities(dT).applyDrag(dT).updatePosition(dT).sanitiseSingularities(dT).boundaryConstraint();
+            p1.updateForces().updateVelocities(dT).applyDrag(dT).updatePosition(dT).sanitiseSingularities(dT).boundaryConstraint();
         } else {
             p1.explode();
         }
@@ -189,15 +189,15 @@ function getPilotInput(){
     timeStep('pilotInput');
     for (const gameObject of gameObjects)
         if (gameObject instanceof Ship)
-            gameObject.getPilotCommand(deltaT.pilotInput);
+            gameObject.getPilotCommand(GlobalParams.deltaT.pilotInput);
     setTimeout(getPilotInput, GlobalParams.refreshInterval.pilotInput);
 }
 
 function updateScoreStars(){
     timeStep("starsAndScores");
 
-    GlobalParams.FPS        = 1000 / deltaT.animation;
-    GlobalParams.CPS        = 1000 / (deltaT.physics / GlobalParams.slowMoFactor);
+    GlobalParams.FPS        = 1000 / GlobalParams.deltaT.animation;
+    GlobalParams.CPS        = 1000 / (GlobalParams.deltaT.physics / GlobalParams.slowMoFactor);
 
     starfield.width = starfield.width;
 
@@ -224,7 +224,7 @@ function updateScoreStars(){
     ctxStars.stroke();
 
     for (const star of stars)
-        star.updatePosition(deltaT.starsAndScores).boundaryConstraint().draw();
+        star.updatePosition(GlobalParams.deltaT.starsAndScores).boundaryConstraint().draw();
 
     setTimeout(updateScoreStars, GlobalParams.refreshInterval.starsAndScores);
 }

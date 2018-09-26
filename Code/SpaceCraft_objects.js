@@ -27,7 +27,7 @@ Primitive.prototype.clearAccelerations = function (){
     this.spinDot = 0;
     return this;
 };
-Primitive.prototype.updateForces = function(deltaT){
+Primitive.prototype.updateForces = function(){
     // These are cleared at the start of each physics iterations, and before collisions detected
     if (GlobalParams.wind){
         this.ax += this.size * (GlobalParams.wind * (this.y+0.5*GlobalParams.universeSize*h)*(this.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h)) / Math.max(10000,this.mass);
@@ -35,7 +35,9 @@ Primitive.prototype.updateForces = function(deltaT){
     return this;
 };
 Primitive.prototype.updateVelocities  = function(deltaT){
-    // Assume dT small, as we're about to move, based on the acceleration we've just calced
+    // If accelerations are a field, then deltaV per Second is now independent of CPS
+    // Likewise if accelerations are atomic impulsive, they have already been scaled down for CPS
+
     this.vx     += this.ax      * deltaT;
     this.vy     += this.ay      * deltaT;
     this.spin   += this.spinDot * deltaT;
@@ -282,7 +284,7 @@ Bullet.prototype                = Object.create(Particle.prototype);
 Bullet.prototype.constructor    = Particle;
 
 const Thrust                      = function(x, y, vx, vy, size, parent){
-    const density = 2;
+    const density = 0.2;
     this.base = Particle;
     this.base(x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'thrust';
@@ -393,26 +395,60 @@ Graphic.prototype.draw          = function(){
     }
     if (this.model && this.model.dataPaths) { // Show trace of where we'll travel in next 1000ms (under current acceleration)
         // const data = this.model.data;
-        ctx.lineCap="round";
         // ctx.fillStyle=grad;
-        for (let i in this.model.dataPaths){
-            const dataPath = this.model.dataPaths[i];
+        for (let pathNum in this.model.dataPaths){
+            const dataPath = this.model.dataPaths[pathNum];
             let pts = dataPath.length;
+            if (!pts) continue;
             for (let i = 1; i < dataPath.length; i++){
+                ctx.lineCap="round";
                 ctx.beginPath();
-                ctx.strokeStyle = "rgb("+Math.round(30*dataPath[i].speed)+","+Math.round(255-30*dataPath[i].speed)+",0)";
+                ctx.strokeStyle = "rgb("+Math.round(30*dataPath[i].speed)+","+Math.round((255-30*dataPath[i].speed))+",0)";
                 ctx.lineWidth=Math.max(Math.abs(30 * dataPath[i].deflection) , 5);
                 ctx.moveTo(dataPath[i-1].x, dataPath[i-1].y);
                 ctx.lineTo(dataPath[i].x, dataPath[i].y);
                 ctx.stroke();
             }
+            const dT = 8;
+            let x = dataPath[0].x + this.model.me.size * 2 + pathNum * 1000;
+            for (let i = 0; i < dataPath.length; i++){
+                ctx.lineCap="butt";
+                ctx.beginPath();
+                ctx.strokeStyle = "rgb(255,0,0)";
+                ctx.lineWidth=dataPath[i].deltaT;
+                ctx.moveTo(x, dataPath[0].y - 900);
+                ctx.lineTo(x, dataPath[0].y - 900 + 300*dataPath[i].actuation);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.strokeStyle = "rgb(0,255,0)";
+                ctx.lineWidth=dataPath[i].deltaT;
+                ctx.moveTo(x, dataPath[0].y - 300);
+                ctx.lineTo(x, dataPath[0].y - 300 + 300*dataPath[i].deflection);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.strokeStyle = "rgb(255,255,255)";
+                ctx.lineWidth=dataPath[i].deltaT;
+                ctx.moveTo(x, dataPath[0].y + 300);
+                ctx.lineTo(x, dataPath[0].y + 300 + 300000*dataPath[i].rateOfOrbit);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.strokeStyle = "rgb(0,0,255)";
+                ctx.lineWidth=dataPath[i].deltaT;
+                ctx.moveTo(x, dataPath[0].y + 900);
+                // ctx.lineTo(x, dataPath[0].y + 900 + 100*dataPath[i].dotProduct);
+                ctx.lineTo(x, dataPath[0].y + 900 + dataPath[i].seperation/10);
+                // ctx.lineTo(x, dataPath[0].y + 900 + 50000*(dataPath[i].speed-dataPath[(i||1)-1].speed)/this.model.me.projectileEngines.mainJet.projectileSize);
+                ctx.stroke();
+                x += dataPath[i].deltaT;
+            }
+
             ctx.beginPath();
-            ctx.strokeStyle = this.model.successfulTrajectorys[i] ? "red" : "white";
-            ctx.lineWidth   = this.model.successfulTrajectorys[i] ? 10 : 10;
-            const impactRange = this.model.trajectoryCosts[i];
+            ctx.strokeStyle = this.model.successfulTrajectorys[pathNum] ? "red" : "white";
+            ctx.lineWidth   = this.model.successfulTrajectorys[pathNum] ? 10 : 10;
+            const impactRange = this.model.trajectoryCosts[pathNum];
             ctx.rect(dataPath[pts-1].x - impactRange/2, dataPath[pts-1].y - impactRange/2, impactRange, impactRange);
             ctx.stroke();
-            if (this.model.successfulTrajectorys[i]){
+            if (this.model.successfulTrajectorys[pathNum]){
                 ctx.beginPath();
                 ctx.strokeStyle = "yellow";
                 ctx.rect(this.target.x - this.target.size, this.target.y - this.target.size, 2*this.target.size, 2*this.target.size);

@@ -17,11 +17,11 @@ function fireball_testing(){
     // setInterval(()=>gameObjects.push(new Drone1((Math.random()-0.5)*4*w,(0.5-Math.random())*4*h, 0,0)), 5000);
 }
 function droneTesting_Orientation(){
-    gameObjects.push(new PlayerShip(-w, 0, 0,0, 1));
-    const droneType = Drone6;
-    gameObjects.push(new droneType( 0, h, 0,0));
-    gameObjects.push(new droneType( -w, h, 0,0, 200));
-    gameObjects.push(new droneType( -w/2, h/2, 0,0, 50));
+    gameObjects.push(new PlayerShip(-2*w, 0, 0,0, 1));
+    const droneType = Drone8;
+    // gameObjects.push(new droneType( 0,      2*h, 0,0,    100));
+    gameObjects.push(new droneType( 0,   0, 0,0,   200));
+    // gameObjects.push(new droneType( -w,       h, 0,0,   50));
 }
 function droneTesting_MatchSpeed(){
     gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
@@ -181,11 +181,14 @@ launch();
 2. Review units / SI units / Mass / Damage
 3. Review movement from reaction mass - too much realism / complexation?
 4. Review control routines
--> Test match orientation / speed / position
--> Bomb stationary target
--> Bomb moving target
--> Bomb player evading
--> Missile above
+
+1. Want to understand if / why not - can do feed forward based on maths model
+2. OR user results of forward prediction of numerical model
+3. OR blend of PID with either of above
+WHY - this is part of running internal model, and comparing against AND THEN Kalman filtering
+CONCERNS
+1) Is it possible / hard to make stable? (given discrete sample time) ? YES! - Done. Issues still with 'ideal' feathering. But stable, simple, feedforward
+2) Is the model correctly treating 'acceleration' 'force' vs 'impulse'? DONE - This was wrong! Now correct!
 */
 // ** Consider parameterised options path fork (spreading cone / funnel colourised with time)
 // ** Assume continuous, could do interpolation between forks (ie if colour either side of target then refine?)

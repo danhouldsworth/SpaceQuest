@@ -54,19 +54,19 @@ const gameArea      = document.createElement('canvas'),
     gameObjects     = [],
     stars           = [],
     keyState        = {},
-    lastTime = {
-        physics             : Date.now(),
-        animation           : Date.now(),
-        starsAndScores      : Date.now(),
-        pilotInput          : Date.now(),
-    },
-    deltaT = {
-        physics             : 0,
-        animation           : 0,
-        starsAndScores      : 0,
-        pilotInput          : 0
-    },
     GlobalParams = {
+        lastTime : {
+            physics             : Date.now(),
+            animation           : Date.now(),
+            starsAndScores      : Date.now(),
+            pilotInput          : Date.now(),
+        },
+        deltaT : {
+            physics             : 0,
+            animation           : 0,
+            starsAndScores      : 0,
+            pilotInput          : 0
+        },
         universeSize    : 16,
         starCount       : 1500,
         slowMoFactor    : 1,
@@ -85,10 +85,10 @@ const gameArea      = document.createElement('canvas'),
             Distance        : 0
         },
         refreshInterval : {
-            physics         : 1,    // 200 Hz
-            animation       : 20, //  ~60Hz RAF
-            starsAndScores  : 30,   //  20 Hz
-            pilotInput      : 10    // 100 Hz  (HumanShips read keyboard input / Drones get input from AI)
+            physics         : 1,    // ~200-300 Hz
+            animation       : 20,   //  ~60Hz RAF
+            starsAndScores  : 50,   //  20 Hz
+            pilotInput      : 10   // 100 Hz  (HumanShips read keyboard input / Drones get input from AI)
         }
     };
 
