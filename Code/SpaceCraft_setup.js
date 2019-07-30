@@ -72,7 +72,7 @@ const gameArea      = document.createElement('canvas'),
         universeSize    : 16,
         starCount       : 1500,
         slowMoFactor    : 1,
-        rotatingFrame   : true,
+        rotatingFrame   : false,
         gravityFlag     : false,
         boundary_flag   : -1, // -1=bounce  / +1=wrap
         safeBoundary    : true,
