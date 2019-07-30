@@ -1,46 +1,66 @@
+/*
+ Reflections:
+ Currently differentiating between physics loop, and getPilotCommand loop
+ Experimented with 'feedback' & 'feedforward'
+ However, feedforward still reading real ship state at start of getPilotCommand routine.
+ Yet - using drone as an example - physics wants to be as fast / continuous as possible to be realistic, and the control routine is ~400-1000Hz.
+ This generally is sample, maths, output - and entirely feedback.
+ The goal of an internal model, is to run an internal model at this fast rate, updating model. Acting accordingly. Then tweaking model (with Kalman filtering) of sample rate. (eg GPS)
+
+ Our interception trajectory is close to this ideal feedfoward.
+
+ The 'feedforward' orientation control actually reads from sensors each time. Not technically a mathmatical model.
+ Ideally this should be able to take a single (assumed accurate for now) read, then control through time to a target orientation & rate blindly by just tracking passage of time against the forward plan.
+
+ Todo : seperate physics, output, sample rates.
+
+ Theory : a true feedforward, should be much more robust than a PID feedback with lower sample rates (if output rate still high?)
+*/
+
 const Ship                        = function(x, y, vx, vy, size, density, image){
-    this.base = Graphic;
-    this.base(x, y, vx, vy, size, 0, 0, density);
+    Graphic.call(this, x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'ship';
+    this.ShipType       = Ship;
     this.showEnergyBar  = true;
     this.image          = image;
     this.offSet         = image.drawingOffsetAngle;
     this.friction       = 0;
     this.projectileEngines        = {
     // NOTE: All projectileEngines assumed to start on the circumference of the circle
-        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,   projectilePosition : Math.PI,          projectileAngle : Math.PI},
-        frontLeft   : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : 0,                projectileAngle : Math.PI / 2},
-        frontRight  : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : 0,                projectileAngle : Math.PI * 3 / 2},
-        backLeft    : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : Math.PI,          projectileAngle : Math.PI / 2},
-        backRight   : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : Math.PI,          projectileAngle : Math.PI * 3 / 2},
+    // Oddly : Appear to be labled from 12oclock, anti-clockwise??
+        mainJet     : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,   projectilePosition : PI,          projectileAngle : PI},
+        frontLeft   : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : 0,                projectileAngle : PI / 2},
+        frontRight  : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : 0,                projectileAngle : PI * 3 / 2},
+        backLeft    : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : PI,          projectileAngle : PI / 2},
+        backRight   : {projectileType : Thrust,     projectileSize : this.size / 12,    projectileSpeed :2.0,   projectilePosition : PI,          projectileAngle : PI * 3 / 2},
         hoseGun     : {projectileType : Bullet,     projectileSize : this.size / 8,     projectileSpeed :1.5,   projectilePosition : 0,                projectileAngle : 0},
 
-        goUp        : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,    projectilePosition : Math.PI,           projectileAngle : Math.PI},
+        goUp        : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,    projectilePosition : PI,           projectileAngle : PI},
         goDown      : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,    projectilePosition : 0,                 projectileAngle : 0},
-        goLeft      : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,    projectilePosition : Math.PI * 1 / 2,   projectileAngle : Math.PI * 1 / 2},
-        goRight     : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,    projectilePosition : Math.PI * 3 / 2,   projectileAngle : Math.PI * 3 / 2},
+        goRight     : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,    projectilePosition : PI * 1 / 2,   projectileAngle : PI * 1 / 2},
+        goLeft      : {projectileType : Thrust,     projectileSize : this.size / 6,     projectileSpeed :2.0,    projectilePosition : PI * 3 / 2,   projectileAngle : PI * 3 / 2},
 
         // *Bay* need getPilotCommand to reconfirm
-        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size *1,      projectileSpeed :0.0,   projectilePosition : Math.PI,          projectileAngle : 0},
-        bombBay     : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI,          projectileAngle : Math.PI},
-        missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI / 2,      projectileAngle : Math.PI / 2},
-        missileBayR : {projectileType : Interceptor,projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : Math.PI * 3 / 2,  projectileAngle : Math.PI * 3 / 2}
+        rocketBay   : {projectileType : BigRocket,  projectileSize : this.size *1,      projectileSpeed :0.0,   projectilePosition : PI,          projectileAngle : 0},
+        bombBay     : {projectileType : Fireball,   projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : PI,          projectileAngle : PI},
+        // missileBayL : {projectileType : Missile,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : PI / 2,      projectileAngle : PI / 2},
+        missileBayL : {projectileType : PathChooser,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : PI / 2,      projectileAngle : PI / 2},
+        missileBayR : {projectileType : PathChooser,    projectileSize : this.size / 3,     projectileSpeed :0.2,   projectilePosition : PI * 3 / 2,  projectileAngle : PI * 3 / 2}
     };
     this.enginesActive = [];
     this.missileLaunchSide = 1;
 };
 Ship.prototype                  = Object.create(Graphic.prototype);
-Ship.prototype.constructor      = Graphic;
 Ship.prototype.fireProjectiles       = function(engine, rate, internalModel){
     const clearanceBufferPx = 15;
     const engineFiring      = this.projectileEngines[engine];
     const ProjectileType    = engineFiring.projectileType;
     const projectile = new ProjectileType(
-        this.x + this.vx + (this.size + engineFiring.projectileSize + clearanceBufferPx) * Math.cos(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
-        this.y + this.vy + (this.size + engineFiring.projectileSize + clearanceBufferPx) * Math.sin(this.angle + engineFiring.projectilePosition) + Math.random() - 0.5,
-        engineFiring.projectileSpeed * Math.cos(this.angle + engineFiring.projectileAngle),
-        engineFiring.projectileSpeed * Math.sin(this.angle + engineFiring.projectileAngle),
-        Math.max(0.5, engineFiring.projectileSize * rate), // enginesActive is a float [0:1]
+        this.x + this.vx + (this.size + engineFiring.projectileSize + clearanceBufferPx) * cos(this.angle + engineFiring.projectilePosition) + random() - 0.5,
+        this.y + this.vy + (this.size + engineFiring.projectileSize + clearanceBufferPx) * sin(this.angle + engineFiring.projectilePosition) + random() - 0.5,
+        engineFiring.projectileSpeed * cos(this.angle + engineFiring.projectileAngle),
+        engineFiring.projectileSpeed * sin(this.angle + engineFiring.projectileAngle),
+        max(0.5, engineFiring.projectileSize * rate), // enginesActive is a float [0:1]
         this
     );
     projectile.vx += this.vx;
@@ -50,16 +70,22 @@ Ship.prototype.fireProjectiles       = function(engine, rate, internalModel){
     return {
         x       : (this.vx-projectile.vx) * projectile.mass,
         y       : (this.vy-projectile.vy) * projectile.mass,
-        torque  : -projectile.momentum(this) * this.size * Math.sin(engineFiring.projectileAngle - engineFiring.projectilePosition)
+        torque  : -projectile.momentum(this) * this.size * sin(engineFiring.projectileAngle - engineFiring.projectilePosition)
     };
 };
 Ship.prototype.getForceAvailable = function(engine){
     // CRUDE - doesn't take into account the engine vector as above
     const size    = this.projectileEngines[engine].projectileSize;
     const speed   = this.projectileEngines[engine].projectileSpeed;
-    const mass    = Math.PI * size * size;
+    const mass    = PI * size * size;
     const impulse = mass * speed;
     return impulse;
+};
+Ship.prototype.getOrthogonalAcceleration = function(){
+    return this.fireProjectiles("goRight", 1, true).x / this.mass;
+};
+Ship.prototype.getMainJetAcceleration = function(){
+    return this.fireProjectiles("mainJet", 1, true).x / this.mass;
 };
 Ship.prototype.getTorque = function(engine){
     return this.fireProjectiles(engine, 1, true).torque;
@@ -108,20 +134,84 @@ Ship.prototype.getPilotCommand              = function(){
     this.enginesActive = [];
     return this; // chainable
 };
-// Ship.prototype.sanitiseSingularities        = function(deltaT) {
-//     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
-//     // this.vx     *= (1 - deltaT / 1000);
-//     // this.vy     *= (1 - deltaT / 1000);
-//     // this.spin   *= (1 - deltaT / 100);
-//     return this; // chainable
-// };
+Ship.prototype.addModel = function(){
+    if (this.model)         kill("Already have model!");
+    if (this.parent.model)  kill("We're already a model, prevent nesting!");
+    this.model = {
+        me      : new this.ShipType(this.x, this.y, this.vx, this.vy, this.size, this), // We need a way of dynamically creating
+        target  : new Ship(this.target.x, this.target.y, this.target.vx, this.target.vy, this.target.size, this.target.density, this.target.image),
+        dataPaths: [],
+    };
+    this.model.target.projectileEngines = this.target.projectileEngines; // Should have a good copy of the target type now
+};
+Ship.prototype.resetModel = function(){
+    this.model.dataPaths = [];
+    this.model.successfulTrajectorys = [];
+    this.model.trajectoryCosts = [];
+    return this;
+};
+Ship.prototype.prepModelPath = function(pathNum){
+    this.model.me.previousAngleToTarget = false;
+    this.model.me.lastErr               = false;
+    this.model.me.lastTargetAngle       = false;
+    this.model.me.angle                 = this.angle;
+    this.model.me.x                     = this.x;
+    this.model.me.y                     = this.y;
+    this.model.me.spin                  = this.spin;
+    this.model.me.vx                    = this.vx;
+    this.model.me.vy                    = this.vy;
+    this.model.target.angle             = this.target.angle;
+    this.model.target.x                 = this.target.x;
+    this.model.target.y                 = this.target.y;
+    this.model.target.spin              = this.target.spin;
+    this.model.target.vx                = this.target.vx;
+    this.model.target.vy                = this.target.vy;
+    this.model.target.enginesActive     = this.target.enginesActive;
+    this.model.dataPaths[pathNum]       = [];
+    this.model.successfulTrajectorys[pathNum] = false;
+    this.model.trajectoryCosts[pathNum] = 0;
+    return this;
+};
 
+// Sneaky test--
+Ship.prototype.followConstantThetaToIntercept = function(target, deltaT){
+    const accel = this.getMainJetAcceleration();
+    const X0 = target.x - this.x;
+    const Y0 = target.y - this.y;
+    const R0sqrd = X0 * X0 + Y0 * Y0;
+    const VX0 = target.vx - this.vx;
+    const VY0 = target.vy - this.vy;
+    const RV0sqd = VX0 * VX0 + VY0 * VY0;
+    const R0dotRV0 = X0 * VX0 + Y0 * VY0;
+    const R2missilePrime   = t => 0.25 * accel * accel * t * t * t * t;
+    const R2targetPrime    = t => R0sqrd + 2*t*R0dotRV0 + t*t*RV0sqd;
+
+    let t;
+    for (t = 0; t < 5000; t++){
+        if (R2missilePrime(t) >= R2targetPrime(t)) {break}
+    }
+    const theta = getAngle(X0+t*VX0, Y0+t*VY0);
+    this.fullLoopRotationalPD(theta, deltaT);
+    return theta;
+};
+Ship.prototype.fullLoopRotationalPD   = function(targetAngle, deltaT){
+    const kP = 15;
+    const kD = 130 * kP;
+    if (!this.lastTargetAngle){this.lastTargetAngle = targetAngle; return;} // Don't acuate on first request
+    const targetSpin = (targetAngle - this.lastTargetAngle) / deltaT;
+    this.lastTargetAngle = targetAngle;
+    const err       = normaliseAnglePItoMinusPI(targetAngle - this.angle);
+    const errDot    = targetSpin - this.spin;
+    const response  = kP * err + kD * errDot;
+
+    // Orientation jets assumed zerod beforehand
+    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft  = min(1, +response);}
+    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight = min(1, -response);}
+};
+// -- Sneaky test
 
 const PlayerShip                    = function(x, y, vx, vy, team){
-    const shipSize = 200;
-    const density = 1;
-    this.base = Ship;
-    this.base(x, y, vx, vy, shipSize, density, spaceShip[team]);
+    Ship.call(this, x, y, vx, vy, 200, 1, spaceShip[team]);
     this.projectileEngines.mainJet.projectileSize   *= 1.2; this.projectileEngines.mainJet.projectileSpeed   *= 1.5;
     this.projectileEngines.backRight.projectileSize *= 1.2; this.projectileEngines.backRight.projectileSpeed *= 1.5;
     this.projectileEngines.backLeft.projectileSize  *= 1.2; this.projectileEngines.backLeft.projectileSpeed  *= 1.5;
@@ -131,8 +221,7 @@ const PlayerShip                    = function(x, y, vx, vy, team){
     this.team       = team;
 };
 PlayerShip.prototype                = Object.create(Ship.prototype);
-PlayerShip.prototype.constructor    = Ship;
-PlayerShip.prototype.getPilotCommand= function(){
+PlayerShip.prototype.getPilotCommand= function(deltaT){
     Ship.prototype.getPilotCommand.call(this);
     this.FinnsRayGun = false;
     const playerKeys  = {
@@ -147,7 +236,7 @@ PlayerShip.prototype.getPilotCommand= function(){
     };
     if (keyState[playerKeys.left[   this.team]])      {this.enginesActive.frontRight= this.enginesActive.backLeft  = 1;}
     if (keyState[playerKeys.right[  this.team]])      {this.enginesActive.frontLeft = this.enginesActive.backRight = 1;}
-    if (keyState[playerKeys.thrust[ this.team]])      {this.enginesActive.mainJet   = 1;    sound(tracks.Thrust, 0.5, 1.5);}
+    if (keyState[playerKeys.thrust[ this.team]])      {this.enginesActive.mainJet   = 1;    sound(tracks.Thrust, 0.5, 1.5); if (this.team === 1){this.followConstantThetaToIntercept(gameObjects[0], deltaT);}}
     if (keyState[playerKeys.fire[   this.team]])      {this.enginesActive.hoseGun   = 1;    sound(tracks.LaserHose, 0.5, 0.5);}
     if (keyState[playerKeys.smartBomb[ this.team]])   {this.launchCannonWhenReady();        sound(tracks.Stinger, 0.5);}
     if (keyState[playerKeys.missile[this.team]])      {this.launchMissileWhenReady();       sound(tracks.Stinger, 0.5);}
@@ -161,7 +250,7 @@ PlayerShip.prototype.getPilotCommand= function(){
             testIfNear.near(this, target);
             testIfNear.touching(this, target);
             if (testIfNear.seperationSqrd < (this.size * 10) * (this.size * 10)) {
-                target.energy -= 0.01 * Math.max(0,Math.cos(getAngleV(testIfNear) - this.angle));
+                target.energy -= 0.005 * max(0,cos(getAngleV(testIfNear) - this.angle));
             }
         });
     }
@@ -170,8 +259,8 @@ PlayerShip.prototype.getPilotCommand= function(){
 };
 PlayerShip.prototype.applyDrag      = function(deltaT) {
     Primitive.prototype.applyDrag.call(this, deltaT);
-    this.vx     *= (1 - deltaT / 5000);
-    this.vy     *= (1 - deltaT / 5000);
+    // this.vx     *= (1 - deltaT / 5000);
+    // this.vy     *= (1 - deltaT / 5000);
     this.spin   *= (1 - deltaT / 1000);
     return this; // chainable
 };
@@ -179,22 +268,19 @@ PlayerShip.prototype.explode        = function(){
     Graphic.prototype.explode.call(this);
 };
 
-
 const RobotShip                     = function(x, y, vx, vy, size, density, image){
-    this.base = Ship;
-    this.base(x, y, vx, vy, size, density, image);
-    this.showPath       = false;
-    this.showEnergyBar  = true;
+    Ship.call(this, x, y, vx, vy, size, density, image);
+    this.showPath               = false;
+    this.showEnergyBar          = true;
     this.KpAdj                  = 1;
     this.previousAngleToTarget  = false;
     this.lastErr                = false;
     this.lastTargetAngle        = false;
-    this.sampleData     = new Interaction();
+    this.sampleData             = new Interaction();
 };
 RobotShip.prototype                 = Object.create(Ship.prototype);
-RobotShip.prototype.constructor     = Ship;
 RobotShip.prototype.canclePreviousControl       = function(){
-    Ship.prototype.getPilotCommand.call(this);
+    Ship.prototype.getPilotCommand.call(this); // Includes clearing enginesActive array
     this.engeryField = false;
     return this;
 };
@@ -237,8 +323,8 @@ RobotShip.prototype.rotationalThrustToReduceSpinError   = function(desiredSpin){
     const kP        = 0.005 * this.inertiaRot / (this.getForceAvailable('frontRight') * this.size);
     const err       = desiredSpin - this.spin;
     const response  = kP * err;
-    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft   = Math.min(1, +response);}
-    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight  = Math.min(1, -response);}
+    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft   = min(1, +response);}
+    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight  = min(1, -response);}
 };
 RobotShip.prototype.getTargetSpinToReduceAngleError   = function(targetAngle){
     const kP = this.outerLoopOrientationKp || 0.005;
@@ -246,19 +332,8 @@ RobotShip.prototype.getTargetSpinToReduceAngleError   = function(targetAngle){
     const response= kP * err;
     return response; //desiredSpinToReduceOrientationError;
 };
-RobotShip.prototype.fullLoopRotationalPD   = function(targetAngle, deltaT){
-    const kP = 15;
-    const kD = 130 * kP;
-    if (!this.lastTargetAngle){this.lastTargetAngle = targetAngle; return;} // Don't acuate on first request
-    const targetSpin = (targetAngle - this.lastTargetAngle) / deltaT;
-    this.lastTargetAngle = targetAngle;
-    const err       = normaliseAnglePItoMinusPI(targetAngle - this.angle);
-    const errDot    = targetSpin - this.spin;
-    const response  = kP * err + kD * errDot;
-    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft  = Math.min(1, +response);}
-    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight = Math.min(1, -response);}
-};
 RobotShip.prototype.fullLoopRotationalFeedForward = function(targetAngle, deltaT){
+    // FeedForward version seems less overshoot with sticking to fixed orientation
     let response = 0;
     const angleToTarget     = normaliseAnglePItoMinusPI(targetAngle - this.angle); // Note fringe issues with 180degree wrap. (maybe sensible to overshoot)
     const rotAccAtMaxThrust = (this.getTorque("frontRight") + this.getTorque("backLeft")) / this.inertiaRot;
@@ -270,8 +345,18 @@ RobotShip.prototype.fullLoopRotationalFeedForward = function(targetAngle, deltaT
     else if (angleToTarget > 0)                                 response = -1;
     else if (angleToTarget < 0)                                 response = +1;
 
-    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft  = Math.min(1, +response);}
-    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight = Math.min(1, -response);}
+    // Orientation jets assumed zerod beforehand
+    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft  = min(1, +response);}
+    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight = min(1, -response);}
+};
+RobotShip.prototype.fullLoopTargetSpinFeedForward = function(targetSpin, deltaT){
+
+    let response = 0;
+    if      (this.spin < targetSpin)                response = +1;
+    else if (this.spin > targetSpin)                response = -1;
+    // Orientation jets assumed zerod beforehand
+    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft  = min(1, +response);}
+    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight = min(1, -response);}
 };
 RobotShip.prototype.fullLoopRotationalFeedForward2 = function(targetAngle, deltaT){
     let response = 0;
@@ -294,8 +379,8 @@ RobotShip.prototype.fullLoopRotationalFeedForward2 = function(targetAngle, delta
     else if (angleToTarget > 0)                                 response = -1;
     else if (angleToTarget < 0)                                 response = +1;
 
-    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft  = Math.min(1, +response);}
-    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight = Math.min(1, -response);}
+    if (response > 0) {this.enginesActive.frontRight = this.enginesActive.backLeft  = min(1, +response);}
+    if (response < 0) {this.enginesActive.frontLeft  = this.enginesActive.backRight = min(1, -response);}
 };
 RobotShip.prototype.PDorthogalReponseToLandOn = function(target){
     const kP = 0.001;
@@ -312,19 +397,31 @@ RobotShip.prototype.PDorthogalReponseToLandMinimiseSpin = function(target, delta
 
     const kP = 0.001;
     const kD = 1000 * kP;
-    let xDiff = target.x - this.x - 1*(this.sampleData.size * Math.cos(this.angleToTarget));
-    let yDiff = target.y - this.y - 1*(this.sampleData.size * Math.sin(this.angleToTarget));
+    let xDiff = target.x - this.x - 1*(this.sampleData.size * cos(this.angleToTarget));
+    let yDiff = target.y - this.y - 1*(this.sampleData.size * sin(this.angleToTarget));
     const response = {
         x: kP * xDiff + kD * (target.vx - this.vx) + 0.5 * unitVectorFromAngle(angleToMinimiseSpin).x,
         y: kP * yDiff + kD * (target.vy - this.vy) + 0.5 * unitVectorFromAngle(angleToMinimiseSpin).y
     };
     return response;
 };
+RobotShip.prototype.modifyResponseToAvoidBoundary = function(response, accAtMaxThrust, buffer){
+    const minStoppingDistance   = {
+        x : 0.5 * this.vx * this.vx / accAtMaxThrust,
+        y : 0.5 * this.vy * this.vy / accAtMaxThrust
+    };
+    if (this.x > (+(0.5*GlobalParams.universeSize*w - buffer) - (this.vx > 0 ? minStoppingDistance.x : 0))) {response.x = -1000;console.log("wall")} // We cap at 1, so this helps to saturate a vector component
+    if (this.x < (-(0.5*GlobalParams.universeSize*w - buffer) + (this.vx < 0 ? minStoppingDistance.x : 0))) {response.x = +1000;console.log("wall")}
+    if (this.y > (+(0.5*GlobalParams.universeSize*h - buffer) - (this.vy > 0 ? minStoppingDistance.y : 0))) {response.y = -1000;console.log("wall")}
+    if (this.y < (-(0.5*GlobalParams.universeSize*h - buffer) + (this.vy < 0 ? minStoppingDistance.y : 0))) {response.y = +1000;console.log("wall")}
+
+    return response;
+};
 RobotShip.prototype.actuateOrthoganal = function(response){
-    if (response.x > 0) {this.enginesActive.goLeft  = Math.min(1, +response.x);}
-    if (response.x < 0) {this.enginesActive.goRight = Math.min(1, -response.x);}
-    if (response.y > 0) {this.enginesActive.goUp    = Math.min(1, +response.y);}
-    if (response.y < 0) {this.enginesActive.goDown  = Math.min(1, -response.y);}
+    if (response.x > 0) {this.enginesActive.goRight = min(1, +response.x);}
+    if (response.x < 0) {this.enginesActive.goLeft  = min(1, -response.x);}
+    if (response.y > 0) {this.enginesActive.goUp    = min(1, +response.y);}
+    if (response.y < 0) {this.enginesActive.goDown  = min(1, -response.y);}
     // console.log(modulusV(response));
 };
 RobotShip.prototype.getDeflectionToIntercept = function(target, deltaT){
@@ -334,10 +431,10 @@ RobotShip.prototype.getDeflectionToIntercept = function(target, deltaT){
     const approachAngle  = (getAngleV(approachVector));
     const angleToTarget  = (getAngleV(sampleData));
     let err              = normaliseAnglePItoMinusPI(angleToTarget - approachAngle);
-    const dotProduct     = Math.cos(err) * modulusV(approachVector); // Scaler approach speed. Negative for move away
+    const dotProduct     = cos(err) * modulusV(approachVector); // Scaler approach speed. Negative for move away
 
-    let kP = Math.max(w * dotProduct / sampleData.seperation, 0.5* this.KpAdj); //
-    let kD = Math.max(w * dotProduct / sampleData.seperation, 0.01) * 10;
+    let kP = max(w * dotProduct / sampleData.seperation, 0.5* this.KpAdj); //
+    let kD = max(w * dotProduct / sampleData.seperation, 0.01) * 10;
 
     this.rateOfOrbit = (angleToTarget - (this.previousAngleToTarget || angleToTarget)) / deltaT; // Note this is different to errDot which could be zero during a perfect orbit
     this.previousAngleToTarget = angleToTarget;
@@ -348,7 +445,7 @@ RobotShip.prototype.getDeflectionToIntercept = function(target, deltaT){
     this.kpTerm = constraintHalfPiToMinusHalfPi(err * kP);
     let errDot = (err - (this.lastErr || err)) / deltaT; // Not default to 0, but default to errDot = 0
     this.lastErr = err;
-    // this.kdTerm = Math.atan(errDot * kD);
+    // this.kdTerm = atan(errDot * kD);
     this.kdTerm = this.rateOfOrbit * 100;
 
     let kI = 0.0001;
@@ -366,96 +463,70 @@ RobotShip.prototype.getDeflectionToIntercept = function(target, deltaT){
     this.dotProduct = dotProduct;
     return actuationAngle;
 };
-// RobotShip.prototype.PDinnerLoop_getThrustAngleForInterceptToTarget  = function(deltaT){
-//     const kP = 0.05 * this.mass / this.getForceAvailable('mainJet');
-//     const kD = 500 * kP; // NOT CLEAR HOW TO SET kD
-//     const theta   = this.sampleData.deflectionAngleToMovingTarget;
-//     // Simple fudge if travelling away from target AND YET APPEARS TO ENABLE CORRECT REVERSE ORIENTATION FOR OVERSHOOT
-//     if(theta >  Math.PI/2) theta = +Math.PI - theta;
-//     if(theta < -Math.PI/2) theta = -Math.PI - theta;
-//     // --
-//     const lastErr = this.lastSampleData.err_interceptEffort;
-
-//     const approachSpeed = this.sampleData.ourSpeedInTargetFrameOfRef;
-//     const err         = (approachSpeed < 0.25) ? approachSpeed * theta : approachSpeed * Math.tan(theta); // The quantiy we want to minimise to ensure a CONTROLLABLE intercept [closest approach of current trajectory / time to closest approach]
-//     const errDot      = (err - lastErr || 0) / deltaT;
-//     const response    = kP * err + kD * errDot;
-//     if (isNaN(response))response = 0;
-//     if (response > +1)  response = +1;
-//     if (response < -1)  response = -1;
-//     const desiredAngleForThrust = this.sampleData.absoluteAngleToTarget + response * Math.PI / 2;
-
-//     this.sampleerr_interceptEffort = err;
-//     return desiredAngleForThrust;
-// };
 // ---- Orthoganal Thrusting 'Lander' ----
 const Drone1                    = function(x, y, vx, vy, size=100, density=1, image=bossBaddy){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
     // this.showThrustOrgs = true;
     // this.ephemeral      = true;
     this.showEnergyBar  = false;
 };
 Drone1.prototype                 = Object.create(RobotShip.prototype);
-Drone1.prototype.constructor     = RobotShip;
 Drone1.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
     this.ensureTargetLock();
-    this.actuateOrthoganal(this.PDorthogalReponseToLandMinimiseSpin(this.target, deltaT));
+    this.actuateOrthoganal(this.modifyResponseToAvoidBoundary(this.PDorthogalReponseToLandMinimiseSpin(this.target, deltaT), this.getOrthogonalAcceleration(), 3*this.size));
     return this;
 };
 Drone1.prototype.applyDrag      = function(deltaT) {
     Primitive.prototype.applyDrag.call(this, deltaT);
-    this.angle = Math.PI / 2; this.spin = 0;// Fudge to keep orgogonal
+    this.angle = PI / 2; this.spin = 0;// Fudge to keep orgogonal
     return this; // chainable
 };
 // ---- Rotational Thrust 'Lander' ----
 const Drone2                       = function(x, y, vx, vy, size=100, density=1, image=bombBaddy){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
 };
 Drone2.prototype                 = Object.create(RobotShip.prototype);
 Drone2.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
     this.ensureTargetLock();
-    const actuationVector = this.PDorthogalReponseToLandMinimiseSpin(this.target, deltaT);
+    const actuationVector = this.modifyResponseToAvoidBoundary(this.PDorthogalReponseToLandMinimiseSpin(this.target, deltaT), this.getMainJetAcceleration(), 8*this.size);
     // this.rotationalThrustToReduceSpinError(this.getTargetSpinToReduceAngleError(getAngleV(actuationVector)));
     this.fullLoopRotationalPD(getAngleV(actuationVector), deltaT);
-    this.enginesActive.mainJet = Math.min(1, modulusV(actuationVector)/2); // Adjust this for power
-    if (this.sampleData.seperation < this.size * 15){
-        this.engeryField = true;
-        this.target.energy -= 0.01;
-    }else {
-        this.engeryField = false;
-    }
+    this.enginesActive.mainJet = min(1, modulusV(actuationVector)); // Adjust this for power
+    // if (this.sampleData.seperation < this.size * 15){
+    //     this.engeryField = true;
+    //     this.target.energy -= 0.01;
+    // } else {
+    //     this.engeryField = false;
+    // }
     return this; // chainable
 };
 // ---- Vector 'Lander' ------
 const Drone3                       = function(x, y, vx, vy, size=100, density=1, image=bomb){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
 };
 Drone3.prototype                 = Object.create(RobotShip.prototype);
 Drone3.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
     this.ensureTargetLock();
     const actuationVector = this.PDorthogalReponseToLandOn(this.target);
+    // const actuationVector = this.modifyResponseToAvoidBoundary(this.PDorthogalReponseToLandOn(this.target), this.getMainJetAcceleration(), 8*this.size);
     this.angle = getAngleV(actuationVector);
-    this.enginesActive.mainJet = Math.min(1, modulusV(actuationVector)/2); // Adjust this for power
+    this.enginesActive.mainJet = min(1, modulusV(actuationVector)); // Adjust this for power
     return this;
 };
 // ---- Vector 'Intercept' ------
 const Drone4                       = function(x, y, vx, vy, size=100, density=1, image=bomb){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
 };
 Drone4.prototype                 = Object.create(RobotShip.prototype);
 Drone4.prototype.getPilotCommand = function(deltaT){
@@ -467,10 +538,9 @@ Drone4.prototype.getPilotCommand = function(deltaT){
 };
 // --- Orthoganal intercept
 const Drone5                       = function(x, y, vx, vy, size=100, density=1, image=bossBaddy){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
     // this.showThrustOrgs = true;
 };
 Drone5.prototype                 = Object.create(RobotShip.prototype);
@@ -482,30 +552,28 @@ Drone5.prototype.getPilotCommand = function(deltaT){
 };
 Drone5.prototype.applyDrag      = function(deltaT) {
     Primitive.prototype.applyDrag.call(this, deltaT);
-    this.angle = Math.PI / 2; this.spin = 0;// Fudge to keep orgogonal
+    this.angle = PI / 2; this.spin = 0;// Fudge to keep orgogonal
     return this; // chainable
 };
 // --- Rotational intercept
 const Drone6                       = function(x, y, vx, vy, size=100, density=1, image=missile){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
 };
 Drone6.prototype                 = Object.create(RobotShip.prototype);
 Drone6.prototype.getPilotCommand = function(deltaT){
     this.canclePreviousControl();
     this.ensureTargetLock();
-    this.enginesActive.mainJet = this.energy;//Math.min(1, Math.cos(err)); // Adjust this for power
+    this.enginesActive.mainJet = this.energy;//min(1, cos(err)); // Adjust this for power
     this.fullLoopRotationalFeedForward(this.getDeflectionToIntercept(this.target, deltaT), deltaT);
     return this;
 };
 // --- Orientation Test FeedBack PD
 const Drone7                       = function(x, y, vx, vy, size=100, density=1, image=missile){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
 };
 Drone7.prototype                 = Object.create(RobotShip.prototype);
 Drone7.prototype.getPilotCommand = function(deltaT){
@@ -514,12 +582,11 @@ Drone7.prototype.getPilotCommand = function(deltaT){
     this.fullLoopRotationalPD(this.target.angle, deltaT);
     return this;
 };
-// --- Orientation Test FeedBack PD
+// --- Orientation Test FeedForward
 const Drone8                       = function(x, y, vx, vy, size=100, density=1, image=bombBaddy){
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, image);
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
     this.team = 3;
-    this.angle = Math.PI / 2;
+    this.angle = PI / 2;
 };
 Drone8.prototype                 = Object.create(RobotShip.prototype);
 Drone8.prototype.getPilotCommand = function(deltaT){
@@ -528,11 +595,25 @@ Drone8.prototype.getPilotCommand = function(deltaT){
     this.fullLoopRotationalFeedForward(this.target.angle, deltaT);
     return this;
 };
-
+// --- Orientation Test FeedForward
+const Drone9                       = function(x, y, vx, vy, size=100, density=1, image=bombBaddy){
+    RobotShip.call(this, x, y, vx, vy, size, density, image);
+    this.team = 3;
+    this.angle = PI / 2;
+};
+Drone9.prototype                 = Object.create(RobotShip.prototype);
+Drone9.prototype.getPilotCommand = function(deltaT){
+    this.canclePreviousControl();
+    this.ensureTargetLock();
+    this.fullLoopTargetSpinFeedForward(this.target.spin, deltaT);
+    return this;
+};
+// --- Orientation Test Feedback, planned BLIND mission as function of time, occasional correction based on sensor read (Kalman / Fusion)
+// Needs modification of sensor / control / physics loops
 
 const Fireball                      = function(x, y, vx, vy, size, parent){
-    this.base = Drone1;
-    this.base(x, y, vx, vy, size, 1);
+    // kill("Stop to analysis");
+    Drone1.call(this, x, y, vx, vy, size, 1);
     this.projectileEngines.goUp.projectileSize      *= 1.25;
     this.projectileEngines.goDown.projectileSize    *= 1.25;
     this.projectileEngines.goRight.projectileSize   *= 1.25;
@@ -557,86 +638,65 @@ Fireball.prototype.getPilotCommand = function(deltaT){
 // SeekerMissile (feedback)
 // IntercepterMissile (single angle triangulation predictor)
 const Missile                         = function(x, y, vx, vy, size, parent){
-    this.base = Drone6;
-    this.base(x, y, vx, vy, size, 1, bombBaddy);
+    Drone6.call(this, x, y, vx, vy, size, 1, bombBaddy);
+    this.ShipType = Missile;
     // this.projectileEngines.mainJet.projectileSize *= 0.5;
-    this.addModel = () => {
-        if (this.model) throw "Already have model!";
-        if (this.parent.model) throw "We're already a model, prevent nesting!";
-        this.model = {
-            me      : new Missile(this.x, this.y, this.vx, this.vy, this.size, this),
-            target  : new Ship(this.target.x, this.target.y, this.target.vx, this.target.vy, this.target.size, this.target.density, this.target.image),
-            dataPaths: [],
-        };
-        this.model.target.projectileEngines = this.target.projectileEngines; // Should have a good copy of the target type now
-    };
-    this.refreshModel = () => {
-        this.model.dataPaths = [];
-        this.model.successfulTrajectorys = [];
-        this.model.trajectoryCosts = [];
-    };
-    this.calcModelPath = function(pathNum, deltaT){
-        this.model.me.previousAngleToTarget = false;
-        this.model.me.lastErr               = false;
-        this.model.me.lastTargetAngle       = false;
-        this.model.me.angle = this.angle;
-        this.model.me.x     = this.x;
-        this.model.me.y     = this.y;
-        this.model.me.spin  = this.spin;
-        this.model.me.vx    = this.vx;
-        this.model.me.vy    = this.vy;
-        this.model.target.angle = this.target.angle;
-        this.model.target.x     = this.target.x;
-        this.model.target.y     = this.target.y;
-        this.model.target.spin  = this.target.spin;
-        this.model.target.vx    = this.target.vx;
-        this.model.target.vy    = this.target.vy;
-        this.model.target.enginesActive = this.target.enginesActive;
-        this.model.dataPaths[pathNum] = [];
-        this.model.successfulTrajectorys[pathNum] = false;
-        this.model.trajectoryCosts[pathNum] = 0;
-
-        const me = this.model.me;
-        let dT = GlobalParams.deltaT.physics
-        const calcsPerAlgorithm = Math.round(deltaT / dT);
-        dT = deltaT / calcsPerAlgorithm;
-        for (let t = 0; t < 1000; t++){
-            me.canclePreviousControl();
-            me.fullLoopRotationalFeedForward(me.getDeflectionToIntercept(this.model.target, deltaT), deltaT);
-            me.enginesActive.mainJet = this.energy;
-            for (let p = 0; p < calcsPerAlgorithm; p++){
-                this.model.target.clearAccelerations().updateForces(true).updateVelocities(dT).updatePosition(dT);
-                me.clearAccelerations().updateForces(true).updateVelocities(dT).updatePosition(dT);
-                const path = {
-                    x           : me.x,
-                    y           : me.y,
-                    seperation  : me.sampleData.seperation,
-                    speed       : me.speed(),
-                    rateOfOrbit : me.rateOfOrbit,
-                    dotProduct  : me.dotProduct,
-                    deflection  : normaliseAnglePItoMinusPI(me.angle - getAngle(me.vx, me.vy)),
-                    actuation   : (me.enginesActive.frontRight || 0) - (me.enginesActive.frontLeft || 0),  // Only one of these will be firing at any one time - give us the [-1:1] actuation in direction of +theta
-                    deltaT      : dT
-                };
-                this.model.dataPaths[pathNum].push(path);
-                this.model.trajectoryCosts[pathNum] += Math.abs(path.deflection) * path.speed;
-
-                if (me.sampleData.seperation < me.sampleData.size) {this.model.successfulTrajectorys[pathNum] = true; t = 1000; break;}
-                // if (Math.abs(me.rateOfOrbit) > (Math.PI/1000) && me.dotProduct < 0) {t = 1000;break;} // > 1/2Hz
-                if ((me.x - me.size) < -0.5*GlobalParams.universeSize*w){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 0/2, deltaT);this.enginesActive.mainJet=this.energy; }
-                if ((me.y - me.size) < -0.5*GlobalParams.universeSize*h){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 1/2, deltaT);this.enginesActive.mainJet=this.energy; }
-                if ((me.x + me.size) > +0.5*GlobalParams.universeSize*w){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 2/2, deltaT);this.enginesActive.mainJet=this.energy; }
-                if ((me.y + me.size) > +0.5*GlobalParams.universeSize*h){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 3/2, deltaT);this.enginesActive.mainJet=this.energy; }
-            }
-        }
-    };
     this.gameClass      = 'missile';
     this.parent         = parent;
     this.team           = parent.team;
     this.damagePts      = parent.mass/2;
     this.angle          = this.parent.angle;
+    this.plotAllCharts  = true;
+    // this.projectileEngines.mainJet.projectileSize       *= 1.5;
+    // this.projectileEngines.frontRight.projectileSize    *= 1.25;
+    // this.projectileEngines.frontLeft.projectileSize     *= 1.25;
+    // this.projectileEngines.backLeft.projectileSize      *= 1.25;
+    // this.projectileEngines.backRight.projectileSize     *= 1.25;
+
 };
 Missile.prototype                   = Object.create(Drone6.prototype);
+Missile.prototype.calcModelPath = function(pathNum, deltaT){
+    const me        = this.model.me;
+    const target    = this.model.target;
+    const internalModel = true;
+    let dT = GlobalParams.deltaT.physics
+    const calcsPerAlgorithm = round(deltaT / dT);
+    dT = deltaT / calcsPerAlgorithm;
+    for (let t = 0; t < 1000; t++){
+
+        // <-- Model control
+        me.canclePreviousControl(); me.enginesActive.mainJet = this.energy; // Gamify : Reduce power with health
+        me.fullLoopRotationalPD(me.getDeflectionToIntercept(target, deltaT), deltaT);
+        // -->
+
+        // <-- Model and path multiple physics iterations
+        for (let p = 0; p < calcsPerAlgorithm; p++){
+            // <-- Update ghosts of both us & target
+            target.clearAccelerations().updateForces(internalModel).updateVelocities(dT).updatePosition(dT);
+                me.clearAccelerations().updateForces(internalModel).updateVelocities(dT).updatePosition(dT);
+            const path = {
+                x           : me.x,
+                y           : me.y,
+                seperation  : me.sampleData.seperation,         // NO! - We've moved since last calculating this interaction!!
+                speed       : me.speed(),
+                rateOfOrbit : me.rateOfOrbit,
+                dotProduct  : me.dotProduct,
+                deflection  : normaliseAnglePItoMinusPI(me.angle - getAngle(me.vx, me.vy)),
+                actuation   : (me.enginesActive.frontRight || 0) - (me.enginesActive.frontLeft || 0),  // Only one of these will be firing at any one time - give us the [-1:1] actuation in direction of +theta
+                deltaT      : dT
+            };
+            this.model.dataPaths[pathNum].push(path);
+            this.model.trajectoryCosts[pathNum] += abs(path.deflection) * path.speed;
+
+            if (me.sampleData.seperation < me.sampleData.size) {this.model.successfulTrajectorys[pathNum] = true; t = 1000; break;}
+            // if (abs(me.rateOfOrbit) > (PI/1000) && me.dotProduct < 0) {t = 1000;break;} // > 1/2Hz
+            if ((me.x - me.size) < -0.5*GlobalParams.universeSize*w){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(PI * 0/2, deltaT);this.enginesActive.mainJet=this.energy; }
+            if ((me.y - me.size) < -0.5*GlobalParams.universeSize*h){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(PI * 1/2, deltaT);this.enginesActive.mainJet=this.energy; }
+            if ((me.x + me.size) > +0.5*GlobalParams.universeSize*w){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(PI * 2/2, deltaT);this.enginesActive.mainJet=this.energy; }
+            if ((me.y + me.size) > +0.5*GlobalParams.universeSize*h){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(PI * 3/2, deltaT);this.enginesActive.mainJet=this.energy; }
+        }
+    }
+};
 Missile.prototype.ensureTargetLock  = function(){
     if (gameObjects.indexOf(this.target) === -1) {
         this.getNewTarget();
@@ -648,106 +708,33 @@ Missile.prototype.getPilotCommand = function(deltaT){
     this.ensureTargetLock();            // Add's model & sync's target
     this.enginesActive.mainJet = this.energy;
 
-    // <-- Save to use as me.getPilotCommand never called
-    this.refreshModel();            // Clear all paths
-    this.calcModelPath(0, deltaT);  // Plot path0 (resyncing me & target first)
+    // <-- Safe to use in this function as me.getPilotCommand never called
+    this.resetModel().prepModelPath(0).calcModelPath(0, deltaT);    // For visuals only - Not used for trajectory
     // -->
 
-    this.fullLoopRotationalFeedForward(this.getDeflectionToIntercept(this.target, deltaT), deltaT);
-
-    // if (Math.abs(this.rateOfOrbit) > (Math.PI/1000) && this.dotProduct < 0) {this.explode();} // > 1/2Hz
+    this.fullLoopRotationalPD(this.getDeflectionToIntercept(this.target, deltaT), deltaT);
+    // if (abs(this.rateOfOrbit) > (PI/1000) && this.dotProduct < 0) {this.explode();} // > 1/2Hz
 
     return this;
 };
 
-
-const getPercievedAngleBetween = (a, b, c) => {
-    const t1 = new Interaction();
-    t1.full(a, b);
-    const t2 = new Interaction();
-    t2.full(a, c);
-    return getAngleV(t1.unitVector) - getAngleV(t2.unitVector);
-};
 const Interceptor                         = function(x, y, vx, vy, size, parent){
-    this.base = Drone6;
-    this.base(x, y, vx, vy, size, 1, bombBaddy);
-    // this.projectileEngines.mainJet.projectileSize *= 0.5;
-    this.addModel = () => {
-        if (this.model) throw "Already have model!";
-        if (this.parent.model) throw "We're already a model, prevent nesting!";
-        this.model = {
-            me      : new Interceptor(this.x, this.y, this.vx, this.vy, this.size, this),
-            target  : new Ship(this.target.x, this.target.y, this.target.vx, this.target.vy, this.target.size, this.target.density, this.target.image),
-            dataPaths: [],
-        };
-        this.model.target.projectileEngines = this.target.projectileEngines; // Should have a good copy of the target type now
-    };
-    this.refreshModel = () => {
-        this.model.dataPaths = [];
-        this.model.successfulTrajectorys = [];
-        this.model.trajectoryCosts = [];
-    };
-    this.calcModelPath = function(pathNum, deltaT, angleWhenMissed){
-        this.model.me.previousAngleToTarget = false;
-        this.model.me.lastErr               = false;
-        this.model.me.lastTargetAngle       = false;
-        this.model.me.angle = this.angle;
-        this.model.me.x     = this.x;
-        this.model.me.y     = this.y;
-        this.model.me.spin  = this.spin;
-        this.model.me.vx    = this.vx;
-        this.model.me.vy    = this.vy;
-        this.model.target.angle = this.target.angle;
-        this.model.target.x     = this.target.x;
-        this.model.target.y     = this.target.y;
-        this.model.target.spin  = this.target.spin;
-        this.model.target.vx    = this.target.vx;
-        this.model.target.vy    = this.target.vy;
-        this.model.target.enginesActive = this.target.enginesActive;
-        this.model.dataPaths[pathNum] = [];
-        this.model.successfulTrajectorys[pathNum] = false;
-        this.model.trajectoryCosts[pathNum] = 0;
-
-        const me = this.model.me;
-        let dT = GlobalParams.deltaT.physics
-        const calcsPerAlgorithm = Math.round(deltaT / dT);
-        dT = deltaT / calcsPerAlgorithm;
-        for (let t = 0; t < 1000; t++){
-            me.canclePreviousControl();
-            me.chosenApproach(this.model.target, deltaT, angleWhenMissed);
-            me.enginesActive.mainJet = this.energy;
-            for (let p = 0; p < calcsPerAlgorithm; p++){
-                // THIS SHOULD HAVE A CLEAR ACCELERATIONS PER PHYSICS LOOP!
-                this.model.target.clearAccelerations().updateForces(true).updateVelocities(dT).updatePosition(dT);
-                me.clearAccelerations().updateForces(true).updateVelocities(dT).updatePosition(dT);
-                const path = {
-                    x           : me.x,
-                    y           : me.y,
-                    seperation  : me.sampleData.seperation,
-                    speed       : me.speed(),
-                    rateOfOrbit : me.rateOfOrbit,
-                    dotProduct  : me.dotProduct,
-                    deflection  : normaliseAnglePItoMinusPI(me.angle - getAngle(me.vx, me.vy)),
-                    actuation   : (me.enginesActive.frontRight || 0) - (me.enginesActive.frontLeft || 0),  // Only one of these will be firing at any one time - give us the [-1:1] actuation in direction of +theta
-                    deltaT      : dT
-                };
-                this.model.dataPaths[pathNum].push(path);
-                this.model.trajectoryCosts[pathNum] += Math.abs(path.deflection) * path.speed;
-
-                if (me.sampleData.seperation < me.sampleData.size) {this.model.successfulTrajectorys[pathNum] = true; t = 1000; break;}
-                // if (Math.abs(me.rateOfOrbit) > (Math.PI/1000) && me.dotProduct < 0) {t = 1000;break;} // > 1/2Hz
-                if ((me.x - me.size) < -0.5*GlobalParams.universeSize*w){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 0/2, deltaT);this.enginesActive.mainJet=this.energy; }
-                if ((me.y - me.size) < -0.5*GlobalParams.universeSize*h){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 1/2, deltaT);this.enginesActive.mainJet=this.energy; }
-                if ((me.x + me.size) > +0.5*GlobalParams.universeSize*w){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 2/2, deltaT);this.enginesActive.mainJet=this.energy; }
-                if ((me.y + me.size) > +0.5*GlobalParams.universeSize*h){t = 1000;break;}//this.canclePreviousControl().fullLoopRotationalPD(Math.PI * 3/2, deltaT);this.enginesActive.mainJet=this.energy; }
-            }
-        }
-    };
+    Drone6.call(this, x, y, vx, vy, size, 1, bombBaddy);
+    this.ShipType = Interceptor;
     this.gameClass      = 'missile';
     this.parent         = parent;
     this.team           = parent.team;
     this.damagePts      = parent.mass/2;
     this.angle          = this.parent.angle;
+    this.plotAllCharts  = false;
+    this.triangulatedAngle      = 0;
+    this.triangulationDelta     = PI/2;
+    this.triangulatedCost    = 999999;
+    // this.projectileEngines.mainJet.projectileSize       *= 1.5;
+    // this.projectileEngines.frontRight.projectileSize    *= 1.25;
+    // this.projectileEngines.frontLeft.projectileSize     *= 1.25;
+    // this.projectileEngines.backLeft.projectileSize      *= 1.25;
+    // this.projectileEngines.backRight.projectileSize     *= 1.25;
 };
 Interceptor.prototype                   = Object.create(Drone6.prototype);
 Interceptor.prototype.ensureTargetLock  = function(){
@@ -756,142 +743,222 @@ Interceptor.prototype.ensureTargetLock  = function(){
         if (!this.model){this.addModel();} // Creates target
     }
 };
-Interceptor.prototype.chosenApproach = function(target, deltaT, angleWhenMissed) {
-    const sampleData        = this.sampleData = new Interaction(); // We want to keep this data
-    sampleData.full(this, target);
-    const approachVector    = {x:this.vx - target.vx, y:this.vy - target.vy}; // May not be 'approaching'! Could have high magnitude, and be orbiting.
-    const approachAngle     = (getAngleV(approachVector));
-    const angleToTarget     = (getAngleV(sampleData));
-    if (!this.angleToTarget) this.angleToTarget = angleToTarget;
-    let err                 = normaliseAnglePItoMinusPI(angleToTarget - approachAngle);
-    this.dotProduct         = Math.cos(err) * modulusV(approachVector); // Scaler approach speed. Negative for move away
-    this.rateOfOrbit        = (angleToTarget - (this.previousAngleToTarget || angleToTarget)) / deltaT; // Note this is different to errDot which could be zero during a perfect orbit
-    this.previousAngleToTarget = angleToTarget;
-    this.fullLoopRotationalFeedForward(this.angleToTarget + angleWhenMissed, deltaT);
+Interceptor.prototype.calcModelPath = function(pathNum, deltaT, testAbsAngle){
+    // NOTE - this will never be invoked on me()
+    const me        = this.model.me;
+    const target    = this.model.target;
+    const internalModel     = true;
+    const calcsPerAlgorithm = 1;//round(deltaT / GlobalParams.deltaT.physics);
+    const dT                = deltaT / calcsPerAlgorithm;
+
+    // <-- Max a few K, but shorter on impact
+    for (let t = 0; t < 1000; t++){
+        // <-- Model control
+        me.canclePreviousControl(); me.enginesActive.mainJet = this.energy;
+        me.fullLoopRotationalFeedForward(testAbsAngle, dT*calcsPerAlgorithm); //
+        // -->
+
+        // <-- Model and path multiple physics iterations
+        for (let p = 0; p < calcsPerAlgorithm; p++){
+            // <-- Update ghosts of both us & target
+            target.clearAccelerations().updateForces(internalModel).updateVelocities(dT).updatePosition(dT);
+                me.clearAccelerations().updateForces(internalModel).updateVelocities(dT).updatePosition(dT);
+            // -->
+            const pathPt = {
+                x           : me.x,
+                y           : me.y,
+                seperation  : me.getSeperationFrom(target),
+                speed       : me.speed(),
+                rateOfOrbit : me.getRateOfOrbitAround(target),
+                dotProduct  : me.getRateOfApproachTo(target),
+                deflection  : normaliseAnglePItoMinusPI(me.angle - getAngle(me.vx, me.vy)),
+                actuation   : (me.enginesActive.frontRight || 0) - (me.enginesActive.frontLeft || 0),  // Only one of these will be firing at any one time - give us the [-1:1] actuation in direction of +theta
+                deltaT      : dT
+            };
+            this.model.dataPaths[pathNum].push(pathPt);
+
+            // <-- Kill if hit / flypast / wall
+            if (pathPt.seperation< (me.size+target.size)) {this.model.successfulTrajectorys[pathNum] = true; t = 1000;break;}
+            // if (abs(pathPt.rateOfOrbit) > (PI/1000) && pathPt.dotProduct < 0) {t = 1000break;} // > 1/2Hz
+            // if ((me.x - me.size) < -0.5*GlobalParams.universeSize*w)                    {t = 1000;break;}
+            // if ((me.y - me.size) < -0.5*GlobalParams.universeSize*h)                    {t = 1000;break;}
+            // if ((me.x + me.size) > +0.5*GlobalParams.universeSize*w)                    {t = 1000;break;}
+            // if ((me.y + me.size) > +0.5*GlobalParams.universeSize*h)                    {t = 1000;break;}
+            // --
+        }
+        // -->
+    }
+    // -->
 };
 Interceptor.prototype.getPilotCommand = function(deltaT){
-    this.canclePreviousControl();
+    this.canclePreviousControl(); this.enginesActive.mainJet = this.energy;
     this.ensureTargetLock();            // Add's model & sync's target
-    this.enginesActive.mainJet = this.energy;
+    deltaT = 20;
+    const getOrbitFromTestTrajAngle = (testAngle, n) => {
+        // Predictively forward model ourselves moving wrt target
+        this.prepModelPath(n).calcModelPath(n, deltaT, testAngle);
+        // Assume point of tightest orbit (high rateOfOrbit) is closest approach -- DOESN'T WORK
+        // Assume between +/- high rateOfOrbit is INTERCEPT, hence desired angle we're attempting to triangulate
+        let pathsTightestOrbit = 0;
+        let indexTightestOrbit;
+        let pathsClosestOrbit = GlobalParams.universeSize*w*10;
+        let indexClosestOrbit;
 
-    if (this.angleWhenMissed === undefined){
-        let n = 0;
-        let angleLastPathMissed = 0;
-        while (n < 5){
-            this.refreshModel();                                    // Clears Paths & Flags
-            this.calcModelPath(0, deltaT, -angleLastPathMissed);    // Re-syncs us & target
-            let closestApproach = 999999;
-            let closestIndex = 0;
-            for (let i = 0; i < this.model.dataPaths[0].length; i++){
-                if (this.model.dataPaths[0][i].seperation < closestApproach){
-                    closestApproach = this.model.dataPaths[0][i].seperation;
-                    closestIndex = i;
-                }
+        let orbitIntegral = 0;
+
+        const dataPath              = this.model.dataPaths[n];
+        const successfulTrajectory  = this.model.successfulTrajectorys[n];
+
+        for (let i = 1; i < dataPath.length; i++){
+            orbitIntegral += dataPath[i].rateOfOrbit;
+            const orbitTightness = abs(dataPath[i].rateOfOrbit);
+            const orbitCloseness = dataPath[i].seperation;
+            if (orbitTightness > pathsTightestOrbit){
+                pathsTightestOrbit = orbitTightness;        // Always +ve
+                indexTightestOrbit = i;
             }
-            angleLastPathMissed = getPercievedAngleBetween(this, this.model.dataPaths[0][closestIndex], this.model.target);
-            if (this.angleWhenMissed === undefined || Math.abs(angleLastPathMissed) < Math.abs(this.angleWhenMissed)) {this.angleWhenMissed = angleLastPathMissed;}
-            console.log("path" + n + " : " + angleLastPathMissed + " \t \t Best:" + this.angleWhenMissed);
-            n++;
+            if (orbitCloseness < pathsClosestOrbit){
+                pathsClosestOrbit = orbitCloseness;        // Always +ve
+                indexClosestOrbit = i;
+            }
         }
+
+        let orbitAverage;
+        if (dataPath.length){
+            orbitAverage = orbitIntegral / dataPath.length;
+        } else {
+            orbitAverage = 0; console.log(n, displayAsPI(testAngle), orbitIntegral, "No dataPath.length");
+        }
+        this.model.trajectoryCosts[n] = orbitAverage;
+
+
+        let directionOfTightestOrbit;
+        if (indexTightestOrbit) {
+            directionOfTightestOrbit = dataPath[indexTightestOrbit].rateOfOrbit;
+        } else {
+            directionOfTightestOrbit = 0; console.log(n, displayAsPI(testAngle), indexTightestOrbit, "No indexTightestOrbit");
+        }
+
+        return {
+            closest             : pathsClosestOrbit,
+            tightestOrbit       : directionOfTightestOrbit,
+            orbitAverage        : orbitAverage,
+            duration            : dataPath.length,
+            successfulTrajectory: successfulTrajectory,
+            // cost                : pathsClosestOrbit + (successfulTrajectory ? 0 : (1000-dataPath.length)) // If unsuccessful apply cost for how much cut short (ie a short path into the wall, well wide of the target will have the highest cost)
+            cost                : pathsClosestOrbit
+        };
+    };
+
+    for (let dummy = 0; dummy < 1; dummy++){
+        this.resetModel();
+        let deltaA = this.triangulationDelta;
+        let testL = getOrbitFromTestTrajAngle(this.triangulatedAngle + deltaA, 0);
+        let testR = getOrbitFromTestTrajAngle(this.triangulatedAngle - deltaA, 1);
+        let newCost, newDuration;
+        if (testL.cost < testR.cost) {
+            this.triangulatedAngle += deltaA; newCost = testL.cost; newDuration = testL.duration; //this.chosenPath = 0;
+        } else {
+            this.triangulatedAngle -= deltaA; newCost = testR.cost; newDuration = testR.duration; //this.chosenPath = 1;
+        }
+        if (newCost < (this.target.size + this.size)) {
+            this.triangulationDelta /= 1.5; dummy = 100;
+        } else if (newCost < this.triangulatedCost){
+            this.triangulationDelta /= 2;
+        } else {
+            this.triangulationDelta = max(this.triangulationDelta, 0.0001 * this.speed() * newCost); // Seek wider IFF fast OR far
+        }
+        this.triangulationDelta = max(this.triangulationDelta, 0.0001);                                 // Never less than jitter
+        this.triangulationDelta = min(this.triangulationDelta, PI/4);                                   // Never more than PI/4
+        this.triangulatedCost   = newCost;
+
     }
+    // this.resetModel().prepModelPath(0).calcModelPath(0, deltaT, this.triangulatedAngle); // Just to clear out graphs!
+    this.fullLoopRotationalFeedForward(this.triangulatedAngle, deltaT);
 
-
-    this.chosenApproach(this.target, deltaT, -1*this.angleWhenMissed);
-
-    // if (Math.abs(this.rateOfOrbit) > (Math.PI/1000) && this.dotProduct < 0) {this.explode();} // > 1/2Hz
+    // if (abs(this.rateOfOrbit) > (PI/1000) && this.dotProduct < 0) {this.explode();} // > 1/2Hz
 
     return this;
 };
 
-
-const BigRocket = function(x, y, vx, vy, size, parent){
-    const density = 40;
-    this.base = RobotShip;
-    this.base(x, y, vx, vy, size, density, mis);
+const PathChooser                         = function(x, y, vx, vy, size, parent){
+    Drone6.call(this, x, y, vx, vy, size, 1, bombBaddy);
+    this.ShipType = PathChooser;
     this.gameClass      = 'missile';
     this.parent         = parent;
     this.team           = parent.team;
+    this.damagePts      = parent.mass/2;
     this.angle          = this.parent.angle;
-    // this.vx             = vx;
-    // this.vy             = vy;
-    this.showEnergyBar  = false;
-    this.damagePts      = parent.size;
-this.launchtime=Date.now();
-
+    this.plotAllCharts  = true;
+    this.projectileEngines.mainJet.projectileSize       *= 1.5;
+    this.projectileEngines.frontRight.projectileSize    *= 1.25;
+    this.projectileEngines.frontLeft.projectileSize     *= 1.25;
+    this.projectileEngines.backLeft.projectileSize      *= 1.25;
+    this.projectileEngines.backRight.projectileSize     *= 1.25;
 };
-BigRocket.prototype                   = Object.create(RobotShip.prototype);
-BigRocket.prototype.constructor       = RobotShip;
-BigRocket.prototype.getPilotCommand   = function(deltaT){
-    // this.PDinnerLoop_OrientationControlForDesiredAngle(this.target.angle, deltaT);
-    this.enginesActive.mainJet = 1;
-    if (this.size > 10 && this.launchtime < (Date.now()-1000)){
-        const split1 = new BigRocket(
-            this.x + 1*this.size * Math.cos(this.angle + Math.PI / 2),
-            this.y + 1*this.size * Math.sin(this.angle + Math.PI / 2),
-            this.vx,
-            this.vy,
-            this.size / 2,
-            this
-        );
-        gameObjects.push(split1);
-
-        const split2 = new BigRocket(
-            this.x + 1*this.size * Math.cos(this.angle - Math.PI / 2),
-            this.y + 1*this.size * Math.sin(this.angle - Math.PI / 2),
-            this.vx,
-            this.vy,
-            this.size / 2,
-            this
-        );
-        gameObjects.push(split2);
-        // this.explode();
-        sound(tracks.Stinger);
-        Particle.prototype.explode.call(this);
-    } else if(this.size<10){
-            this.explode();
+PathChooser.prototype                   = Object.create(Drone6.prototype);
+PathChooser.prototype.ensureTargetLock  = function(){
+    if (gameObjects.indexOf(this.target) === -1) {
+        this.getNewTarget();
+        if (!this.model){this.addModel();} // Creates target
     }
 };
+PathChooser.prototype.calcModelPath = function(pathNum, deltaT, theta){
+    // NOTE - this will never be invoked on me()
+    const me        = this.model.me;
+    const target    = this.model.target;
+    const internalModel     = true;
+    const calcsPerAlgorithm = 1;//round(deltaT / GlobalParams.deltaT.physics);
+    const dT                = deltaT / calcsPerAlgorithm;
 
-const Baddy                           = function(x, y){
-    this.base = RobotShip;
-    this.base(x, y, 0,0,30, 1, bombBaddy);
-    this.team = 3;
-    this.angle = Math.PI / 2;
-};
-Baddy.prototype                     = Object.create(RobotShip.prototype);
-Baddy.prototype.constructor         = RobotShip;
-Baddy.prototype.getPilotCommand     = function(deltaT){
-    this.canclePreviousControl();
-    this.ensureTargetLock();
-    // this.PDinnerLoop_OrientationControlForDesiredAngle(this.PDinnerLoop_getThrustAngleForInterceptToTarget(deltaT), deltaT);
-    if (interaction.seperation < 5 * interaction.size) {this.enginesActive.hoseGun = 1;}
-    else {this.enginesActive.mainJet = 1;}
-};
+    // <-- Max a few K, but shorter on impact
+    for (let t = 0; t < 1000; t++){
+        // <-- Model control
+        me.canclePreviousControl(); me.enginesActive.mainJet = this.energy;
+        me.fullLoopRotationalPD(theta, deltaT);
+        // me.angle = theta;
+        // -->
 
+        // <-- Model and path multiple physics iterations
+        for (let p = 0; p < calcsPerAlgorithm; p++){
+            // <-- Update ghosts of both us & target
+            target.clearAccelerations().updateForces(internalModel).updateVelocities(dT).updatePosition(dT);
+                me.clearAccelerations().updateForces(internalModel).updateVelocities(dT).updatePosition(dT);
+            // -->
+            const pathPt = {
+                x           : me.x,
+                y           : me.y,
+                seperation  : me.getSeperationFrom(target),
+                speed       : me.speed(),
+                rateOfOrbit : me.getRateOfOrbitAround(target),
+                dotProduct  : me.getRateOfApproachTo(target),
+                deflection  : normaliseAnglePItoMinusPI(me.angle - getAngle(me.vx, me.vy)),
+                actuation   : (me.enginesActive.frontRight || 0) - (me.enginesActive.frontLeft || 0),  // Only one of these will be firing at any one time - give us the [-1:1] actuation in direction of +theta
+                deltaT      : dT
+            };
+            this.model.dataPaths[pathNum].push(pathPt);
 
-const BossBaddy                       = function(x,y){
-    const density = 1;
-    this.base = RobotShip;
-    this.base(x, y, 0,0,100, density, bossBaddy);
-    this.team = 3;
-    this.baddySpawnReady    = false;
-    this.baddySpawnTimer    = (function(parent){setInterval(function(){parent.baddySpawnReady = true;}, 2000);})(this);
-    this.angle = Math.PI / 2;
-};
-BossBaddy.prototype                 = Object.create(RobotShip.prototype);
-BossBaddy.prototype.constructor     = RobotShip;
-BossBaddy.prototype.getPilotCommand = function(deltaT){
-    if (this.baddySpawnReady){
-        this.baddySpawnReady = false;
-        const childBaddy = new Baddy(
-            this.x - 1.2 * this.size * Math.cos(this.angle) + 4 * Math.random() - 2,
-            this.y - 1.2 * this.size * Math.sin(this.angle) + 4 * Math.random() - 2
-        );
-        childBaddy.parent = this;
-        childBaddy.size = this.size / 2;
-        gameObjects.push(childBaddy);
+            // <-- Kill if hit / flypast / wall
+            if (pathPt.seperation< (me.size+target.size)) {this.model.successfulTrajectorys[pathNum] = true; t = 1000;break;}
+            // if (abs(pathPt.rateOfOrbit) > (PI/1000) && pathPt.dotProduct < 0) {t = 1000break;} // > 1/2Hz
+            if ((me.x - me.size) < -0.5*GlobalParams.universeSize*w)                    {t = 1000;break;}
+            if ((me.y - me.size) < -0.5*GlobalParams.universeSize*h)                    {t = 1000;break;}
+            if ((me.x + me.size) > +0.5*GlobalParams.universeSize*w)                    {t = 1000;break;}
+            if ((me.y + me.size) > +0.5*GlobalParams.universeSize*h)                    {t = 1000;break;}
+            // --
+        }
+        // -->
     }
-    this.canclePreviousControl();
-    this.ensureTargetLock();
-    // this.othoganolThrustToReduceVelocityDeltaError(deltaT);
+    // -->
+};
+PathChooser.prototype.getPilotCommand = function(deltaT){
+    this.canclePreviousControl(); this.enginesActive.mainJet = this.energy;
+    this.ensureTargetLock();            // Add's model & sync's target
+
+    const theta = this.followConstantThetaToIntercept(this.target, deltaT);
+
+    this.resetModel().prepModelPath(0).calcModelPath(0, deltaT, theta);
+    // this.angle = theta;
+
+    return this;
 };

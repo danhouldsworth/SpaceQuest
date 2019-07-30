@@ -14,13 +14,13 @@ function fireball_testing(){
     gameObjects.push(new PlayerShip(-w, 0, 0,0, 2));
     gameObjects.push(new PlayerShip(+w, 0, 0,0, 1));
     // gameObjects.push(new Drone1(0,0, 0,0));
-    // setInterval(()=>gameObjects.push(new Drone1((Math.random()-0.5)*4*w,(0.5-Math.random())*4*h, 0,0)), 5000);
+    // setInterval(()=>gameObjects.push(new Drone1((random()-0.5)*4*w,(0.5-random())*4*h, 0,0)), 5000);
 }
 function droneTesting_Orientation(){
     gameObjects.push(new PlayerShip(-2*w, 0, 0,0, 1));
-    const droneType = Drone8;
+    const droneType = Drone9;
     // gameObjects.push(new droneType( 0,      2*h, 0,0,    100));
-    gameObjects.push(new droneType( 0,   0, 0,0,   200));
+    gameObjects.push(new droneType( 0,   0, 0,0,   100));
     // gameObjects.push(new droneType( -w,       h, 0,0,   50));
 }
 function droneTesting_MatchSpeed(){
@@ -44,7 +44,7 @@ function fullGame(){
     gameObjects.push(new BossBaddy( -2*w, 0));
 
     for (var count = 0; count < 100; count++)
-        gameObjects.push(new Asteroid( (Math.random()-0.5) * w, (Math.random()-0.5) * 8*h, 0.2 * (Math.random() - 0.5), 0.2 * (Math.random() - 0.5), 200 * Math.random(), 0.01 * (Math.random() - 0.5)));
+        gameObjects.push(new Asteroid( (random()-0.5) * w, (random()-0.5) * 8*h, 0.2 * (random() - 0.5), 0.2 * (random() - 0.5), 200 * random(), 0.01 * (random() - 0.5)));
 
 }
 function epicOribitalArena(){
@@ -54,19 +54,19 @@ function epicOribitalArena(){
     gameObjects.push(new BossBaddy( -2*w, 0));
      gameObjects.push(new Asteroid(0, 0, 0, 0, 1000, 0));
     for (var count = 0; count < 50; count++){
-        let r = 1200 + 1500*Math.random();
-        let angle = Math.random() * 2 * Math.PI;
-        gameObjects.push(new Moon( r*Math.sin(angle), r*Math.cos(angle), 0.2 * (Math.random() - 0.5), 0.2 * (Math.random() - 0.5), 400 * Math.random(), 0.01 * (Math.random() - 0.5)));
+        let r = 1200 + 1500*random();
+        let angle = random() * 2 * PI;
+        gameObjects.push(new Moon( r*sin(angle), r*cos(angle), 0.2 * (random() - 0.5), 0.2 * (random() - 0.5), 400 * random(), 0.01 * (random() - 0.5)));
     }
 
 }
 
 function targetPractice(){
-    gameObjects.push(new PlayerShip(-1*w, 0, 0,0, 1));
-    // gameObjects[0].angle = Math.PI/2;
+    // gameObjects[0].angle = PI/2;
 
     // const targetType = Drone1;
     const targetType = Asteroid;
+    // const targetType = BossBaddy;
    // var targetType = Baddy;
     gameObjects.push(new targetType( +0 * w, h  * 1));
     gameObjects.push(new targetType( +0 * w, h  * 2));
@@ -74,6 +74,7 @@ function targetPractice(){
     gameObjects.push(new targetType( +0 * w, -h * 1));
     gameObjects.push(new targetType( +0 * w, -h * 2));
     gameObjects.push(new targetType( +0 * w, -h * 3));
+    gameObjects.push(new PlayerShip(-1*w, 0, 0,0, 1));
 }
 function bigmoon(){
     GlobalParams.gravityFactor = 0;
@@ -89,13 +90,13 @@ function orbitingMoons(){
     function speedForCircularOrbitAround(planet, r){
         const m = planet.mass;
         const G = GlobalParams.gravityFactor;
-        const v = Math.sqrt(G * m / r);
+        const v = sqrt(G * m / r);
         return v;
     }
 
     const maxMoons = 50;
     for(var mooncount=4;mooncount < maxMoons;mooncount++){
-        // const r = Math.random() * w * GlobalParams.universeSize * 0.5;
+        // const r = random() * w * GlobalParams.universeSize * 0.5;
         const r = (mooncount / maxMoons) * w * GlobalParams.universeSize * 0.25;
         if (mooncount === 10){
             gameObjects.push(new PlayerShip(-r, 0, 0, -speedForCircularOrbitAround(planet, r), 1));
@@ -124,8 +125,8 @@ function windyPVP(){
     for (var star of stars) star.vx = 5*(star.y+0.5*GlobalParams.universeSize*h)*(star.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h);
     gameObjects.push(new PlayerShip(-w, 0, 0,0,2));
     gameObjects.push(new PlayerShip(+w, 0, 0,0,1));
-    gameObjects[0].angle = Math.PI ;
-    gameObjects[1].angle = Math.PI ;
+    gameObjects[0].angle = PI ;
+    gameObjects[1].angle = PI ;
 }
 function invasionFleet(){
     gameObjects.push(new PlayerShip(-w,-.1*h, 0,0, 1));

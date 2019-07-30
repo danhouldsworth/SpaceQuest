@@ -1,20 +1,22 @@
 "use strict";
 /* jshint browser : true, quotmark : false, white : false, indent : false, onevar : false */
+
 const asteroid    = new Image(); asteroid.src   = "../FinnsArtwork/vortex.png";            asteroid.scale = 2;
 const moon        = new Image(); moon.src       = "../FinnsArtwork/bluemoon.png";          moon.scale = 1.07;
 const fireball    = new Image(); fireball.src   = "../FinnsArtwork/Fireball.png";          fireball.drawingOffsetAngle = 0;
 const bomb        = new Image(); bomb.src       = "../FinnsArtwork/Bomb.png";              bomb.drawingOffsetAngle = 0;
-const bossBaddy   = new Image(); bossBaddy.src  = "../FinnsArtwork/human_mothership.gif";  bossBaddy.drawingOffsetAngle = Math.PI/4;
-const bombBaddy   = new Image(); bombBaddy.src  = "../FinnsArtwork/BombBaddy_cutout.png";  bombBaddy.drawingOffsetAngle = Math.PI;
-const missile     = new Image(); missile.src    = "../FinnsArtwork/Warheadtwo.png";         missile.drawingOffsetAngle=Math.PI;
+const bossBaddy   = new Image(); bossBaddy.src  = "../FinnsArtwork/human_mothership.gif";  bossBaddy.drawingOffsetAngle = PI/4;
+const spawnBaddy  = new Image(); spawnBaddy.src = "../FinnsArtwork/BossBaddy_cutout.png";  spawnBaddy.drawingOffsetAngle = PI/2;
+const bombBaddy   = new Image(); bombBaddy.src  = "../FinnsArtwork/BombBaddy_cutout.png";  bombBaddy.drawingOffsetAngle = PI;
+const missile     = new Image(); missile.src    = "../FinnsArtwork/Warheadtwo.png";         missile.drawingOffsetAngle=PI;
 // bombBaddy=missile;
 const spaceShip   = [];
-spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/DaddyStealth.png";       spaceShip[1].drawingOffsetAngle = Math.PI;
-spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns_ship.png";         spaceShip[2].drawingOffsetAngle = Math.PI/2;
-// spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";             spaceShip[1].drawingOffsetAngle = Math.PI;
-// spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/Eurofighter.png";         spaceShip[2].drawingOffsetAngle = Math.PI;
-// spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";          spaceShip[1].drawingOffsetAngle = Math.PI;
-// spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/airfoil.png";         spaceShip[2].drawingOffsetAngle = Math.PI;
+spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/DaddyStealth.png";       spaceShip[1].drawingOffsetAngle = PI;
+spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/finns_ship.png";         spaceShip[2].drawingOffsetAngle = PI/2;
+// spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";             spaceShip[1].drawingOffsetAngle = PI;
+// spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/Eurofighter.png";         spaceShip[2].drawingOffsetAngle = PI;
+// spaceShip[1]    = new Image(); spaceShip[1].src = "../FinnsArtwork/BiPlane.png";          spaceShip[1].drawingOffsetAngle = PI;
+// spaceShip[2]    = new Image(); spaceShip[2].src = "../FinnsArtwork/airfoil.png";         spaceShip[2].drawingOffsetAngle = PI;
 // Load sounds!
 const context = new AudioContext();
 
@@ -70,7 +72,7 @@ const gameArea      = document.createElement('canvas'),
         universeSize    : 16,
         starCount       : 1500,
         slowMoFactor    : 1,
-        rotatingFrame   : false,
+        rotatingFrame   : true,
         gravityFlag     : false,
         boundary_flag   : -1, // -1=bounce  / +1=wrap
         safeBoundary    : true,
@@ -85,42 +87,23 @@ const gameArea      = document.createElement('canvas'),
             Distance        : 0
         },
         refreshInterval : {
-            physics         : 1,    // ~200-300 Hz
+            physics         : 0,    // ~200-300 Hz
             animation       : 20,   //  ~60Hz RAF
             starsAndScores  : 50,   //  20 Hz
             pilotInput      : 10   // 100 Hz  (HumanShips read keyboard input / Drones get input from AI)
-        }
+        },
+        timers : {}
+    };
+    const kill = errMessage => {
+        clearTimeout(GlobalParams.timers.iteratePhysics);
+        clearTimeout(GlobalParams.timers.animate);
+        clearTimeout(GlobalParams.timers.getPilotInput);
+        clearTimeout(GlobalParams.timers.updateScoreStars);
+        throw errMessage;
     };
 
 // --
 
-// -- Maths / Shortcuts
-function modulus(x, y)                      {return Math.sqrt(x * x + y * y);}
-function restitution(P1,P2)                 {return (P1.restitution + P2.restitution) / 2;}
-function friction(P1, P2)                   {return (P1.friction + P2.friction) / 2;}
-function normaliseAngle0to2PI (grossAngle)  {return (10 * Math.PI + grossAngle) % (2 * Math.PI);}
-function normaliseAnglePItoMinusPI (grossAngle)  {
-    const posiAngle = normaliseAngle0to2PI(grossAngle);
-    if (posiAngle > Math.PI) return posiAngle - 2 * Math.PI;
-    return posiAngle;
-}
-function unitVectorFromAngle(angle)         {return {x:Math.cos(angle), y:Math.sin(angle)};}
-function getAngle(x, y) {
-    let angle = Math.atan(y / x);
-    if (y >= 0){
-        if (x >= 0) angle += 0;
-        if (x < 0)  angle += Math.PI;
-    } else if (y < 0){
-        if (x < 0)  angle += Math.PI;
-        if (x >= 0) angle += Math.PI * 2;
-    }
-    return angle;
-}
-function getAngleV(v)   {return getAngle(v.x, v.y);}
-function modulusV(v)    {return modulus(v.x, v.y);}
-const halfPi = Math.PI/2;
-const constraintHalfPiToMinusHalfPi = v => Math.max(Math.min(halfPi, v), -halfPi);
-const displayAsPI = f => Math.round(10*f/Math.PI)/10;
 // -- Setup & initialisation
 function initGameArea(){
     window.document.body.appendChild(starfield);
@@ -165,7 +148,7 @@ function gameDisplayText(text, x, y){
 function draw_ball(x, y, size, r, g, b){
     const colourstring = "rgb(".concat(r, ",", g, ",", b, ")");
     ctx.beginPath();
-    ctx.arc(x,y,size, 0, 2 * Math.PI, false);
+    ctx.arc(x,y,size, 0, 2 * PI, false);
     ctx.fillStyle = colourstring;
     ctx.fill();
 }

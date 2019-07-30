@@ -30,7 +30,7 @@ Primitive.prototype.clearAccelerations = function (){
 Primitive.prototype.updateForces = function(){
     // These are cleared at the start of each physics iterations, and before collisions detected
     if (GlobalParams.wind){
-        this.ax += this.size * (GlobalParams.wind * (this.y+0.5*GlobalParams.universeSize*h)*(this.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h)) / Math.max(10000,this.mass);
+        this.ax += this.size * (GlobalParams.wind * (this.y+0.5*GlobalParams.universeSize*h)*(this.y+0.5*GlobalParams.universeSize*h)/(GlobalParams.universeSize*h*GlobalParams.universeSize*h)) / max(10000,this.mass);
     }
     return this;
 };
@@ -53,9 +53,9 @@ Primitive.prototype.updatePosition = function(deltaT){
     return this;
 };
 Primitive.prototype.sanitiseSingularities   = function(deltaT) {
-    // this.vx     = Math.min(1,  this.vx);
-    // this.vy     = Math.min(1,  this.vy);
-    // this.spin   = Math.min(0.1, this.spin);
+    // this.vx     = min(1,  this.vx);
+    // this.vy     = min(1,  this.vy);
+    // this.spin   = min(0.1, this.spin);
     return this; // chainable
 };
 Primitive.prototype.applyDrag      = function(deltaT) {
@@ -69,8 +69,7 @@ Primitive.prototype.applyDrag      = function(deltaT) {
 
 // -- Particle is a subset of Primitive. It has density (& therefor mass), restituion and friction - and so can interact with other gameObjects.
 const Particle                    = function(x, y, vx, vy, size, angle, spin, density){
-    this.base = Primitive;
-    this.base(x, y, vx, vy, size, angle, spin);
+    Primitive.call(this,x, y, vx, vy, size, angle, spin);
     this.gameClass      = 'particle';
     this.boundary_flag  = GlobalParams.boundary_flag;
     this.restitution    = 0;
@@ -78,15 +77,15 @@ const Particle                    = function(x, y, vx, vy, size, angle, spin, de
     this.density        = density;
     this.energy         = 1; // Consider it adhesion
     const r = this.size;
-    this.volume         = (4/3) * Math.PI * r*r*r; // NOTE: mass is not recalculated during attrition!!
+    this.volume         = (4/3) * PI * r*r*r; // NOTE: mass is not recalculated during attrition!!
     this.mass           = this.volume * this.density;
     const m = this.mass;
     // 4/3 pi r^3
-    // this.mass           = Math.PI   * this.size * this.size * this.density; // NOTE: mass is not recalculated during attrition!!
+    // this.mass           = PI   * this.size * this.size * this.density; // NOTE: mass is not recalculated during attrition!!
     // this.inertiaRot     = 0.5       * this.size * this.size * this.mass;
     this.inertiaRot     = (2/5)*m*r*r;
 };
-Particle.prototype              = new Primitive();
+Particle.prototype              = Object.create(Primitive.prototype);
 Particle.prototype.momentum     = function(relativeTo){
     return this.mass * this.speed(relativeTo);
 };
@@ -126,15 +125,15 @@ Particle.prototype.collide      = function(that){
         u2y = (cos_theta * u2y) - (sin_theta * temp_vx);    // Velocity perpendicular to approach
 
         if (u2x < 0){
-            const max_stopping_friction_coeff = Math.abs((u2y - r2 * u_spin2 - r1 * u_spin1) * alpha / (u2x * (e + 1) * (alpha + 1)));
+            const max_stopping_friction_coeff = abs((u2y - r2 * u_spin2 - r1 * u_spin1) * alpha / (u2x * (e + 1) * (alpha + 1)));
             if (u2y > (r1 * u_spin1 + r2 * u_spin2)){
-                f = -Math.min(f, max_stopping_friction_coeff);
+                f = -min(f, max_stopping_friction_coeff);
             }
             if (u2y == (r1 * u_spin1 + r2 * u_spin2)){
                 f = 0;
             }
             if (u2y < (r1 * u_spin1 + r2 * u_spin2)){
-                f = Math.min(f, max_stopping_friction_coeff);
+                f = min(f, max_stopping_friction_coeff);
             }
 
             const v1x = u2x * (e + 1) / mu1;
@@ -156,8 +155,8 @@ Particle.prototype.collide      = function(that){
         if ( (interaction.seperation < (0.99 * interaction.size) ) && ( (this instanceof Graphic && that instanceof Graphic) || (!(this instanceof Graphic) && !(that instanceof Graphic)) ) ){ // Try and save some cycles
             // !!! NOTE : This compressability parameter is HARD CODED !!
             const antiSqueezeForce = 0.5 * (interaction.size - interaction.seperation);
-            const thatDisplacement = Math.max(1, antiSqueezeForce * this.mass / (this.mass + that.mass));
-            const thisDisplacement = Math.max(1, antiSqueezeForce - thatDisplacement);
+            const thatDisplacement = max(1, antiSqueezeForce * this.mass / (this.mass + that.mass));
+            const thisDisplacement = max(1, antiSqueezeForce - thatDisplacement);
             this.x += -thisDisplacement * cos_theta;
             this.y += -thisDisplacement * sin_theta;
             that.x +=  thatDisplacement * cos_theta;
@@ -246,63 +245,92 @@ Particle.prototype.explode      = function(){
     const index = gameObjects.indexOf(this);
     if (index !== -1) {gameObjects.splice(index,1);}
 };
+Particle.prototype.getSeperationFrom = function(target){
+    const t1 = new Interaction(); t1.full(this, target);
+    return t1.seperation;
+};
+Particle.prototype.getAbsAngleTo = function(target){
+    // Angle from 0 to target
+    const t1 = new Interaction(); t1.full(this, target);
+    return getAngleV(t1.unitVector);
+};
+Particle.prototype.getRelAngleTo = function(target){
+    // Angle we need to turn to point to target
+    const t1 = new Interaction(); t1.full(this, target);
+    return normaliseAnglePItoMinusPI(getAngleV(t1.unitVector) - this.angle);
+};
+Particle.prototype.getApproachVectorTo = function(target){
+    // NOTE : May not be 'approaching'! Could have high magnitude, and be orbiting.
+    return {x:this.vx - target.vx, y:this.vy - target.vy};
+};
+Particle.prototype.getAngleBetween = function(b, c){
+    // Looking at B, whats the angle to C
+    const t1 = new Interaction(); t1.full(this, c);
+    const t2 = new Interaction(); t2.full(this, b);
+    return normaliseAnglePItoMinusPI(getAngleV(t1.unitVector) - getAngleV(t2.unitVector));
+};
+Particle.prototype.getRateOfApproachTo = function(target){
+    const approachVector    = this.getApproachVectorTo(target);
+    const angleToTarget     = this.getAbsAngleTo(target);
+    const missAngle         = normaliseAnglePItoMinusPI(angleToTarget - getAngleV(approachVector));
+    return cos(missAngle) * modulusV(approachVector); // Scaler approach speed. Negative for move away
+};
+Particle.prototype.getRateOfOrbitAround = function(target){
+    const approachVector    = this.getApproachVectorTo(target);
+    const angleToTarget     = this.getAbsAngleTo(target);
+    const missAngle         = normaliseAnglePItoMinusPI(angleToTarget - getAngleV(approachVector));
+    return sin(missAngle) * modulusV(approachVector); // Scaler orbit speed CW
+};
 
 const Star = function(){
-    this.base = Particle;
-    const size  = Math.random() * 15;
-    const x     = (Math.random()-0.5) * GlobalParams.universeSize*w;
-    const y     = (Math.random()-0.5) * GlobalParams.universeSize*h;
+    const size  = random() * 15;
+    const x     = (random()-0.5) * GlobalParams.universeSize*w;
+    const y     = (random()-0.5) * GlobalParams.universeSize*h;
     const vx    = 5 / size;
-    this.base(x,y,vx,0,size,0, 0, 0);
+    Particle.call(this, x, y, vx, 0, size, 0, 0, 0);
     this.boundary_flag = 1;
 };
 Star.prototype                  = Object.create(Particle.prototype);
-Star.prototype.constructor      = Particle;
 Star.prototype.draw             = function(){
     ctxStars.beginPath();
-    ctxStars.arc(this.x,this.y,this.size, 0, 2 * Math.PI, false);
-    ctxStars.fillStyle = "rgb("+Math.round(300-this.size*20)+","+Math.round(300-this.size*20)+","+Math.round(300-this.size*20)+")";
+    ctxStars.arc(this.x,this.y,this.size, 0, 2 * PI, false);
+    ctxStars.fillStyle = "rgb("+round(300-this.size*20)+","+round(300-this.size*20)+","+round(300-this.size*20)+")";
     ctxStars.fill();
 };
 
 // -- Game objects - based on gameObjects. They damage points for collisions, and know their parent.
 const Bullet                      = function(x, y, vx, vy, size, parent){
     const density = 0.0001;
-    this.base = Particle;
-    this.base(x, y, vx, vy, size, 0, 0, density);
+    Particle.call(this, x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'bullet';
     this.parent         = parent;
     this.team           = parent.team;
     this.damagePts      = parent.mass/10000;
     this.calcColour = function(){
         this.red    = (this.parent.team % 2) ? 255                       : 255;
-        this.green  = (this.parent.team % 2) ? Math.floor(this.size*30)  : 255;
-        this.blue   = (this.parent.team % 2) ? Math.floor(this.size*30)  : Math.floor(this.size*30);
+        this.green  = (this.parent.team % 2) ? floor(this.size*30)  : 255;
+        this.blue   = (this.parent.team % 2) ? floor(this.size*30)  : floor(this.size*30);
     };
 };
 Bullet.prototype                = Object.create(Particle.prototype);
-Bullet.prototype.constructor    = Particle;
 
 const Thrust                      = function(x, y, vx, vy, size, parent){
     const density = 0.2;
-    this.base = Particle;
-    this.base(x, y, vx, vy, size, 0, 0, density);
+    Particle.call(this, x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'thrust';
     this.parent         = parent;
     this.team           = parent.team;
     this.calcColour = function(){
-        this.red    = (this.parent.team % 2) ? Math.floor(this.size*30) : Math.floor(this.size*30);
-        this.green  = (this.parent.team % 2) ? Math.floor(this.size*30) : 255;
-        this.blue   = (this.parent.team % 2) ? 255                      : Math.floor(this.size*30);
+        this.red    = (this.parent.team % 2) ? floor(this.size*30) : floor(this.size*30);
+        this.green  = (this.parent.team % 2) ? floor(this.size*30) : 255;
+        this.blue   = (this.parent.team % 2) ? 255                      : floor(this.size*30);
     };
 };
 Thrust.prototype                = Object.create(Particle.prototype);
-Thrust.prototype.constructor    = Particle;
 
 const Bomb                        = function(x, y, vx, vy, size, parent){
     const density = 1;
-    this.base = Particle;
-    this.base(x, y, vx, vy, size, 0, 0, density);
+    Particle.call(this, x, y, vx, vy, size, 0, 0, density);
     this.gameClass      = 'bomb';
     this.parent         = parent;
     this.team           = parent.team;
@@ -310,23 +338,22 @@ const Bomb                        = function(x, y, vx, vy, size, parent){
     this.calcColour = function(){
         this.red    = 255;
         this.green  = 255;
-        this.blue   = Math.floor(this.size*30);
+        this.blue   = floor(this.size*30);
     };
 };
 Bomb.prototype                  = Object.create(Particle.prototype);
-Bomb.prototype.constructor      = Particle;
 Bomb.prototype.detonate         = function(){
     // invoked with this=Graphic && this=Bomb
-    const numberOfBombs   = Math.min(200, 5 * this.speed() + this.mass / 1);
-    const bombSpeed       = Math.min(0.5, 1 * this.speed() + this.mass / 1000000);
+    const numberOfBombs   = min(200, 5 * this.speed() + this.mass / 1);
+    const bombSpeed       = min(0.5, 1 * this.speed() + this.mass / 1000000);
     for(let bombPiece = 1; bombPiece < numberOfBombs; bombPiece++) {
-        const fragSize = Math.random() * Math.min(10, this.size);
-        const throwAngle = 2 * Math.PI * numberOfBombs / bombPiece;
+        const fragSize = random() * min(10, this.size);
+        const throwAngle = 2 * PI * numberOfBombs / bombPiece;
         gameObjects.push(new Bomb(
-            this.x + (this.size * Math.random() * Math.cos(throwAngle) ),
-            this.y + (this.size * Math.random() * Math.sin(throwAngle) ),
-            bombSpeed * Math.cos(throwAngle),
-            bombSpeed * Math.sin(throwAngle),
+            this.x + (this.size * random() * cos(throwAngle) ),
+            this.y + (this.size * random() * sin(throwAngle) ),
+            bombSpeed * cos(throwAngle),
+            bombSpeed * sin(throwAngle),
             fragSize,
             this
         ));
@@ -334,20 +361,18 @@ Bomb.prototype.detonate         = function(){
 };
 Bomb.prototype.sanitiseSingularities        = function(deltaT){
     Primitive.prototype.sanitiseSingularities.call(this, deltaT);
-    if (Math.random() < (this.mass / 10000000) ) this.detonate();
+    if (random() < (this.mass / 10000000) ) this.detonate();
     return this;
 };
 // --
 
 // -- Like a particle but drawn with an image & explodes on destruction
 const Graphic                     = function(x, y, vx, vy, size, angle, spin, density){
-    this.base = Particle;
+    Particle.call(this, x, y, vx, vy, size, spin, 0, density);
     this.offSet = 0;
-    this.base(x, y, vx, vy, size, spin, 0, density);
     this.showPath = false;
 };
 Graphic.prototype               = Object.create(Particle.prototype);
-Graphic.prototype.constructor   = Particle;
 Graphic.prototype.draw          = function(){
     let grad;
     if (!this.scale) this.scale = 1;
@@ -373,14 +398,14 @@ Graphic.prototype.draw          = function(){
         if (GlobalParams.rotatingFrame) {ctx.rotate(GlobalParams.theta);}
         ctx.fillStyle = "rgb(0,0,0)";
         ctx.fillRect( - this.size - 1,  - this.size - 1, 2 * this.size + 2, 10);
-        ctx.fillStyle = "rgb(" + (255 - Math.round(this.energy * 200)) + "," + (55 + Math.round(this.energy * 200)) + ",0)";
+        ctx.fillStyle = "rgb(" + (255 - round(this.energy * 200)) + "," + (55 + round(this.energy * 200)) + ",0)";
         ctx.fillRect( - this.size,  - this.size, 2 * this.size * this.energy, 8);
         ctx.restore();
     }
     if (this.showThrustOrgs) {
         // let horizontalActuation = 0;
-        const horizontalActuation   = Math.max(this.enginesActive.goLeft || 0, this.enginesActive.goRight || 0);
-        const verticalActuation     = Math.max(this.enginesActive.goUp || 0, this.enginesActive.goDown || 0);
+        const horizontalActuation   = max(this.enginesActive.goLeft || 0, this.enginesActive.goRight || 0);
+        const verticalActuation     = max(this.enginesActive.goUp || 0, this.enginesActive.goDown || 0);
         ctx.save();
         ctx.translate(this.x, this.y);
         if (GlobalParams.rotatingFrame) {ctx.rotate(GlobalParams.theta);}
@@ -400,37 +425,73 @@ Graphic.prototype.draw          = function(){
             const dataPath = this.model.dataPaths[pathNum];
             let pts = dataPath.length;
             if (!pts) continue;
+            // <-- DRAW modelled path tragjectory
             for (let i = 1; i < dataPath.length; i++){
                 ctx.lineCap="round";
                 ctx.beginPath();
-                ctx.strokeStyle = "rgb("+Math.round(30*dataPath[i].speed)+","+Math.round((255-30*dataPath[i].speed))+",0)";
-                ctx.lineWidth=Math.max(Math.abs(30 * dataPath[i].deflection) , 5);
+                // ctx.strokeStyle = "rgb("+round(30*dataPath[i].speed)+","+round((255-30*dataPath[i].speed))+",0)";     // Green -> Red with Speed
+                ctx.lineWidth=max(abs(30 * dataPath[i].deflection) , 5);                                              // Thickness -> deflection (Ha! Aero lift AoA!)
+
+                ctx.strokeStyle = "rgb("+round(150*(dataPath[i].rateOfOrbit > 0 ? dataPath[i].rateOfOrbit : 0))+","+round((-150*(dataPath[i].rateOfOrbit < 0 ? dataPath[i].rateOfOrbit : 0)))+",0)";     // Green -> Red with Speed
+                ctx.lineWidth=max(abs(30 * dataPath[i].rateOfOrbit) , 5);
+
+                // ctx.strokeStyle = "rgb("+round(100*(this.model.trajectoryCosts[pathNum] > 0 ? this.model.trajectoryCosts[pathNum] : 0))+","+round((-100*(this.model.trajectoryCosts[pathNum] < 0 ? this.model.trajectoryCosts[pathNum] : 0)))+",0)";     // Green -> Red with Speed
+                // ctx.lineWidth=max(abs(30*dataPath[i].rateOfOrbit) , 5);
+
+                                                         // Thickness -> deflection (Ha! Aero lift AoA!)
                 ctx.moveTo(dataPath[i-1].x, dataPath[i-1].y);
                 ctx.lineTo(dataPath[i].x, dataPath[i].y);
                 ctx.stroke();
             }
+            // -->
+            // <-- DRAW Rectangle (sized trajectoryCosts) around final point/target/
+            ctx.beginPath();
+            ctx.strokeStyle = this.model.successfulTrajectorys[pathNum] ? "red" : "white";
+            ctx.lineWidth   = this.model.successfulTrajectorys[pathNum] ? 10 : 10;
+            // const impactRange = this.model.trajectoryCosts[pathNum];
+            const impactRange = this.target.size * 2;
+            ctx.rect(dataPath[pts-1].x - impactRange/2, dataPath[pts-1].y - impactRange/2, impactRange, impactRange);
+            ctx.stroke();
+            // if (this.model.successfulTrajectorys[pathNum]){
+                ctx.beginPath();
+                ctx.strokeStyle = "yellow";
+                ctx.rect(this.target.x - this.target.size, this.target.y - this.target.size, 2*this.target.size, 2*this.target.size);
+                ctx.stroke();
+            // }
+            // -->
+
+            if (this.plotAllCharts === false && (this.chosenPath != pathNum)){continue;}
+            // <-- Plot graphs of key actuation / trajectory data
             const dT = 8;
-            let x = dataPath[0].x + this.model.me.size * 2 + pathNum * 1000;
+            // let x = dataPath[0].x + this.model.me.size * 2 + pathNum * 2000;        // Allow for multiple stacking of models per object
+            let x = dataPath[0].x + this.model.me.size * 2;        // Allow for multiple stacking of models per object
             for (let i = 0; i < dataPath.length; i++){
                 ctx.lineCap="butt";
+                // <-- RED : actuation
                 ctx.beginPath();
                 ctx.strokeStyle = "rgb(255,0,0)";
                 ctx.lineWidth=dataPath[i].deltaT;
                 ctx.moveTo(x, dataPath[0].y - 900);
                 ctx.lineTo(x, dataPath[0].y - 900 + 300*dataPath[i].actuation);
                 ctx.stroke();
+                // -->
+                // <-- Green Deflection
                 ctx.beginPath();
                 ctx.strokeStyle = "rgb(0,255,0)";
                 ctx.lineWidth=dataPath[i].deltaT;
                 ctx.moveTo(x, dataPath[0].y - 300);
                 ctx.lineTo(x, dataPath[0].y - 300 + 300*dataPath[i].deflection);
                 ctx.stroke();
+                // -->
+                // <-- WHITE : rate of orbit. Cross over at +/i infinity is perfect intercept
                 ctx.beginPath();
                 ctx.strokeStyle = "rgb(255,255,255)";
                 ctx.lineWidth=dataPath[i].deltaT;
                 ctx.moveTo(x, dataPath[0].y + 300);
-                ctx.lineTo(x, dataPath[0].y + 300 + 300000*dataPath[i].rateOfOrbit);
+                ctx.lineTo(x, dataPath[0].y + 300 + 30*dataPath[i].rateOfOrbit);
                 ctx.stroke();
+                // -->
+                // <-- BLUE : Seperation from target
                 ctx.beginPath();
                 ctx.strokeStyle = "rgb(0,0,255)";
                 ctx.lineWidth=dataPath[i].deltaT;
@@ -439,21 +500,11 @@ Graphic.prototype.draw          = function(){
                 ctx.lineTo(x, dataPath[0].y + 900 + dataPath[i].seperation/10);
                 // ctx.lineTo(x, dataPath[0].y + 900 + 50000*(dataPath[i].speed-dataPath[(i||1)-1].speed)/this.model.me.projectileEngines.mainJet.projectileSize);
                 ctx.stroke();
-                x += dataPath[i].deltaT;
+                // -->
+                x += dataPath[i].deltaT; // NOTE : deltaT varies between iterations, so for our chart to have constant width for a 2second interval we need to dynamically adjust
             }
+            // -->
 
-            ctx.beginPath();
-            ctx.strokeStyle = this.model.successfulTrajectorys[pathNum] ? "red" : "white";
-            ctx.lineWidth   = this.model.successfulTrajectorys[pathNum] ? 10 : 10;
-            const impactRange = this.model.trajectoryCosts[pathNum];
-            ctx.rect(dataPath[pts-1].x - impactRange/2, dataPath[pts-1].y - impactRange/2, impactRange, impactRange);
-            ctx.stroke();
-            if (this.model.successfulTrajectorys[pathNum]){
-                ctx.beginPath();
-                ctx.strokeStyle = "yellow";
-                ctx.rect(this.target.x - this.target.size, this.target.y - this.target.size, 2*this.target.size, 2*this.target.size);
-                ctx.stroke();
-            }
         }
         // console.log(this.model.trajectoryCosts[i]);
     }
@@ -484,15 +535,15 @@ Graphic.prototype.draw          = function(){
         // grad.addColorStop(1, "yellow");
         ctx.beginPath();
         ctx.moveTo(this.x, this.y);
-        ctx.arc(this.x + this.sampleData.x/2, this.y+ this.sampleData.y/2, this.sampleData.seperation/2, 0, 2 * Math.PI, false);
+        ctx.arc(this.x + this.sampleData.x/2, this.y+ this.sampleData.y/2, this.sampleData.seperation/2, 0, 2 * PI, false);
         ctx.fillStyle = grad;
         ctx.fill();
     }
     if (this.FinnsRayGun){
         const finnsRayGun = {
             size : this.size * 15,
-            x : Math.cos(this.angle) * this.size * 15,
-            y : Math.sin(this.angle) * this.size * 15
+            x : cos(this.angle) * this.size * 15,
+            y : sin(this.angle) * this.size * 15
         };
         grad = ctx.createRadialGradient(this.x, this.y, 0, this.x+finnsRayGun.x, this.y+finnsRayGun.y, finnsRayGun.size);
         grad.addColorStop(0, "red");
@@ -501,7 +552,7 @@ Graphic.prototype.draw          = function(){
         // grad.addColorStop(1, "yellow");
         ctx.beginPath();
         ctx.moveTo(this.x, this.y);
-        ctx.arc(this.x + finnsRayGun.x/2, this.y + finnsRayGun.y/2, finnsRayGun.size/2, 0, 2 * Math.PI, false);
+        ctx.arc(this.x + finnsRayGun.x/2, this.y + finnsRayGun.y/2, finnsRayGun.size/2, 0, 2 * PI, false);
         ctx.fillStyle = grad;
         ctx.fill();
     }
@@ -512,15 +563,14 @@ Graphic.prototype.explode       = function(){
     Bomb.prototype.detonate.call(this);
     if (this.baddySpawnTimer)   {clearInterval(this.baddySpawnTimer);}
     if (this.selfDestructTimer) {clearTimeout(this.selfDestructTimer);}
-    if (this instanceof Ship)   {sound(tracks.Explosion, Math.min(0.2, this.size / 200));}
+    if (this instanceof Ship)   {sound(tracks.Explosion, min(0.2, this.size / 200));}
     return this; // chainable
 };
 // --
 
 // Game objects - based on Graphics. Have active controls and specific actions
 const Asteroid                    = function(x, y, vx, vy, size, spin, density){
-    this.base = Graphic;
-    this.base(x, y, vx, vy, size || 100, 0, spin, density || 10);
+    Graphic.call(this, x, y, vx, vy, size || 100, 0, spin, density || 10);
     this.gameClass  = 'asteroid';
     this.image      = asteroid;
     this.scale      = asteroid.scale;
@@ -529,11 +579,9 @@ const Asteroid                    = function(x, y, vx, vy, size, spin, density){
     if (!size) this.energy = 0.01;// this.energy *= 10; // Fudge to stop all exploding
 };
 Asteroid.prototype              = Object.create(Graphic.prototype);
-Asteroid.prototype.constructor  = Graphic;
 
 const Moon                    = function(x, y, vx, vy, size, spin, density){
-    this.base = Asteroid;
-    this.base(x, y, vx, vy, size, 0, density || 100);
+    Asteroid.call(this, x, y, vx, vy, size, 0, density || 100);
     this.gameClass  = 'moon';
     this.image      = moon;
     this.scale      = moon.scale;
@@ -543,14 +591,12 @@ const Moon                    = function(x, y, vx, vy, size, spin, density){
     // this.energy = (1/200000000) * this.mass;
 };
 Moon.prototype              = Object.create(Asteroid.prototype);
-Moon.prototype.constructor  = Asteroid;
 
 // -- Interaction is used to resolve to objects, and refered to by collide, stretch, attract
 const Interaction                     = function(){
     Primitive.call(this);
 };
 Interaction.prototype               = Object.create(Primitive.prototype);
-Interaction.prototype.constructor   = Primitive;
 Interaction.prototype.copy          = function(){
     const copy = new Interaction();
     // copy.x          = this.x;
@@ -564,7 +610,7 @@ Interaction.prototype.near          = function(P1, P2){
     this.x = P2.x - P1.x;           // Contact vector
     this.y = P2.y - P1.y;
     this.size = P2.size + P1.size;  // Interaction distance at point of contact
-    return ((Math.abs(this.x) <= this.size) && (Math.abs(this.y) <= this.size));
+    return ((abs(this.x) <= this.size) && (abs(this.y) <= this.size));
 };
 Interaction.prototype.touching      = function(){
     this.seperationSqrd = this.x * this.x + this.y * this.y;
@@ -573,7 +619,7 @@ Interaction.prototype.touching      = function(){
 };
 Interaction.prototype.resolve       = function(){
     // Hard coded stability!!! Only 2 1/2px gameObjects colliding could have a sep < 1
-    this.seperation = (this.seperationSqrd < 1) ? 1 : Math.sqrt(this.seperationSqrd);
+    this.seperation = (this.seperationSqrd < 1) ? 1 : sqrt(this.seperationSqrd);
     this.unitVector = {
         x : this.x / this.seperation,
         y : this.y / this.seperation
@@ -597,13 +643,12 @@ Interaction.prototype.clear         = function(){
 // -- Wall is a size = 200 Primitive, that only collides.
 const Wall                            = function(){
     const density = 10000;
-    this.base = Particle;
-    this.base(0,0,0,0,200,0, 0, density);
+    Particle.call(this, 0, 0, 0, 0, 200, 0, 0, density);
     this.restitution    = 0;
     this.friction       = 0;
     this.gameClass      = 'wall';
 };
-Wall.prototype                      = new Primitive();
+Wall.prototype                      = Object.create(Primitive.prototype);
 Wall.prototype.clear                = function() {
     this.x          = 0;
     this.y          = 0;
@@ -613,4 +658,3 @@ Wall.prototype.clear                = function() {
     this.spin       = 0;
 };
 // --
-//

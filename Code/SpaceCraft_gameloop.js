@@ -20,15 +20,15 @@ function applyCollisionRules(p1,p2){
             case 'fireball' :
             case 'missile'  : if (obj2 instanceof Graphic || obj2 === wall)         {obj2.energy -= obj1.damagePts / obj2.mass; obj1.explode();} break;
         }
-        if (obj1 instanceof Graphic && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += Math.round(obj2.damagePts/1000000); // Includes baddies & missiles into scoring
+        if (obj1 instanceof Graphic && obj1.team !== obj2.team && obj2.damagePts ) GlobalParams.scores[obj2.team] += round(obj2.damagePts/1000000); // Includes baddies & missiles into scoring
     }
     rules(p1,p2);
     rules(p2,p1);
 }
 function iteratePhysics(){
     const dT = timeStep("physics") / GlobalParams.slowMoFactor;
-    const evaporationRateBullet   = (1 - Math.min(1,dT * dT / 3000));
-    const evaporationRateVolatile = (1 - Math.min(1,dT * dT / 1000));
+    const evaporationRateBullet   = (1 - min(1,dT * dT / 3000));
+    const evaporationRateVolatile = (1 - min(1,dT * dT / 1000));
 
     // Calc interaction between pairs ONCE, so must accumulate the forces on the recipient
     for (let i = 0; i < gameObjects.length; i++) gameObjects[i].clearAccelerations();
@@ -42,8 +42,8 @@ function iteratePhysics(){
 
         // Attrition & recharge
         switch (p1.gameClass){
-            case 'player'   :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
-            // case 'baddy'    :   p1.energy = Math.min(p1.energy + 0.001, 1); break;
+            case 'player'   :   p1.energy = min(p1.energy + 0.001, 1); break;
+            // case 'baddy'    :   p1.energy = min(p1.energy + 0.001, 1); break;
             case 'thrust'   :   p1.size *= evaporationRateVolatile        ; break;
             case 'bomb'     :
             case 'bullet'   :   p1.size *= evaporationRateBullet;
@@ -56,7 +56,7 @@ function iteratePhysics(){
         }
     }
 
-    setTimeout(iteratePhysics, GlobalParams.refreshInterval.physics);
+    GlobalParams.timers.iteratePhysics = setTimeout(iteratePhysics, GlobalParams.refreshInterval.physics);
 }
 
 function animate(){
@@ -132,8 +132,8 @@ function animate(){
     GlobalParams.camera.OldTargets[1].updatePosition(dT);
 
     // Cosine -1 --> 1 : k 1 --> 0
-    const k1 = 0.5 * (1 - Math.cos(Math.PI * GlobalParams.camera.Blender[0] / 100));
-    const k2 = 0.5 * (1 - Math.cos(Math.PI * GlobalParams.camera.Blender[1] / 100));
+    const k1 = 0.5 * (1 - cos(PI * GlobalParams.camera.Blender[0] / 100));
+    const k2 = 0.5 * (1 - cos(PI * GlobalParams.camera.Blender[1] / 100));
 
     // Create "currentCamera", so can start Tspline from here rather than waiting till now defunct destination
     const camera1 = GlobalParams.camera.CurrentCam[0];
@@ -148,8 +148,8 @@ function animate(){
     interaction.resolve();
     const cos_theta   = interaction.unitVector.x;
     const sin_theta   = interaction.unitVector.y;
-    GlobalParams.theta = Math.atan(sin_theta/cos_theta);
-    if (cos_theta < 0) GlobalParams.theta+= Math.PI;
+    GlobalParams.theta = atan(sin_theta/cos_theta);
+    if (cos_theta < 0) GlobalParams.theta+= PI;
 
     // Centre origin in middle of screen
     ctx.translate(w/2,  h/2);
@@ -159,7 +159,7 @@ function animate(){
     ctx.scale(1, -1);
     // Scale so always fits
 
-    GlobalParams.scale = Math.min(3, (h*0.9)/interaction.seperation);
+    GlobalParams.scale = min(3, (h*0.9)/interaction.seperation);
     GlobalParams.centreX = -(camera1.x + interaction.x * 0.5);
     GlobalParams.centreY = -(camera1.y + interaction.y * 0.5);
 
@@ -182,7 +182,7 @@ function animate(){
         pvp();
     }
     // window.requestAnimationFrame(animate);
-    setTimeout(animate, GlobalParams.refreshInterval.animation);
+    GlobalParams.timers.animate = setTimeout(animate, GlobalParams.refreshInterval.animation);
 }
 
 function getPilotInput(){
@@ -190,7 +190,7 @@ function getPilotInput(){
     for (const gameObject of gameObjects)
         if (gameObject instanceof Ship)
             gameObject.getPilotCommand(GlobalParams.deltaT.pilotInput);
-    setTimeout(getPilotInput, GlobalParams.refreshInterval.pilotInput);
+    GlobalParams.timers.getPilotInput = setTimeout(getPilotInput, GlobalParams.refreshInterval.pilotInput);
 }
 
 function updateScoreStars(){
@@ -208,9 +208,9 @@ function updateScoreStars(){
     // gameDisplayText("B0 : "     + GlobalParams.camera.Blender[0],   .00, .95);
     // gameDisplayText("B1 : "     + GlobalParams.camera.Blender[1],   .90, .95);
     gameDisplayText(""     + GlobalParams.camera.Targets[1].gameClass,   .90, .95);
-    gameDisplayText("FPS : "    + Math.round(GlobalParams.FPS),     .15, .95);
+    gameDisplayText("FPS : "    + round(GlobalParams.FPS),     .15, .95);
     gameDisplayText("Objects : "+ gameObjects.length,               .45, .95);
-    gameDisplayText("CPS : "    + Math.round(GlobalParams.CPS),     .75, .95);
+    gameDisplayText("CPS : "    + round(GlobalParams.CPS),     .75, .95);
 
     ctxStars.translate(w/2,  h/2);
     ctxStars.scale(1, -1);
@@ -226,7 +226,7 @@ function updateScoreStars(){
     for (const star of stars)
         star.updatePosition(GlobalParams.deltaT.starsAndScores).boundaryConstraint().draw();
 
-    setTimeout(updateScoreStars, GlobalParams.refreshInterval.starsAndScores);
+    GlobalParams.timers.updateScoreStars = setTimeout(updateScoreStars, GlobalParams.refreshInterval.starsAndScores);
 }
 
 function launch(){
